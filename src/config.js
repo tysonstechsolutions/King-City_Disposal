@@ -46,14 +46,7 @@ export const config = {
       // OWNER_PHONE (format: +16185551234)
     },
   },
-
-  // ============================================
-  // 🗺️ GOOGLE MAPS (for satellite maps)
-  // ============================================
-  googleMaps: {
-    apiKey: "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM",
-  },
-
+  
   // ============================================
   // 💳 PAYMENTS — Stripe setup
   // ============================================
@@ -77,7 +70,7 @@ export const config = {
   // ============================================
   supabase: {
     url: "https://qtlhjxejgzjrrfmthutw.supabase.co",
-    anonKey: "sb_publishable_2M6rSapGj-2ZBv0VhrbR4w_XgzwGFz9",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0bGhqeGVqZ3pqcnJmbXRodXR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5Njc5MTgsImV4cCI6MjA4MjU0MzkxOH0.AllL3A553URTYkSGr0jEoCaV87weo5uoh0fG9fAIlNc",
     // Secret key goes in environment variables for security
   },
   
@@ -105,6 +98,13 @@ export const config = {
     "Olney", "Newton", "Ste. Marie", "Dieterich",
     "Effingham", "Altamont", "St. Elmo"
   ],
+  
+  // ============================================
+  // 🗺️ GOOGLE MAPS (for satellite maps)
+  // ============================================
+  googleMaps: {
+    apiKey: "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM",
+  },
   
   // ============================================
   // 🚛 DUMPSTER SIZES & PRICING
