@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { config } from '../config'
-import { 
-  Truck, 
-  X, 
-  MapPin, 
+import {
+  Truck,
+  X,
+  MapPin,
   Calendar,
   Send,
   MessageCircle,
@@ -18,7 +18,9 @@ import {
   HardHat,
   Package,
   Phone,
-  Plus
+  Plus,
+  RotateCcw,
+  RotateCw
 } from 'lucide-react'
 
 const STEPS = {
@@ -54,6 +56,7 @@ export default function ChatbotWidget() {
   const [isTyping, setIsTyping] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [dumpsterPlaced, setDumpsterPlaced] = useState(false)
+  const [rotation, setRotation] = useState(0)
   const [placementDescription, setPlacementDescription] = useState('')
   const [bookingData, setBookingData] = useState({
     projectType: '',
@@ -104,6 +107,7 @@ export default function ChatbotWidget() {
       if (step !== STEPS.MAP_PLACEMENT) {
         setMapLoaded(false)
         setDumpsterPlaced(false)
+        setRotation(0)
         if (markerRef.current) {
           markerRef.current.setMap(null)
           markerRef.current = null
@@ -181,7 +185,7 @@ export default function ChatbotWidget() {
 
     const map = mapRef.current
     const center = map.getCenter()
-    
+
     // Create a draggable marker for the dumpster
     const dumpsterMarker = new window.google.maps.Marker({
       position: center,
@@ -194,6 +198,7 @@ export default function ChatbotWidget() {
         strokeColor: '#22c55e',
         strokeWeight: 3,
         scale: 1.5,
+        rotation: rotation,
       },
       title: 'Drag to position dumpster'
     })
@@ -218,6 +223,30 @@ export default function ChatbotWidget() {
     })
 
     setDumpsterPlaced(true)
+    setRotation(0) // Reset rotation when placing new dumpster
+  }
+
+  // Update marker icon when rotation changes
+  useEffect(() => {
+    if (markerRef.current && dumpsterPlaced) {
+      const currentIcon = markerRef.current.getIcon()
+      markerRef.current.setIcon({
+        ...currentIcon,
+        rotation: rotation
+      })
+    }
+  }, [rotation, dumpsterPlaced])
+
+  // Handle scroll wheel rotation on map
+  const handleMapWheel = (e) => {
+    if (dumpsterPlaced && markerRef.current) {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? 15 : -15
+      setRotation(prev => {
+        const newRotation = (prev + delta) % 360
+        return newRotation < 0 ? newRotation + 360 : newRotation
+      })
+    }
   }
 
   const addBotMessage = async (text, delay = 500) => {
@@ -518,9 +547,10 @@ export default function ChatbotWidget() {
                   <div className="bg-dark-700 rounded-xl overflow-hidden">
                     {/* Map Container */}
                     <div className="relative" style={{ minHeight: '300px' }}>
-                      <div 
+                      <div
                         ref={mapContainerRef}
                         className="h-72 md:h-96 w-full bg-dark-600"
+                        onWheel={handleMapWheel}
                       />
                       
                       {/* Loading overlay */}
@@ -558,9 +588,29 @@ export default function ChatbotWidget() {
                           </span>
                         </div>
                         {dumpsterPlaced && (
-                          <span className="text-primary-400 text-sm font-medium">
-                            ✓ Drag to adjust
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {/* Rotation buttons for mobile */}
+                            <button
+                              onClick={() => setRotation(prev => {
+                                const newRot = (prev - 45) % 360
+                                return newRot < 0 ? newRot + 360 : newRot
+                              })}
+                              className="p-2 bg-dark-600 hover:bg-dark-500 rounded-lg transition-colors"
+                              title="Rotate left"
+                            >
+                              <RotateCcw className="w-4 h-4 text-primary-400" />
+                            </button>
+                            <button
+                              onClick={() => setRotation(prev => (prev + 45) % 360)}
+                              className="p-2 bg-dark-600 hover:bg-dark-500 rounded-lg transition-colors"
+                              title="Rotate right"
+                            >
+                              <RotateCw className="w-4 h-4 text-primary-400" />
+                            </button>
+                            <span className="text-primary-400 text-sm font-medium hidden md:inline">
+                              Scroll to rotate
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
