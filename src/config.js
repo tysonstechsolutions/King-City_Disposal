@@ -35,14 +35,15 @@ export const config = {
     // ┌─────────────────────────────────────────┐
     // │  🔌 PLUG IN LATER: Twilio SMS           │
     // │  When ready, set enabled: true and      │
-    // │  fill in the credentials                │
+    // │  add credentials in VERCEL ENV VARS     │
     // └─────────────────────────────────────────┘
     twilio: {
       enabled: false, // ← FLIP TO true WHEN READY
-      accountSid: "AC408c227064abb1ad0d54ef7437ddf090", // Already have this!
-      authToken: "ed218f6d15b7113e0dcc8deea36e1adb",   // Already have this!
-      phoneNumber: "", // ← ADD TWILIO PHONE NUMBER (format: +16185551234)
-      ownerPhone: "",  // ← ADD OWNER'S CELL PHONE (format: +16185551234)
+      // ADD THESE IN VERCEL → Settings → Environment Variables:
+      // TWILIO_ACCOUNT_SID
+      // TWILIO_AUTH_TOKEN  
+      // TWILIO_PHONE_NUMBER (format: +16185551234)
+      // OWNER_PHONE (format: +16185551234)
     },
   },
   
@@ -52,14 +53,14 @@ export const config = {
   // ┌─────────────────────────────────────────┐
   // │  🔌 PLUG IN LATER: Stripe Payments      │
   // │  When ready, set enabled: true and      │
-  // │  add the API keys from Stripe dashboard │
+  // │  add API keys in VERCEL ENV VARS        │
   // └─────────────────────────────────────────┘
   payments: {
     enabled: false, // ← FLIP TO true WHEN READY
-    stripe: {
-      publishableKey: "", // ← ADD FROM STRIPE DASHBOARD
-      secretKey: "",      // ← ADD FROM STRIPE DASHBOARD (starts with sk_)
-    },
+    // ADD THESE IN VERCEL → Settings → Environment Variables:
+    // STRIPE_PUBLISHABLE_KEY
+    // STRIPE_SECRET_KEY
+    
     // If false, customers can book without paying (invoice later)
     requirePaymentUpfront: false,
   },
@@ -99,44 +100,27 @@ export const config = {
   ],
   
   // ============================================
+  // 🗺️ MAPBOX (for satellite maps)
+  // ============================================
+  mapbox: {
+    token: "pk.eyJ1IjoidH1zb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcW1qM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
+  },
+  
+  // ============================================
   // 🚛 DUMPSTER SIZES & PRICING
   // ============================================
   // Change prices anytime — whole site updates automatically
   dumpsters: [
     {
-      id: "14yd",
-      name: "14 Yard Dumpster",
-      description: "Perfect for small cleanouts, garage cleanups, or small renovation projects",
-      dimensions: {
-        length: "14 ft",
-        width: "7 ft", 
-        height: "4 ft"
-      },
-      capacity: "14 cubic yards",
-      wheelbarrowLoads: "~70 wheelbarrow loads",
-      bestFor: [
-        "Garage or basement cleanout",
-        "Small bathroom remodel",
-        "Deck removal",
-        "Estate cleanout (1-2 rooms)"
-      ],
-      pricing: {
-        "3-day": 350,
-        "7-day": 399,
-      },
-      weightIncluded: "2 tons",
-      weightOverage: 100, // $ per ton over
-      dailyExtension: 15, // $ per extra day
-      image: "/images/14-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
-    },
-    {
       id: "20yd",
       name: "20 Yard Dumpster",
+      shortName: "20 Yard",
       description: "Our most popular size - great for medium renovations and large cleanouts",
       dimensions: {
-        length: "22 ft",
-        width: "8 ft",
-        height: "4 ft"
+        length: 22, // feet (for map rectangle)
+        width: 8,   // feet (for map rectangle)
+        height: 4,
+        display: "22ft × 8ft × 4ft"
       },
       capacity: "20 cubic yards",
       wheelbarrowLoads: "~100 wheelbarrow loads",
@@ -146,6 +130,8 @@ export const config = {
         "Roof tear-off (up to 25 squares)",
         "Estate cleanout (full house)"
       ],
+      // Which project types recommend this size
+      recommendedFor: ["cleanout", "renovation", "roofing"],
       pricing: {
         "3-day": 425,
         "7-day": 485,
@@ -158,11 +144,13 @@ export const config = {
     {
       id: "30yd",
       name: "30 Yard Dumpster",
+      shortName: "30 Yard",
       description: "Big projects need big dumpsters - construction, major renovations, commercial jobs",
       dimensions: {
-        length: "22 ft",
-        width: "8 ft",
-        height: "6 ft"
+        length: 22, // feet (for map rectangle)
+        width: 8,   // feet (for map rectangle)
+        height: 6,
+        display: "22ft × 8ft × 6ft"
       },
       capacity: "30 cubic yards",
       wheelbarrowLoads: "~150 wheelbarrow loads",
@@ -172,6 +160,8 @@ export const config = {
         "Commercial cleanout",
         "Storm damage cleanup"
       ],
+      // Which project types recommend this size
+      recommendedFor: ["construction", "major-renovation", "commercial"],
       pricing: {
         "3-day": 549,
         "7-day": 625,
@@ -181,6 +171,17 @@ export const config = {
       dailyExtension: 25,
       image: "/images/30-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
     }
+  ],
+  
+  // ============================================
+  // 📋 PROJECT TYPES (for chatbot recommendations)
+  // ============================================
+  projectTypes: [
+    { id: "cleanout", label: "Cleanout", emoji: "🏠", description: "Garage, basement, estate", recommendedSize: "20yd" },
+    { id: "renovation", label: "Renovation", emoji: "🔨", description: "Kitchen, bathroom, flooring", recommendedSize: "20yd" },
+    { id: "roofing", label: "Roofing", emoji: "🏗️", description: "Shingle tear-off", recommendedSize: "20yd" },
+    { id: "construction", label: "Construction", emoji: "🏢", description: "New build, addition", recommendedSize: "30yd" },
+    { id: "other", label: "Other", emoji: "📦", description: "Something else", recommendedSize: null },
   ],
   
   // ============================================

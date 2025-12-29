@@ -285,6 +285,14 @@ export default function AdminPage() {
                           <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                           <span className="text-sm">{booking.address}</span>
                         </div>
+                        
+                        {/* Placement notes */}
+                        {booking.placement_notes && (
+                          <div className="mt-2 bg-dark-700/50 rounded-lg px-3 py-2">
+                            <p className="text-xs text-dark-400">📌 Placement:</p>
+                            <p className="text-sm text-white">{booking.placement_notes}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -12,8 +12,8 @@ import {
 } from 'lucide-react'
 
 export const metadata = {
-  title: `Dumpster Sizes - 14, 20, 30 Yard Roll-Off Dumpsters | ${config.businessName}`,
-  description: `Compare dumpster sizes for your project. 14, 20, and 30 yard roll-off dumpsters available for delivery in ${config.address.city}, IL and surrounding areas.`,
+  title: `Dumpster Sizes - 20 & 30 Yard Roll-Off Dumpsters | ${config.businessName}`,
+  description: `Compare dumpster sizes for your project. 20 and 30 yard roll-off dumpsters available for delivery in ${config.address.city}, IL and surrounding areas.`,
 }
 
 export default function DumpstersPage() {
@@ -57,7 +57,7 @@ export default function DumpstersPage() {
                     <div className="absolute bottom-4 left-4 right-4 bg-dark-800/80 backdrop-blur-sm rounded-lg p-3 text-center">
                       <p className="text-white text-sm">
                         <span className="text-dark-400">Dimensions:</span>{' '}
-                        {dumpster.dimensions.length} L × {dumpster.dimensions.width} W × {dumpster.dimensions.height} H
+                        {dumpster.dimensions.display}
                       </p>
                     </div>
                   </div>
@@ -164,7 +164,7 @@ export default function DumpstersPage() {
                   <td className="py-4 px-4 text-dark-300">Dimensions</td>
                   {config.dumpsters.map((d) => (
                     <td key={d.id} className="py-4 px-4 text-center text-white">
-                      {d.dimensions.length} × {d.dimensions.width} × {d.dimensions.height}
+                      {d.dimensions.display}
                     </td>
                   ))}
                 </tr>

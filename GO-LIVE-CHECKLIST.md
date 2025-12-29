@@ -30,15 +30,21 @@ This checklist walks you through activating all the features that require the bu
 1. Go to [twilio.com](https://twilio.com) — you already have an account
 2. Complete business verification (requires ID upload)
 3. Buy a phone number with area code 618
-4. Open `src/config.js` and update:
+4. Go to **Vercel → Your Project → Settings → Environment Variables**
+5. Add these 4 variables:
+   ```
+   TWILIO_ACCOUNT_SID = (from Twilio console)
+   TWILIO_AUTH_TOKEN = (from Twilio console)
+   TWILIO_PHONE_NUMBER = +16185551234 (the number you bought)
+   OWNER_PHONE = +16185551234 (owner's cell to receive alerts)
+   ```
+6. Open `src/config.js` and change:
    ```javascript
    twilio: {
      enabled: true,  // ← Change false to true
-     phoneNumber: "+1618XXXXXXX",  // ← Add Twilio number
-     ownerPhone: "+1618XXXXXXX",   // ← Add owner's cell
    }
    ```
-5. Push update to GitHub → Vercel auto-deploys
+7. Push update to GitHub → Vercel auto-deploys
 
 ---
 
@@ -56,18 +62,20 @@ This checklist walks you through activating all the features that require the bu
 1. Go to [stripe.com](https://stripe.com) — create account or login
 2. Complete business verification
 3. Get your API keys from Dashboard → Developers → API Keys
-4. Open `src/config.js` and update:
+4. Go to **Vercel → Your Project → Settings → Environment Variables**
+5. Add these 2 variables:
+   ```
+   STRIPE_PUBLISHABLE_KEY = pk_live_... (from Stripe)
+   STRIPE_SECRET_KEY = sk_live_... (from Stripe)
+   ```
+6. Open `src/config.js` and change:
    ```javascript
    payments: {
      enabled: true,  // ← Change false to true
      requirePaymentUpfront: true,  // ← Charge at booking
-     stripe: {
-       publishableKey: "pk_live_...",  // ← From Stripe
-       secretKey: "sk_live_...",        // ← From Stripe
-     },
    }
    ```
-5. Push update to GitHub → Vercel auto-deploys
+7. Push update to GitHub → Vercel auto-deploys
 
 ---
 

@@ -27,10 +27,12 @@ export async function POST(request) {
       address,
       placementLat,
       placementLng,
+      placementNotes,
       dumpsterSize,
       rentalDuration,
       deliveryDate,
       priceCents,
+      projectType,
     } = body;
 
     // Validate required fields
@@ -54,10 +56,12 @@ export async function POST(request) {
       address: address,
       placement_lat: placementLat || null,
       placement_lng: placementLng || null,
+      placement_notes: placementNotes || null,
       dumpster_size: dumpsterSize,
       rental_duration: rentalDuration,
       delivery_date: deliveryDate,
       price_cents: priceCents || 0,
+      project_type: projectType || null,
       status: 'pending',
       paid: false,
     };
@@ -96,13 +100,16 @@ export async function POST(request) {
     // ┌─────────────────────────────────────────┐
     // │  🔌 PLUG IN LATER: Twilio SMS           │
     // └─────────────────────────────────────────┘
-    if (config.notifications.twilio.enabled && config.notifications.twilio.phoneNumber) {
+    if (config.notifications.twilio.enabled && process.env.TWILIO_PHONE_NUMBER) {
       try {
-        await sendTwilioSMS({
-          to: config.notifications.twilio.ownerPhone,
-          message: `🚛 NEW BOOKING!\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}\n\nView: ${config.supabase.url.replace('.supabase.co', '')}/admin`,
-        });
-        console.log('SMS notification sent');
+        const ownerPhone = process.env.OWNER_PHONE;
+        if (ownerPhone) {
+          await sendTwilioSMS({
+            to: ownerPhone,
+            message: `🚛 NEW BOOKING!\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n📌 Placement: ${placementNotes || 'Not specified'}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}`,
+          });
+          console.log('SMS notification sent');
+        }
       } catch (smsError) {
         console.error('SMS failed (continuing):', smsError);
         // Don't fail the booking if SMS fails
@@ -137,12 +144,16 @@ export async function POST(request) {
 // ============================================
 // TWILIO SMS HELPER
 // ============================================
-// This function is ready to use once Twilio is enabled
+// Reads from environment variables (set in Vercel)
 
 async function sendTwilioSMS({ to, message }) {
-  const accountSid = config.notifications.twilio.accountSid;
-  const authToken = config.notifications.twilio.authToken;
-  const from = config.notifications.twilio.phoneNumber;
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_PHONE_NUMBER;
+
+  if (!accountSid || !authToken || !from) {
+    throw new Error('Twilio credentials not configured');
+  }
 
   const response = await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
