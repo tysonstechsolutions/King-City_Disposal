@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { config } from '../../config'
 import {
@@ -46,7 +46,24 @@ const projectIcons = {
 
 const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
 
+// Wrapper component to handle Suspense boundary for useSearchParams
 export default function BookingPage() {
+  return (
+    <Suspense fallback={<BookingPageLoading />}>
+      <BookingPageContent />
+    </Suspense>
+  )
+}
+
+function BookingPageLoading() {
+  return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+    </div>
+  )
+}
+
+function BookingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
