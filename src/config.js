@@ -46,7 +46,14 @@ export const config = {
       // OWNER_PHONE (format: +16185551234)
     },
   },
-  
+
+  // ============================================
+  // 🗺️ MAPBOX (for satellite maps)
+  // ============================================
+  mapbox: {
+    token: "pk.eyJ1IjoidH1zb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcW1qM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
+  },
+
   // ============================================
   // 💳 PAYMENTS — Stripe setup
   // ============================================
