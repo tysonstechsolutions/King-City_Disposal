@@ -48,10 +48,10 @@ export const config = {
   },
 
   // ============================================
-  // 🗺️ MAPBOX (for satellite maps)
+  // 🗺️ GOOGLE MAPS (for satellite maps)
   // ============================================
-  mapbox: {
-    token: "pk.eyJ1IjoidHlzb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcWlqM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
+  googleMaps: {
+    apiKey: "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM",
   },
 
   // ============================================
@@ -105,13 +105,6 @@ export const config = {
     "Olney", "Newton", "Ste. Marie", "Dieterich",
     "Effingham", "Altamont", "St. Elmo"
   ],
-  
-  // ============================================
-  // 🗺️ MAPBOX (for satellite maps)
-  // ============================================
-  mapbox: {
-    token: "pk.eyJ1IjoidHlzb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcWlqM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
-  },
   
   // ============================================
   // 🚛 DUMPSTER SIZES & PRICING
