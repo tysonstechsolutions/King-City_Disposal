@@ -106,8 +106,19 @@ export default function ChatbotWidget() {
         return
       }
 
+      // Check if script is already loading
+      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        const checkLoaded = setInterval(() => {
+          if (window.google && window.google.maps) {
+            clearInterval(checkLoaded)
+            resolve()
+          }
+        }, 100)
+        return
+      }
+
       const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=geometry`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=geometry&loading=async`
       script.async = true
       script.defer = true
       script.onload = resolve
@@ -161,19 +172,16 @@ export default function ChatbotWidget() {
 
     mapRef.current = map
 
-    // Add a marker for the address
-    new window.google.maps.Marker({
-      position: { lat, lng },
+    // Add a circle marker for the address (using Circle instead of deprecated Marker)
+    new window.google.maps.Circle({
+      center: { lat, lng },
+      radius: 2, // meters
       map: map,
-      icon: {
-        path: window.google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: '#22c55e',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 3,
-      },
-      title: 'Delivery Address'
+      fillColor: '#22c55e',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 3,
+      clickable: false,
     })
 
     // Get dumpster dimensions
@@ -221,18 +229,6 @@ export default function ChatbotWidget() {
       const center = newBounds.getCenter()
       setDumpsterPosition({ lat: center.lat(), lng: center.lng() })
     })
-
-    // Add a label to the rectangle
-    const infoWindow = new window.google.maps.InfoWindow({
-      content: `<div style="padding: 4px 8px; font-weight: bold; color: #22c55e;">🚛 Drag to position</div>`,
-      position: bounds.getCenter(),
-    })
-    infoWindow.open(map)
-
-    // Close info window after 3 seconds
-    setTimeout(() => {
-      infoWindow.close()
-    }, 3000)
 
     setMapLoaded(true)
   }
