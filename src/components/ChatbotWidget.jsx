@@ -101,15 +101,17 @@ export default function ChatbotWidget() {
   // Load Google Maps script dynamically
   const loadGoogleMapsScript = () => {
     return new Promise((resolve, reject) => {
-      if (window.google && window.google.maps) {
+      // Check if already fully loaded
+      if (window.google && window.google.maps && window.google.maps.Geocoder) {
         resolve()
         return
       }
 
-      // Check if script is already loading
+      // Check if script is already in DOM
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        // Wait for it to fully load
         const checkLoaded = setInterval(() => {
-          if (window.google && window.google.maps) {
+          if (window.google && window.google.maps && window.google.maps.Geocoder) {
             clearInterval(checkLoaded)
             resolve()
           }
@@ -117,12 +119,23 @@ export default function ChatbotWidget() {
         return
       }
 
+      // Create unique callback name
+      const callbackName = `googleMapsCallback_${Date.now()}`
+
+      // Set up callback
+      window[callbackName] = () => {
+        delete window[callbackName]
+        resolve()
+      }
+
       const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=geometry&loading=async`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=geometry&callback=${callbackName}`
       script.async = true
       script.defer = true
-      script.onload = resolve
-      script.onerror = reject
+      script.onerror = () => {
+        delete window[callbackName]
+        reject(new Error('Failed to load Google Maps'))
+      }
       document.head.appendChild(script)
     })
   }
