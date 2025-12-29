@@ -237,16 +237,16 @@ export default function ChatbotWidget() {
     }
   }, [rotation, dumpsterPlaced])
 
-  // Handle scroll wheel rotation on map
-  const handleMapWheel = (e) => {
-    if (dumpsterPlaced && markerRef.current) {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? 15 : -15
-      setRotation(prev => {
-        const newRotation = (prev + delta) % 360
-        return newRotation < 0 ? newRotation + 360 : newRotation
-      })
-    }
+  // Rotate functions
+  const rotateLeft = () => {
+    setRotation(prev => {
+      const newRot = (prev - 20) % 360
+      return newRot < 0 ? newRot + 360 : newRot
+    })
+  }
+
+  const rotateRight = () => {
+    setRotation(prev => (prev + 20) % 360)
   }
 
   const addBotMessage = async (text, delay = 500) => {
@@ -550,9 +550,8 @@ export default function ChatbotWidget() {
                       <div
                         ref={mapContainerRef}
                         className="h-72 md:h-96 w-full bg-dark-600"
-                        onWheel={handleMapWheel}
                       />
-                      
+
                       {/* Loading overlay */}
                       {!mapLoaded && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-dark-600">
@@ -576,6 +575,26 @@ export default function ChatbotWidget() {
                           </button>
                         </div>
                       )}
+
+                      {/* Rotate Buttons Overlay */}
+                      {dumpsterPlaced && (
+                        <div className="absolute bottom-4 right-4 flex gap-2">
+                          <button
+                            onClick={rotateLeft}
+                            className="w-12 h-12 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                            title="Rotate left"
+                          >
+                            <RotateCcw className="w-5 h-5 text-primary-400" />
+                          </button>
+                          <button
+                            onClick={rotateRight}
+                            className="w-12 h-12 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                            title="Rotate right"
+                          >
+                            <RotateCw className="w-5 h-5 text-primary-400" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Map legend */}
@@ -588,29 +607,9 @@ export default function ChatbotWidget() {
                           </span>
                         </div>
                         {dumpsterPlaced && (
-                          <div className="flex items-center gap-2">
-                            {/* Rotation buttons for mobile */}
-                            <button
-                              onClick={() => setRotation(prev => {
-                                const newRot = (prev - 45) % 360
-                                return newRot < 0 ? newRot + 360 : newRot
-                              })}
-                              className="p-2 bg-dark-600 hover:bg-dark-500 rounded-lg transition-colors"
-                              title="Rotate left"
-                            >
-                              <RotateCcw className="w-4 h-4 text-primary-400" />
-                            </button>
-                            <button
-                              onClick={() => setRotation(prev => (prev + 45) % 360)}
-                              className="p-2 bg-dark-600 hover:bg-dark-500 rounded-lg transition-colors"
-                              title="Rotate right"
-                            >
-                              <RotateCw className="w-4 h-4 text-primary-400" />
-                            </button>
-                            <span className="text-primary-400 text-sm font-medium hidden md:inline">
-                              Scroll to rotate
-                            </span>
-                          </div>
+                          <span className="text-primary-400 text-sm font-medium">
+                            ✓ Drag & rotate
+                          </span>
                         )}
                       </div>
                     </div>
