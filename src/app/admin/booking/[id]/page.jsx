@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { config } from '../../../../config'
+import BookingDetailMap from '../../../../components/BookingDetailMap'
 import {
   ArrowLeft,
   Phone,
@@ -24,19 +24,6 @@ import {
   Copy,
   ExternalLink
 } from 'lucide-react'
-
-// Dynamically import the map component with SSR disabled
-const BookingDetailMap = dynamic(
-  () => import('../../../../components/BookingDetailMap'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-[300px] md:h-[400px] bg-dark-700 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
-      </div>
-    )
-  }
-)
 
 export default function BookingDetailPage() {
   const params = useParams()
@@ -264,12 +251,13 @@ export default function BookingDetailPage() {
                 </button>
               </div>
 
-              {/* Dynamically imported map component - isolated from React reconciliation */}
+              {/* Static satellite map with dumpster rectangle */}
               <BookingDetailMap
                 lat={booking.placement_lat}
                 lng={booking.placement_lng}
                 address={booking.address}
                 placementNotes={booking.placement_notes}
+                dumpsterSize={booking.dumpster_size}
               />
 
               {booking.placement_notes && (

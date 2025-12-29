@@ -1,238 +1,196 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { config } from '../config'
-import { Loader2, MapPin, AlertCircle } from 'lucide-react'
+import { Loader2, MapPin, AlertCircle, ExternalLink } from 'lucide-react'
 
 const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
 
-export default function BookingDetailMap({ lat, lng, address, placementNotes }) {
-  const mapContainerRef = useRef(null)
-  const mapInstanceRef = useRef(null)
-  const markerRef = useRef(null)
-  const [status, setStatus] = useState('loading') // 'loading' | 'ready' | 'error'
-  const [errorMessage, setErrorMessage] = useState('')
+// Convert feet to lat/lng offset
+// 1 degree latitude ≈ 364,173 feet
+// 1 degree longitude ≈ 364,173 * cos(latitude) feet
+const feetToLatOffset = (feet) => feet / 364173
+const feetToLngOffset = (feet, lat) => feet / (364173 * Math.cos(lat * Math.PI / 180))
 
+// Use Google Static Maps API for reliable satellite imagery
+export default function BookingDetailMap({ lat, lng, address, placementNotes, dumpsterSize }) {
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  const [geocodedCoords, setGeocodedCoords] = useState(null)
+  const [isGeocoding, setIsGeocoding] = useState(false)
+
+  // Get dumpster dimensions from config
+  const dumpster = config.dumpsters.find(d => d.id === dumpsterSize)
+  const dumpsterLength = dumpster?.dimensions?.length || 22 // feet, default to 20yd
+  const dumpsterWidth = dumpster?.dimensions?.width || 8   // feet
+
+  // Check if we have valid coordinates
+  const hasValidCoords = lat !== null && lat !== undefined &&
+                         lng !== null && lng !== undefined &&
+                         !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))
+
+  const mapLat = hasValidCoords ? parseFloat(lat) : geocodedCoords?.lat
+  const mapLng = hasValidCoords ? parseFloat(lng) : geocodedCoords?.lng
+
+  // Geocode address if no coordinates provided
   useEffect(() => {
-    let isMounted = true
-    let checkInterval = null
+    if (!hasValidCoords && address && !geocodedCoords && !isGeocoding) {
+      setIsGeocoding(true)
 
-    console.log('[Map] Starting with props:', { lat, lng, address })
-
-    // Helper to geocode address
-    const geocodeAddress = (addr) => {
-      return new Promise((resolve, reject) => {
-        if (!window.google?.maps?.Geocoder) {
-          reject(new Error('Geocoder not available'))
-          return
-        }
-        const geocoder = new window.google.maps.Geocoder()
-        geocoder.geocode({ address: addr }, (results, geoStatus) => {
-          console.log('[Map] Geocode result:', geoStatus, results?.length)
-          if (geoStatus === 'OK' && results[0]) {
-            resolve({
-              lat: results[0].geometry.location.lat(),
-              lng: results[0].geometry.location.lng()
-            })
+      // Use Google Geocoding API
+      fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_KEY}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'OK' && data.results[0]) {
+            const location = data.results[0].geometry.location
+            setGeocodedCoords({ lat: location.lat, lng: location.lng })
           } else {
-            reject(new Error(`Geocode failed: ${geoStatus}`))
+            console.error('[Map] Geocoding failed:', data.status)
           }
         })
-      })
-    }
-
-    // Create the map
-    const createMap = async () => {
-      if (!isMounted || !mapContainerRef.current) {
-        console.log('[Map] Not mounted or no container')
-        return
-      }
-
-      // Already have a map?
-      if (mapInstanceRef.current) {
-        console.log('[Map] Map already exists')
-        return
-      }
-
-      let mapLat, mapLng
-      let hasPlacementCoords = false
-
-      // Check if we have valid coordinates
-      const hasValidCoords = lat !== null && lat !== undefined && lng !== null && lng !== undefined &&
-                             !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))
-
-      if (hasValidCoords) {
-        console.log('[Map] Using provided coordinates:', lat, lng)
-        mapLat = parseFloat(lat)
-        mapLng = parseFloat(lng)
-        hasPlacementCoords = true
-      } else if (address) {
-        console.log('[Map] No coordinates, geocoding address:', address)
-        try {
-          const coords = await geocodeAddress(address)
-          mapLat = coords.lat
-          mapLng = coords.lng
-          console.log('[Map] Geocoded to:', mapLat, mapLng)
-        } catch (err) {
-          console.error('[Map] Geocoding failed:', err)
-          if (isMounted) {
-            setErrorMessage(`Could not locate address on map: ${err.message}`)
-            setStatus('error')
-          }
-          return
-        }
-      } else {
-        console.log('[Map] No address or coordinates provided')
-        if (isMounted) {
-          setErrorMessage('No address provided')
-          setStatus('error')
-        }
-        return
-      }
-
-      // Create the map
-      try {
-        console.log('[Map] Creating map at:', mapLat, mapLng)
-        const map = new window.google.maps.Map(mapContainerRef.current, {
-          center: { lat: mapLat, lng: mapLng },
-          zoom: 19,
-          mapTypeId: 'satellite',
-          tilt: 0,
-          disableDefaultUI: true,
-          zoomControl: true,
-          fullscreenControl: true,
+        .catch(err => {
+          console.error('[Map] Geocoding error:', err)
         })
-
-        mapInstanceRef.current = map
-
-        // Add marker
-        const marker = new window.google.maps.Marker({
-          position: { lat: mapLat, lng: mapLng },
-          map,
-          icon: hasPlacementCoords ? {
-            path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-            scale: 8,
-            fillColor: '#22c55e',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 3,
-          } : undefined,
-          title: hasPlacementCoords ? 'Dumpster Placement' : address,
+        .finally(() => {
+          setIsGeocoding(false)
         })
-        markerRef.current = marker
+    }
+  }, [hasValidCoords, address, geocodedCoords, isGeocoding])
 
-        // Add info window for placement
-        if (hasPlacementCoords || placementNotes) {
-          const infoWindow = new window.google.maps.InfoWindow({
-            content: `
-              <div style="padding: 8px; color: #000; max-width: 200px;">
-                <strong>${hasPlacementCoords ? 'Dumpster Placement' : 'Delivery Location'}</strong>
-                ${placementNotes ? `<br/><span style="color: #666; font-size: 12px;">${placementNotes}</span>` : ''}
-              </div>
-            `,
-          })
-          marker.addListener('click', () => infoWindow.open(map, marker))
-          infoWindow.open(map, marker)
-        }
+  // Build rectangle path for dumpster footprint
+  const getDumpsterRectanglePath = () => {
+    if (!mapLat || !mapLng) return ''
 
-        if (isMounted) {
-          setStatus('ready')
-        }
-        console.log('[Map] Map created successfully')
-      } catch (err) {
-        console.error('[Map] Error creating map:', err)
-        if (isMounted) {
-          setErrorMessage(`Map error: ${err.message}`)
-          setStatus('error')
-        }
-      }
+    // Calculate half-dimensions in lat/lng
+    const halfLengthLat = feetToLatOffset(dumpsterLength / 2)
+    const halfWidthLng = feetToLngOffset(dumpsterWidth / 2, mapLat)
+
+    // Rectangle corners (clockwise from top-left)
+    const corners = [
+      { lat: mapLat + halfLengthLat, lng: mapLng - halfWidthLng }, // top-left
+      { lat: mapLat + halfLengthLat, lng: mapLng + halfWidthLng }, // top-right
+      { lat: mapLat - halfLengthLat, lng: mapLng + halfWidthLng }, // bottom-right
+      { lat: mapLat - halfLengthLat, lng: mapLng - halfWidthLng }, // bottom-left
+      { lat: mapLat + halfLengthLat, lng: mapLng - halfWidthLng }, // close the path
+    ]
+
+    // Format: fillcolor:RRGGBBAA|color:RRGGBB|weight:N|lat,lng|lat,lng|...
+    const pathPoints = corners.map(c => `${c.lat.toFixed(7)},${c.lng.toFixed(7)}`).join('|')
+    return `fillcolor:0x22c55eAA|color:0xFFFFFF|weight:3|${pathPoints}`
+  }
+
+  // Build Google Static Maps URL
+  const getStaticMapUrl = () => {
+    if (!mapLat || !mapLng) return null
+
+    const params = new URLSearchParams({
+      center: `${mapLat},${mapLng}`,
+      zoom: '20', // Zoom in more to see dumpster clearly
+      size: '640x400',
+      scale: '2', // High DPI
+      maptype: 'satellite',
+      key: GOOGLE_MAPS_KEY,
+    })
+
+    // Add dumpster rectangle path if we have placement coordinates
+    if (hasValidCoords) {
+      params.append('path', getDumpsterRectanglePath())
+    } else {
+      // Fallback to marker if just geocoded address
+      params.append('markers', `color:green|${mapLat},${mapLng}`)
     }
 
-    // Load Google Maps API if needed
-    const loadMapsAndCreate = () => {
-      if (window.google?.maps?.Map) {
-        console.log('[Map] Google Maps already available')
-        createMap()
-      } else {
-        console.log('[Map] Waiting for Google Maps...')
-        // Check if script exists
-        let script = document.querySelector('script[src*="maps.googleapis.com"]')
-        if (!script) {
-          console.log('[Map] Adding Google Maps script')
-          script = document.createElement('script')
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places,geocoding`
-          script.async = true
-          document.head.appendChild(script)
-        }
+    return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
+  }
 
-        // Wait for it to load
-        let attempts = 0
-        checkInterval = setInterval(() => {
-          attempts++
-          if (window.google?.maps?.Map) {
-            console.log('[Map] Google Maps loaded after', attempts * 100, 'ms')
-            clearInterval(checkInterval)
-            createMap()
-          } else if (attempts > 100) {
-            console.log('[Map] Timeout waiting for Google Maps')
-            clearInterval(checkInterval)
-            if (isMounted) {
-              setErrorMessage('Google Maps failed to load. Please refresh the page.')
-              setStatus('error')
-            }
-          }
-        }, 100)
-      }
+  // Google Maps link for external viewing
+  const getGoogleMapsLink = () => {
+    if (mapLat && mapLng) {
+      return `https://www.google.com/maps?q=${mapLat},${mapLng}`
     }
-
-    loadMapsAndCreate()
-
-    // Cleanup
-    return () => {
-      isMounted = false
-      if (checkInterval) clearInterval(checkInterval)
-      if (markerRef.current) {
-        markerRef.current.setMap(null)
-        markerRef.current = null
-      }
-      mapInstanceRef.current = null
+    if (address) {
+      return `https://www.google.com/maps/search/${encodeURIComponent(address)}`
     }
-  }, [lat, lng, address, placementNotes])
+    return null
+  }
+
+  const staticMapUrl = getStaticMapUrl()
+  const googleMapsLink = getGoogleMapsLink()
+  const isLoading = isGeocoding || (!imageLoaded && staticMapUrl && !imageError)
 
   return (
     <div className="w-full h-[300px] md:h-[400px] bg-dark-700 relative overflow-hidden">
-      {/* Map container - React won't touch children after initial render */}
-      <div
-        ref={mapContainerRef}
-        className="absolute inset-0"
-        style={{ minHeight: '300px' }}
-      />
+      {/* Static Map Image */}
+      {staticMapUrl && !imageError && (
+        <img
+          src={staticMapUrl}
+          alt={`Satellite view of ${address || 'delivery location'}`}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageError(true)}
+        />
+      )}
 
-      {/* Loading overlay */}
-      {status === 'loading' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-700 z-10">
-          <Loader2 className="w-8 h-8 text-primary-400 animate-spin mb-3" />
-          <p className="text-dark-400 text-sm">Loading map...</p>
+      {/* Dumpster size label */}
+      {imageLoaded && hasValidCoords && dumpster && (
+        <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg">
+          {dumpster.shortName || dumpster.name}
+          <span className="ml-1.5 opacity-80">({dumpsterLength}' × {dumpsterWidth}')</span>
         </div>
       )}
 
-      {/* Error overlay */}
-      {status === 'error' && (
+      {/* Click to open in Google Maps */}
+      {imageLoaded && googleMapsLink && (
+        <a
+          href={googleMapsLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-3 right-3 bg-dark-900/80 hover:bg-dark-900 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors backdrop-blur-sm"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Open in Google Maps
+        </a>
+      )}
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-700 z-10">
+          <Loader2 className="w-8 h-8 text-primary-400 animate-spin mb-3" />
+          <p className="text-dark-400 text-sm">
+            {isGeocoding ? 'Finding location...' : 'Loading satellite view...'}
+          </p>
+        </div>
+      )}
+
+      {/* Error state or no location */}
+      {(imageError || (!staticMapUrl && !isGeocoding)) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-700 z-10 p-4">
-          <AlertCircle className="w-10 h-10 text-red-400 mb-3" />
-          <p className="text-white font-medium mb-1">Could not load map</p>
-          <p className="text-dark-400 text-sm text-center">{errorMessage}</p>
-          {address && (
+          <AlertCircle className="w-10 h-10 text-yellow-400 mb-3" />
+          <p className="text-white font-medium mb-1">
+            {!address && !hasValidCoords ? 'No location provided' : 'Could not load satellite view'}
+          </p>
+          <p className="text-dark-400 text-sm text-center mb-4">
+            {address || 'Address not available'}
+          </p>
+          {googleMapsLink && (
             <a
-              href={`https://www.google.com/maps/search/${encodeURIComponent(address)}`}
+              href={googleMapsLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 text-primary-400 hover:text-primary-300 text-sm flex items-center gap-1"
+              className="text-primary-400 hover:text-primary-300 text-sm flex items-center gap-1.5 bg-dark-600 px-4 py-2 rounded-lg"
             >
               <MapPin className="w-4 h-4" />
               View on Google Maps
             </a>
           )}
+        </div>
+      )}
+
+      {/* Placement notes badge */}
+      {imageLoaded && placementNotes && (
+        <div className="absolute top-3 left-3 bg-dark-900/80 text-white text-xs px-3 py-2 rounded-lg max-w-[200px] backdrop-blur-sm">
+          <span className="text-primary-400 font-medium">Placement: </span>
+          {placementNotes}
         </div>
       )}
     </div>

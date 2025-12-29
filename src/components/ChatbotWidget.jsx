@@ -94,10 +94,13 @@ export default function ChatbotWidget() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-open chatbot after 2 seconds (but not on admin/driver pages)
+  // Auto-open chatbot after 2 seconds, but not on booking page or admin pages
   useEffect(() => {
     const isAdminPage = pathname?.startsWith('/admin') || pathname?.startsWith('/driver')
-    if (!hasAutoOpened && !isOpen && !isAdminPage) {
+    const isBookingPage = pathname === '/book'
+
+    // Don't auto-open on admin pages or booking page (user is already in booking flow)
+    if (!hasAutoOpened && !isOpen && !isAdminPage && !isBookingPage) {
       const openTimer = setTimeout(() => {
         setIsOpen(true)
         setHasAutoOpened(true)
@@ -530,13 +533,19 @@ export default function ChatbotWidget() {
     return total
   }
 
+  // Use smaller size on non-homepage
+  const isHomepage = pathname === '/'
+  const chatSize = isHomepage
+    ? 'md:w-[600px] h-[calc(100vh-80px)] max-h-[900px]'
+    : 'md:w-[360px] h-[450px] max-h-[450px]'
+
   return (
     <div className="chatbot-container">
       {isOpen && (
-        <div className="fixed bottom-4 right-4 left-4 md:left-auto md:w-[600px] h-[calc(100vh-80px)] max-h-[900px] bg-dark-900 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-dark-700">
+        <div className={`fixed bottom-4 right-4 left-4 md:left-auto ${chatSize} bg-neutral-900 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-neutral-700`}>
 
           {/* Header */}
-          <div className="bg-primary-500 p-4 flex items-center justify-between flex-shrink-0">
+          <div className="bg-primary-600 p-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 bg-white/20 rounded-full flex items-center justify-center">
                 <Truck className="w-6 h-6 text-white" />
@@ -998,7 +1007,7 @@ export default function ChatbotWidget() {
             setIsOpen(true)
             if (!hasAutoOpened) setHasAutoOpened(true)
           }}
-          className="fixed bottom-6 right-6 w-16 h-16 bg-primary-500 hover:bg-primary-600 rounded-full shadow-lg flex items-center justify-center z-50 transition-all duration-300 animate-pulse"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 rounded-full shadow-lg flex items-center justify-center z-50 transition-colors duration-200"
         >
           <MessageCircle className="w-8 h-8 text-white" />
         </button>

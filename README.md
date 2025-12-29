@@ -1,17 +1,16 @@
 # King City Disposal - Dumpster Rental Website
 
-A modern, mobile-friendly dumpster rental website with chatbot booking, SMS notifications, and route optimization.
+A professional, mobile-friendly dumpster rental website for Southern Illinois. Features online booking, satellite map placement, SMS notifications, and an admin dashboard.
 
 ## Features
 
-- ✅ Modern, responsive website
-- ✅ AI-powered chatbot for instant booking
-- ✅ Satellite map placement picker
-- ✅ SMS notifications (Twilio)
-- ✅ Google Calendar integration
-- ✅ Route optimization with daily text
-- ✅ Admin dashboard
-- ✅ SEO optimized for local search
+- **Professional Design** - Clean, trustworthy look that converts visitors to customers
+- **Online Booking** - 5-step booking flow with satellite map placement picker
+- **AI Chatbot** - Guided booking assistant that pops up to help visitors
+- **SMS Notifications** - Instant alerts when new bookings come in (Twilio)
+- **Admin Dashboard** - View bookings, see placement maps, manage orders
+- **SEO Optimized** - Local business schema, service area pages, meta tags
+- **Mobile Responsive** - Works great on phones, tablets, and desktop
 
 ## Quick Start
 
@@ -19,24 +18,83 @@ A modern, mobile-friendly dumpster rental website with chatbot booking, SMS noti
 # Install dependencies
 npm install
 
-# Copy environment variables
-cp .env.example .env.local
-# Then edit .env.local with your API keys
-
 # Run development server
 npm run dev
 
 # Open http://localhost:3000
 ```
 
+## Configuration
+
+**Everything is controlled from one file: `src/config.js`**
+
+Edit this file to change:
+- Business name, phone, email
+- Dumpster sizes and pricing
+- Service area towns
+- Prohibited items list
+- Hours of operation
+
+The entire site updates automatically when you change the config.
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── page.jsx              # Homepage
+│   ├── book/                 # 5-step booking flow
+│   ├── pricing/              # Pricing page
+│   ├── dumpsters/            # Dumpster sizes
+│   ├── service-area/         # Service area + towns
+│   ├── faq/                  # FAQ + prohibited items
+│   ├── contact/              # Contact form
+│   ├── privacy/              # Privacy policy
+│   ├── terms/                # Terms of service
+│   └── admin/                # Admin dashboard
+│       └── booking/[id]/     # Booking detail with map
+│
+├── components/
+│   ├── Header.jsx            # Navigation header
+│   ├── Footer.jsx            # Site footer
+│   ├── ChatbotWidget.jsx     # Booking assistant chatbot
+│   └── BookingDetailMap.jsx  # Static satellite map with dumpster overlay
+│
+└── config.js                 # ALL business settings
+```
+
+## Booking Flow
+
+### Online Booking (/book)
+1. **Project & Size** - Select project type, choose dumpster size, pick 3 or 7 day rental
+2. **Location** - Enter address, drop pin on satellite map to show exact placement
+3. **Date** - Pick delivery date from calendar
+4. **Contact** - Name, phone, email
+5. **Review** - See summary with surcharges, confirm booking
+
+### Chatbot
+- Pops up automatically on homepage after 2 seconds
+- Does NOT auto-open on /book page (user already booking)
+- Smaller size on non-homepage pages to be less intrusive
+- Same 5-step flow as the booking page
+
+## Admin Dashboard
+
+Access at `/admin` to:
+- View all bookings
+- See delivery addresses on satellite map with dumpster rectangle overlay
+- Update booking status (pending, confirmed, delivered, completed, cancelled)
+- Add internal notes
+- Delete bookings
+
 ## Deployment
 
-### Deploy to Vercel (Recommended - Free)
+### Deploy to Vercel (Recommended)
 
 1. Push code to GitHub
 2. Go to [vercel.com](https://vercel.com)
 3. Import your GitHub repo
-4. Add environment variables in Vercel dashboard
+4. Add environment variables (see below)
 5. Deploy!
 
 ```bash
@@ -45,105 +103,83 @@ npm i -g vercel
 vercel --prod
 ```
 
-## Configuration
+## Environment Variables
 
-All business settings are in `src/config.js`:
+Set these in Vercel dashboard or `.env.local`:
 
-- Business name, phone, email
-- Dumpster sizes and pricing
-- Service area towns
-- Prohibited items list
-- Hours of operation
+```env
+# Supabase (database)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
-**To change anything, just edit `src/config.js`** - the entire site updates automatically.
+# Twilio (SMS notifications - optional)
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_PHONE_NUMBER=+1234567890
+OWNER_PHONE=+1234567890
 
-## Required Accounts (Free Tiers Available)
+# Google Maps (for satellite imagery)
+NEXT_PUBLIC_GOOGLE_MAPS_KEY=your_api_key
+```
+
+## Required Accounts
 
 | Service | Purpose | Cost |
 |---------|---------|------|
 | [Vercel](https://vercel.com) | Hosting | FREE |
 | [Supabase](https://supabase.com) | Database | FREE |
-| [Mapbox](https://mapbox.com) | Satellite maps | FREE (50k/mo) |
-| [Twilio](https://twilio.com) | SMS | ~$5-10/mo |
-| [OpenRouteService](https://openrouteservice.org) | Route optimization | FREE |
-| Google Calendar | Scheduling | FREE |
+| [Google Maps](https://console.cloud.google.com) | Satellite maps, geocoding | FREE tier available |
+| [Twilio](https://twilio.com) | SMS notifications | ~$5-10/mo (optional) |
 
-## Project Structure
+## Design System
 
-```
-src/
-├── app/                    # Next.js pages
-│   ├── page.jsx           # Home
-│   ├── pricing/           # Pricing page
-│   ├── dumpsters/         # Dumpster sizes
-│   ├── service-area/      # Service area + towns
-│   ├── faq/               # FAQ + prohibited items
-│   ├── contact/           # Contact form
-│   └── admin/             # Admin dashboard
-│
-├── components/
-│   ├── Header.jsx
-│   ├── Footer.jsx
-│   ├── ChatbotWidget.jsx  # Main chatbot
-│   └── ...
-│
-└── config.js              # ALL settings here
-```
+### Colors
+- **Primary Green**: `#3d8b64` - Professional, trustworthy
+- **Accent Amber**: `#d97706` - CTAs and highlights
+- **Neutral Grays**: Clean backgrounds and text
+
+### Typography
+- **Font**: Inter - Clean, modern, highly readable
+- **Headings**: Bold, clear hierarchy
+- **Body**: Regular weight, good line height
+
+### Components
+- White cards with subtle borders
+- Professional button styles (no gamer effects)
+- Clean forms with clear labels
+- Responsive grid layouts
+
+## SEO
+
+- Local business schema markup
+- Service area pages with town names
+- Proper meta tags on all pages
+- Mobile-friendly responsive design
+- Fast loading with Next.js
+
+**To rank locally:**
+1. Set up Google Business Profile
+2. Get Google reviews
+3. Keep NAP (Name, Address, Phone) consistent everywhere
 
 ## SMS Integration
 
-When a customer books through the chatbot, you'll receive a text like:
+When enabled, you'll receive texts for new bookings:
 
 ```
-NEW BOOKING 🚛
+NEW BOOKING
 
 John Smith - (618) 555-1234
-123 Main St, Flora IL
+123 Main St, Mount Vernon IL
 
-📦 20 Yard Dumpster
-📅 Delivery: Mon, Jan 6
-⏱️ 7-Day Rental
-💰 $485
+20 Yard Dumpster
+Delivery: Mon, Jan 6
+7-Day Rental
+$485
 
-[View on Map]
+View booking in admin dashboard
 ```
-
-To add manual jobs, text your Twilio number:
-```
-ADD 456 Oak St, 14yd, tomorrow 9am
-```
-
-## Daily Route Text
-
-Every morning at 6am, you'll receive:
-
-```
-Today's Route (5 stops):
-
-1. 📍 123 Main St (delivery) - 8:00am
-2. 📍 456 Oak St (pickup) - 9:30am
-3. 📍 789 Elm Ave (delivery) - 11:00am
-...
-
-[Open in Google Maps]
-```
-
-## SEO Notes
-
-- Service Area page lists 40+ towns for local search
-- Each page has proper meta tags
-- Mobile-friendly design
-- Fast loading (Next.js optimized)
-
-**Most important for ranking:**
-1. Set up Google Business Profile
-2. Get Google reviews (aim for 10+ in first month)
-3. Keep NAP (Name, Address, Phone) consistent everywhere
-
-## Support
-
-Questions? Check `PROJECT-MASTER.md` for the complete project brief.
 
 ---
 
-Built with ❤️ for Southern Illinois
+Built for Southern Illinois

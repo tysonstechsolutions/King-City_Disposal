@@ -265,7 +265,7 @@ export default function RootLayout({ children }) {
         <OrganizationSchema />
         <WebsiteSchema />
       </head>
-      <body className="min-h-screen flex flex-col">
+      <body className="min-h-screen flex flex-col bg-white text-neutral-900">
         <Header />
         <main className="flex-grow">
           {children}

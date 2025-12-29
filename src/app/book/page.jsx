@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { config } from '../../config'
 import {
   Truck,
@@ -48,10 +48,12 @@ const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || "AIzaSyAAU2wsDoDPH4n9BNk_pW
 
 export default function BookingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [showProhibited, setShowProhibited] = useState(false)
+  const [preselectedFromUrl, setPreselectedFromUrl] = useState(false)
 
   // Form data
   const [formData, setFormData] = useState({
@@ -68,6 +70,19 @@ export default function BookingPage() {
     customerEmail: '',
     surcharges: {},
   })
+
+  // Read URL params on mount to pre-select dumpster size
+  useEffect(() => {
+    const sizeParam = searchParams.get('size')
+    if (sizeParam && !preselectedFromUrl) {
+      // Validate that the size exists in config
+      const validSize = config.dumpsters.find(d => d.id === sizeParam)
+      if (validSize) {
+        setFormData(prev => ({ ...prev, dumpsterSize: sizeParam }))
+        setPreselectedFromUrl(true)
+      }
+    }
+  }, [searchParams, preselectedFromUrl])
 
   // Map state
   const [mapLoaded, setMapLoaded] = useState(false)
