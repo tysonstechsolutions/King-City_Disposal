@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import { config } from '../config'
 import {
   Truck,
@@ -51,6 +52,7 @@ const projectIcons = {
 const GOOGLE_MAPS_KEY = "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
 
 export default function ChatbotWidget() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [hasAutoOpened, setHasAutoOpened] = useState(false)
   const [step, setStep] = useState(STEPS.WELCOME)
@@ -93,15 +95,17 @@ export default function ChatbotWidget() {
     scrollToBottom()
   }, [messages])
 
+  // Auto-open chatbot after 2 seconds (but not on admin/driver pages)
   useEffect(() => {
-    if (!hasAutoOpened && !isOpen) {
+    const isAdminPage = pathname?.startsWith('/admin') || pathname?.startsWith('/driver')
+    if (!hasAutoOpened && !isOpen && !isAdminPage) {
       const openTimer = setTimeout(() => {
         setIsOpen(true)
         setHasAutoOpened(true)
       }, 2000)
       return () => clearTimeout(openTimer)
     }
-  }, [hasAutoOpened, isOpen])
+  }, [hasAutoOpened, isOpen, pathname])
 
   // Initialize speech recognition
   useEffect(() => {
@@ -616,7 +620,7 @@ export default function ChatbotWidget() {
   return (
     <div className="chatbot-container">
       {isOpen && (
-        <div className="fixed bottom-4 right-4 left-4 md:left-auto md:w-[480px] h-[calc(100vh-120px)] max-h-[800px] bg-dark-900 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-dark-700">
+        <div className="fixed bottom-4 right-4 left-4 md:left-auto md:w-[600px] h-[calc(100vh-80px)] max-h-[900px] bg-dark-900 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-dark-700">
 
           {/* Header */}
           <div className="bg-primary-500 p-4 flex items-center justify-between flex-shrink-0">
