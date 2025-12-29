@@ -242,7 +242,7 @@ Need a dumpster? Reply with your address..."
    👤 John Smith
    📞 (618) 555-1234
 
-2. 🚛 PICKUP 14yd
+2. 🚛 PICKUP 20yd
    456 Oak St
 
 ...

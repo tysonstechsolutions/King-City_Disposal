@@ -129,7 +129,6 @@ function parseDate(dateStr) {
 
 function parseSize(sizeStr) {
   const lower = sizeStr.toLowerCase();
-  if (lower.includes('14')) return '14yd';
   if (lower.includes('30')) return '30yd';
   return '20yd';
 }

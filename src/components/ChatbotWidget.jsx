@@ -51,7 +51,7 @@ const projectIcons = {
   other: Package
 }
 
-const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
+const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey
 
 export default function ChatbotWidget() {
   const pathname = usePathname()

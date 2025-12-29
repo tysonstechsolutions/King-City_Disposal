@@ -6,7 +6,7 @@ All of these are stored in ONE config file (`/src/config.js`) so you can change 
 | Field | Current Value |
 |-------|---------------|
 | Business Name | King City Disposal |
-| Phone | (618) 231-8481 |
+| Phone | (618) 214-7656 |
 | Email | tysonstechsolutions@gmail.com |
 | Domain | KingCityDisposal.com |
 | Service Area | 30 miles from base |
@@ -18,7 +18,6 @@ All of these are stored in ONE config file (`/src/config.js`) so you can change 
 
 | Size | 3-Day | 7-Day | Weight Included | Overage | Daily Extension |
 |------|-------|-------|-----------------|---------|-----------------|
-| 14-yard | $350 | $399 | 2 tons | $100/ton | $15/day |
 | 20-yard | $425 | $485 | 3 tons | $70/ton | $20/day |
 | 30-yard | $549 | $625 | 4 tons | $70/ton | $25/day |
 
@@ -28,7 +27,7 @@ All of these are stored in ONE config file (`/src/config.js`) so you can change 
 
 ### 1. Website (Public-Facing)
 - **Home Page** — Hero, quick booking CTA, trust badges, service overview
-- **Dumpster Sizes Page** — 14/20/30 yard with photos, dimensions, use cases
+- **Dumpster Sizes Page** — 20/30 yard with photos, dimensions, use cases
 - **Pricing Page** — Transparent pricing table (like SI Dumpsters)
 - **Service Area Page** — List of 30+ towns (SEO gold)
 - **FAQ Page** — Common questions + prohibited items list
@@ -145,7 +144,6 @@ king-city-disposal/
 └── public/
     ├── images/
     │   ├── logo.svg
-    │   ├── 14-yard.jpg
     │   ├── 20-yard.jpg
     │   └── 30-yard.jpg
     └── favicon.ico
@@ -160,7 +158,7 @@ king-city-disposal/
 - [ ] Create Vercel account (free): vercel.com
 - [ ] Create Supabase account (free): supabase.com
 - [ ] Create Mapbox account (free tier): mapbox.com
-- [ ] Take photos of your 14yd, 20yd, 30yd dumpsters
+- [ ] Take photos of your 20yd, 30yd dumpsters
 - [ ] I deploy website to Vercel
 
 ### Phase 2: Go Live Basic (Week 2)
@@ -205,7 +203,6 @@ ngrok http 3000
 
 1. **What town are you based in?** (for service area center)
 2. **Dumpster dimensions** — I'll estimate but confirm:
-   - 14yd: 14' x 7' x 4' ?
    - 20yd: 22' x 8' x 4' ?
    - 30yd: 22' x 8' x 6' ?
 3. **Do you want online payment** (Square/Stripe) or cash/check only for now?

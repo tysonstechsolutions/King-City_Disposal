@@ -115,7 +115,6 @@ This checklist walks you through activating all the features that require the bu
 ## 📸 STEP 4: Replace Placeholder Images
 
 ### Photos Needed:
-- [ ] 14-yard dumpster (from front angle)
 - [ ] 20-yard dumpster (from front angle)
 - [ ] 30-yard dumpster (from front angle)
 - [ ] Truck with dumpster
@@ -123,7 +122,7 @@ This checklist walks you through activating all the features that require the bu
 
 ### Steps:
 1. Take photos in good lighting
-2. Rename files to: `14-yard.jpg`, `20-yard.jpg`, `30-yard.jpg`
+2. Rename files to: `20-yard.jpg`, `30-yard.jpg`
 3. Replace files in `/public/images/`
 4. Push to GitHub
 
