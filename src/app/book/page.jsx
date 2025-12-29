@@ -904,7 +904,7 @@ function BookingPageContent() {
                         </p>
                       </div>
                     </div>
-                  )
+                  )}
                 </div>
               )}
             </div>

@@ -78,21 +78,18 @@ export default function BookingDetailPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/bookings?id=eq.${params.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify({ notes, status }),
-        }
-      )
+      const response = await fetch(`/api/admin/bookings/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes, status }),
+      })
 
       if (response.ok) {
         setBooking({ ...booking, notes, status })
+      } else {
+        console.error('Failed to save changes')
       }
     } catch (err) {
       console.error('Error saving:', err)
@@ -103,19 +100,14 @@ export default function BookingDetailPage() {
   // Delete booking
   const handleDelete = async () => {
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/bookings?id=eq.${params.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const response = await fetch(`/api/admin/bookings/${params.id}`, {
+        method: 'DELETE',
+      })
 
       if (response.ok) {
         router.push('/admin')
+      } else {
+        console.error('Failed to delete booking')
       }
     } catch (err) {
       console.error('Error deleting:', err)

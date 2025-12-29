@@ -90,21 +90,18 @@ export default function AdminPage() {
   const updateStatus = async (bookingId, newStatus, e) => {
     e.stopPropagation() // Prevent navigation
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/bookings?id=eq.${bookingId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      )
-      
+      const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
       if (response.ok) {
         fetchBookings()
+      } else {
+        console.error('Failed to update status')
       }
     } catch (error) {
       console.error('Error updating status:', error)
