@@ -385,7 +385,8 @@ function BookingPageContent() {
     const polygon = new window.google.maps.Polygon({
       paths: coords,
       map: map,
-      draggable: true,
+      draggable: false, // Disabled for mobile - use pan instead
+      clickable: false,
       geodesic: true,
       fillColor: '#3d8b64',
       fillOpacity: 0.5,
@@ -402,22 +403,22 @@ function BookingPageContent() {
       placementLng: centerLng
     }))
 
-    polygon.addListener('dragend', () => {
-      const path = polygon.getPath()
-      let sumLat = 0, sumLng = 0
-      path.forEach(point => {
-        sumLat += point.lat()
-        sumLng += point.lng()
-      })
-      const newCenterLat = sumLat / 4
-      const newCenterLng = sumLng / 4
+    // Update polygon position when map is panned (mobile-friendly)
+    map.addListener('center_changed', () => {
+      if (!polygonRef.current) return
+      const newCenter = map.getCenter()
+      const newLat = newCenter.lat()
+      const newLng = newCenter.lng()
 
-      dumpsterCenterRef.current = { lat: newCenterLat, lng: newCenterLng }
+      dumpsterCenterRef.current = { lat: newLat, lng: newLng }
+
+      const newCoords = calculatePolygonCoords(newLat, newLng, rotation)
+      polygonRef.current.setPath(newCoords)
 
       setFormData(prev => ({
         ...prev,
-        placementLat: newCenterLat,
-        placementLng: newCenterLng
+        placementLat: newLat,
+        placementLng: newLng
       }))
     })
 
@@ -798,7 +799,7 @@ function BookingPageContent() {
                         <div className="w-5 h-3 bg-primary-600/50 border-2 border-primary-600 rounded-sm"></div>
                         <span className="text-sm text-neutral-600">22ft × 8ft dumpster</span>
                       </div>
-                      {dumpsterPlaced && <span className="text-primary-600 text-sm font-medium">Drag to reposition</span>}
+                      {dumpsterPlaced && <span className="text-primary-600 text-sm font-medium">Pan map to position</span>}
                     </div>
                   </div>
 

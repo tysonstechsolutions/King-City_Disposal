@@ -263,7 +263,8 @@ export default function ChatbotWidget() {
     const polygon = new window.google.maps.Polygon({
       paths: coords,
       map: map,
-      draggable: true,
+      draggable: false, // Disabled for mobile - use pan instead
+      clickable: false,
       geodesic: true,
       fillColor: '#22c55e',
       fillOpacity: 0.5,
@@ -280,22 +281,22 @@ export default function ChatbotWidget() {
       placementLng: centerLng
     }))
 
-    polygon.addListener('dragend', () => {
-      const path = polygon.getPath()
-      let sumLat = 0, sumLng = 0
-      path.forEach(point => {
-        sumLat += point.lat()
-        sumLng += point.lng()
-      })
-      const newCenterLat = sumLat / 4
-      const newCenterLng = sumLng / 4
+    // Update polygon position when map is panned (mobile-friendly)
+    map.addListener('center_changed', () => {
+      if (!polygonRef.current) return
+      const newCenter = map.getCenter()
+      const newLat = newCenter.lat()
+      const newLng = newCenter.lng()
 
-      dumpsterCenterRef.current = { lat: newCenterLat, lng: newCenterLng }
+      dumpsterCenterRef.current = { lat: newLat, lng: newLng }
+
+      const newCoords = calculatePolygonCoords(newLat, newLng, rotation)
+      polygonRef.current.setPath(newCoords)
 
       setBookingData(prev => ({
         ...prev,
-        placementLat: newCenterLat,
-        placementLng: newCenterLng
+        placementLat: newLat,
+        placementLng: newLng
       }))
     })
 
@@ -761,7 +762,7 @@ export default function ChatbotWidget() {
                       <div className="w-5 h-3 bg-primary-500/60 border-2 border-primary-500 rounded-sm"></div>
                       <span className="text-sm text-dark-300">{selectedDumpster?.dimensions?.display || '22ft × 8ft'}</span>
                     </div>
-                    {dumpsterPlaced && <span className="text-primary-400 text-sm font-medium">Drag to move</span>}
+                    {dumpsterPlaced && <span className="text-primary-400 text-sm font-medium">Pan map to move</span>}
                   </div>
                 </div>
 
