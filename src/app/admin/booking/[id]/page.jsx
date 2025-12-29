@@ -457,7 +457,7 @@ export default function BookingDetailPage() {
                 <div>
                   <p className="text-dark-400 text-sm">Dumpster Size</p>
                   <p className="text-white font-medium">{dumpster.name}</p>
-                  <p className="text-dark-500 text-xs">{dumpster.dimensions}</p>
+                  <p className="text-dark-500 text-xs">{dumpster.dimensions?.display || `${dumpster.dimensions?.length}' x ${dumpster.dimensions?.width}' x ${dumpster.dimensions?.height}'`}</p>
                 </div>
                 
                 <div>
