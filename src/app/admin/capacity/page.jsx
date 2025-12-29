@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { config } from '../../../config'
-import { 
+import {
   ChevronLeft,
   ChevronRight,
   Truck,
   Package,
   AlertTriangle,
   ArrowLeft,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -17,13 +18,9 @@ export default function CapacityCalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
-  
-  // Fleet size - configure these based on actual inventory
-  const fleetSize = {
-    '14yd': 3,
-    '20yd': 5,
-    '30yd': 2,
-  }
+
+  // Use fleet size from config
+  const fleetSize = config.fleet || { '20yd': 3, '30yd': 2 }
   const totalDumpsters = Object.values(fleetSize).reduce((a, b) => a + b, 0)
 
   const fetchBookings = useCallback(async () => {
@@ -33,9 +30,9 @@ export default function CapacityCalendarPage() {
       const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
       startDate.setDate(startDate.getDate() - 7)
       const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0)
-      
+
       const response = await fetch(
-        `${config.supabase.url}/rest/v1/bookings?delivery_date=gte.${startDate.toISOString().split('T')[0]}&delivery_date=lte.${endDate.toISOString().split('T')[0]}&status=in.(confirmed,delivered)`,
+        `${config.supabase.url}/rest/v1/bookings?delivery_date=gte.${startDate.toISOString().split('T')[0]}&delivery_date=lte.${endDate.toISOString().split('T')[0]}&status=in.(pending,confirmed,delivered)`,
         {
           headers: {
             'apikey': config.supabase.anonKey,
@@ -43,7 +40,7 @@ export default function CapacityCalendarPage() {
           },
         }
       )
-      
+
       if (response.ok) {
         setBookings(await response.json())
       }
@@ -64,17 +61,21 @@ export default function CapacityCalendarPage() {
   // Calculate how many dumpsters are "out" on a given date
   const getDumpstersOut = (date) => {
     const dateStr = date.toISOString().split('T')[0]
-    
-    const out = { '14yd': 0, '20yd': 0, '30yd': 0 }
-    
+
+    // Initialize with all sizes from fleet
+    const out = {}
+    Object.keys(fleetSize).forEach(size => {
+      out[size] = 0
+    })
+
     for (const booking of bookings) {
       const deliveryDate = new Date(booking.delivery_date)
-      const rentalDays = booking.rental_duration === '3-day' ? 3 : 
-                         booking.rental_duration?.match(/(\d+)-day/)?.[1] ? 
+      const rentalDays = booking.rental_duration === '3-day' ? 3 :
+                         booking.rental_duration?.match(/(\d+)-day/)?.[1] ?
                          parseInt(booking.rental_duration.match(/(\d+)-day/)[1]) : 7
       const pickupDate = new Date(deliveryDate)
       pickupDate.setDate(pickupDate.getDate() + rentalDays)
-      
+
       // Check if this booking overlaps with the date
       const checkDate = new Date(dateStr)
       if (checkDate >= deliveryDate && checkDate < pickupDate) {
@@ -83,7 +84,7 @@ export default function CapacityCalendarPage() {
         }
       }
     }
-    
+
     return out
   }
 
@@ -91,30 +92,30 @@ export default function CapacityCalendarPage() {
   const getCalendarDays = () => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
-    
+
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
-    
+
     const days = []
-    
+
     // Add padding for days before first of month
     const startPadding = firstDay.getDay()
     for (let i = 0; i < startPadding; i++) {
       const date = new Date(year, month, -startPadding + i + 1)
       days.push({ date, isCurrentMonth: false })
     }
-    
+
     // Add days of current month
     for (let i = 1; i <= lastDay.getDate(); i++) {
       days.push({ date: new Date(year, month, i), isCurrentMonth: true })
     }
-    
+
     // Add padding after last day
     const endPadding = 42 - days.length // 6 rows * 7 days
     for (let i = 1; i <= endPadding; i++) {
       days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false })
     }
-    
+
     return days
   }
 
@@ -137,96 +138,109 @@ export default function CapacityCalendarPage() {
 
   const getCapacityColor = (out, total) => {
     const pct = out / total
-    if (pct >= 0.9) return 'bg-red-500/30 border-red-500/50'
-    if (pct >= 0.7) return 'bg-orange-500/30 border-orange-500/50'
-    if (pct >= 0.5) return 'bg-yellow-500/30 border-yellow-500/50'
-    return 'bg-green-500/20 border-green-500/30'
+    if (pct >= 0.9) return 'bg-red-100 border-red-300'
+    if (pct >= 0.7) return 'bg-orange-100 border-orange-300'
+    if (pct >= 0.5) return 'bg-yellow-100 border-yellow-300'
+    return 'bg-green-100 border-green-300'
   }
 
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-dark-800 border-b border-dark-700 sticky top-0 z-10">
+      <div className="bg-white border-b border-neutral-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link 
+              <Link
                 href="/admin"
-                className="flex items-center gap-2 text-dark-300 hover:text-white"
+                className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Package className="w-6 h-6 text-primary-400" />
+                <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+                  <Package className="w-6 h-6 text-primary-600" />
                   Capacity Calendar
                 </h1>
-                <p className="text-sm text-dark-400">
+                <p className="text-sm text-neutral-500">
                   {totalDumpsters} dumpsters in fleet
                 </p>
               </div>
             </div>
-            
-            <button
-              onClick={fetchBookings}
-              disabled={loading}
-              className="p-2 bg-dark-700 rounded-lg"
-            >
-              <RefreshCw className={`w-5 h-5 text-dark-300 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/admin/fleet"
+                className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+                title="Manage Fleet"
+              >
+                <Settings className="w-5 h-5 text-neutral-600" />
+              </Link>
+              <button
+                onClick={fetchBookings}
+                disabled={loading}
+                className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-5 h-5 text-neutral-600 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Fleet Summary */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {Object.entries(fleetSize).map(([size, count]) => {
             const dumpster = config.dumpsters.find(d => d.id === size)
             return (
-              <div key={size} className="bg-dark-800 rounded-xl p-4 text-center">
-                <Truck className="w-8 h-8 text-primary-400 mx-auto mb-2" />
-                <p className="text-white font-bold">{count}x {dumpster?.shortName || size}</p>
+              <div key={size} className="bg-white rounded-xl p-4 text-center border border-neutral-200">
+                <Truck className="w-8 h-8 text-primary-600 mx-auto mb-2" />
+                <p className="text-neutral-900 font-bold">{count}x {dumpster?.shortName || size}</p>
               </div>
             )
           })}
+          <div className="bg-primary-50 rounded-xl p-4 text-center border border-primary-200">
+            <Package className="w-8 h-8 text-primary-600 mx-auto mb-2" />
+            <p className="text-primary-700 font-bold">{totalDumpsters} Total</p>
+          </div>
         </div>
 
         {/* Month Navigation */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={prevMonth}
-            className="p-2 bg-dark-700 rounded-lg hover:bg-dark-600"
+            className="p-2 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50"
           >
-            <ChevronLeft className="w-6 h-6 text-white" />
+            <ChevronLeft className="w-6 h-6 text-neutral-700" />
           </button>
-          
+
           <div className="text-center">
-            <h2 className="text-xl font-bold text-white">{monthName}</h2>
+            <h2 className="text-xl font-bold text-neutral-900">{monthName}</h2>
             <button
               onClick={goToToday}
-              className="text-sm text-primary-400 hover:text-primary-300"
+              className="text-sm text-primary-600 hover:text-primary-700"
             >
               Go to Today
             </button>
           </div>
-          
+
           <button
             onClick={nextMonth}
-            className="p-2 bg-dark-700 rounded-lg hover:bg-dark-600"
+            className="p-2 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50"
           >
-            <ChevronRight className="w-6 h-6 text-white" />
+            <ChevronRight className="w-6 h-6 text-neutral-700" />
           </button>
         </div>
 
         {/* Calendar Grid */}
-        <div className="bg-dark-800 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-xl overflow-hidden border border-neutral-200">
           {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-dark-700">
+          <div className="grid grid-cols-7 border-b border-neutral-200 bg-neutral-50">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="p-2 text-center text-dark-400 text-sm font-medium">
+              <div key={day} className="p-2 text-center text-neutral-500 text-sm font-medium">
                 {day}
               </div>
             ))}
@@ -239,27 +253,27 @@ export default function CapacityCalendarPage() {
               const totalOut = Object.values(out).reduce((a, b) => a + b, 0)
               const available = totalDumpsters - totalOut
               const capacityColor = getCapacityColor(totalOut, totalDumpsters)
-              
+
               return (
                 <div
                   key={idx}
-                  className={`min-h-[100px] p-2 border-b border-r border-dark-700 ${
-                    day.isCurrentMonth ? '' : 'opacity-40'
-                  } ${isToday(day.date) ? 'ring-2 ring-primary-400 ring-inset' : ''}`}
+                  className={`min-h-[100px] p-2 border-b border-r border-neutral-200 ${
+                    day.isCurrentMonth ? 'bg-white' : 'bg-neutral-50 opacity-60'
+                  } ${isToday(day.date) ? 'ring-2 ring-primary-500 ring-inset' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-sm font-medium ${
-                      isToday(day.date) ? 'text-primary-400' : 'text-white'
+                      isToday(day.date) ? 'text-primary-600' : 'text-neutral-900'
                     }`}>
                       {day.date.getDate()}
                     </span>
                     {totalOut > 0 && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${capacityColor}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${capacityColor}`}>
                         {available} left
                       </span>
                     )}
                   </div>
-                  
+
                   {totalOut > 0 && day.isCurrentMonth && (
                     <div className="space-y-1">
                       {Object.entries(out).map(([size, count]) => {
@@ -270,7 +284,7 @@ export default function CapacityCalendarPage() {
                           <div
                             key={size}
                             className={`text-xs px-2 py-1 rounded flex items-center justify-between ${
-                              isMaxed ? 'bg-red-500/30 text-red-300' : 'bg-dark-600 text-dark-300'
+                              isMaxed ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-600'
                             }`}
                           >
                             <span>{size.replace('yd', '')}</span>
@@ -280,10 +294,10 @@ export default function CapacityCalendarPage() {
                       })}
                     </div>
                   )}
-                  
+
                   {totalOut >= totalDumpsters && day.isCurrentMonth && (
                     <div className="flex items-center justify-center mt-2">
-                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                      <AlertTriangle className="w-4 h-4 text-red-500" />
                     </div>
                   )}
                 </div>
@@ -295,27 +309,27 @@ export default function CapacityCalendarPage() {
         {/* Legend */}
         <div className="mt-6 flex flex-wrap gap-4 justify-center text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/30"></div>
-            <span className="text-dark-400">&lt;50% booked</span>
+            <div className="w-4 h-4 rounded bg-green-100 border border-green-300"></div>
+            <span className="text-neutral-600">&lt;50% booked</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-yellow-500/30 border border-yellow-500/50"></div>
-            <span className="text-dark-400">50-70% booked</span>
+            <div className="w-4 h-4 rounded bg-yellow-100 border border-yellow-300"></div>
+            <span className="text-neutral-600">50-70% booked</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-orange-500/30 border border-orange-500/50"></div>
-            <span className="text-dark-400">70-90% booked</span>
+            <div className="w-4 h-4 rounded bg-orange-100 border border-orange-300"></div>
+            <span className="text-neutral-600">70-90% booked</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-500/30 border border-red-500/50"></div>
-            <span className="text-dark-400">&gt;90% booked</span>
+            <div className="w-4 h-4 rounded bg-red-100 border border-red-300"></div>
+            <span className="text-neutral-600">&gt;90% booked</span>
           </div>
         </div>
 
         {/* Capacity Note */}
-        <div className="mt-6 bg-dark-800 rounded-xl p-4 text-center">
-          <p className="text-dark-400 text-sm">
-            💡 To update fleet size, edit the <code className="text-primary-400">fleetSize</code> object in this component
+        <div className="mt-6 bg-primary-50 border border-primary-200 rounded-xl p-4 text-center">
+          <p className="text-neutral-700 text-sm">
+            Fleet sizes are configured in <code className="text-primary-600 bg-white px-2 py-0.5 rounded">src/config.js</code> under the <code className="text-primary-600 bg-white px-2 py-0.5 rounded">fleet</code> property.
           </p>
         </div>
       </div>

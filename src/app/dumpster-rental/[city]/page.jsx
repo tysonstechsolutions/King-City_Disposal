@@ -2,28 +2,23 @@
 // DYNAMIC CITY LANDING PAGES
 // ============================================
 // These pages are CRITICAL for local SEO!
-// 
+//
 // Each city gets its own page with:
 // - Unique title: "Dumpster Rental in [City], IL"
 // - Unique content mentioning the city name
 // - Local schema markup
 // - Internal links to other service areas
-//
-// This helps you rank for searches like:
-// - "dumpster rental salem il"
-// - "dumpster rental centralia illinois"
-// - "roll off container marion il"
 // ============================================
 
 import Link from 'next/link'
 import { config } from '../../../config'
 import { notFound } from 'next/navigation'
 import Script from 'next/script'
-import { 
-  Truck, 
-  MapPin, 
-  Phone, 
-  CheckCircle2, 
+import {
+  Truck,
+  MapPin,
+  Phone,
+  CheckCircle2,
   ArrowRight,
   Clock,
   DollarSign,
@@ -49,7 +44,6 @@ function unslugify(slug) {
 
 // ============================================
 // GENERATE STATIC PARAMS
-// Pre-renders pages for all service towns at build time
 // ============================================
 export async function generateStaticParams() {
   return config.serviceTowns.map((town) => ({
@@ -59,11 +53,10 @@ export async function generateStaticParams() {
 
 // ============================================
 // GENERATE METADATA
-// Creates unique SEO metadata for each city page
 // ============================================
 export async function generateMetadata({ params }) {
   const townName = unslugify(params.city)
-  
+
   if (!townName) {
     return {
       title: 'Page Not Found',
@@ -81,9 +74,6 @@ export async function generateMetadata({ params }) {
       `rent a dumpster ${townName.toLowerCase()} illinois`,
       `dumpster service ${townName.toLowerCase()}`,
       `${townName.toLowerCase()} dumpster rental`,
-      'roll off container rental',
-      'construction dumpster',
-      'junk removal dumpster',
     ],
     alternates: {
       canonical: `${baseUrl}/dumpster-rental/${slugify(townName)}-il`,
@@ -104,7 +94,7 @@ export async function generateMetadata({ params }) {
 // ============================================
 function CitySchema({ townName }) {
   const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
-  
+
   const schema = {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -189,7 +179,7 @@ function getNearbyTowns(currentTown, count = 6) {
 // ============================================
 export default function CityPage({ params }) {
   const townName = unslugify(params.city)
-  
+
   if (!townName) {
     notFound()
   }
@@ -201,13 +191,13 @@ export default function CityPage({ params }) {
   return (
     <>
       <CitySchema townName={townName} />
-      
+
       {/* Hero Section */}
-      <section className="section bg-dark-800 pt-32 pb-16">
+      <section className="bg-neutral-900 text-white py-16">
         <div className="container-custom">
           <div className="max-w-4xl">
             {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-sm text-dark-400 mb-6">
+            <nav className="flex items-center gap-2 text-sm text-neutral-400 mb-6">
               <Link href="/" className="hover:text-white">Home</Link>
               <span>/</span>
               <Link href="/service-area" className="hover:text-white">Service Area</Link>
@@ -216,56 +206,61 @@ export default function CityPage({ params }) {
             </nav>
 
             <div className="flex items-center gap-3 mb-4">
-              <MapPin className="w-8 h-8 text-primary-500" />
-              <span className="bg-primary-500/20 text-primary-400 px-3 py-1 rounded-full text-sm font-medium">
+              <MapPin className="w-8 h-8 text-primary-400" />
+              <span className="bg-primary-600/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
                 {isBaseCity ? 'Our Home Base' : `${distance} miles from base`}
               </span>
             </div>
 
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl text-white mb-6">
-              DUMPSTER RENTAL IN{' '}
-              <span className="text-gradient">{townName.toUpperCase()}, IL</span>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+              Dumpster Rental in {townName}, IL
             </h1>
-            
-            <p className="text-xl text-dark-300 mb-8 leading-relaxed">
-              Need a dumpster in {townName}, Illinois? {config.businessName} delivers 
-              roll-off dumpsters for home cleanouts, renovations, roofing projects, 
-              and construction debris. {isBaseCity 
-                ? "We're locally owned and based right here!" 
+
+            <p className="text-xl text-neutral-300 mb-8 leading-relaxed">
+              Need a dumpster in {townName}, Illinois? {config.businessName} delivers
+              roll-off dumpsters for home cleanouts, renovations, roofing projects,
+              and construction debris. {isBaseCity
+                ? "We're locally owned and based right here!"
                 : `Same-day delivery available from our ${config.address.city} location.`}
             </p>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-dark-700/50 rounded-xl p-4 text-center">
+              <div className="bg-white/10 rounded-xl p-4 text-center">
                 <Truck className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">Same-Day</p>
-                <p className="text-dark-400 text-sm">Delivery Available</p>
+                <p className="text-neutral-400 text-sm">Delivery Available</p>
               </div>
-              <div className="bg-dark-700/50 rounded-xl p-4 text-center">
+              <div className="bg-white/10 rounded-xl p-4 text-center">
                 <DollarSign className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">${config.dumpsters[0]?.pricing['3-day']}</p>
-                <p className="text-dark-400 text-sm">Starting Price</p>
+                <p className="text-neutral-400 text-sm">Starting Price</p>
               </div>
-              <div className="bg-dark-700/50 rounded-xl p-4 text-center">
+              <div className="bg-white/10 rounded-xl p-4 text-center">
                 <Clock className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">3-7 Days</p>
-                <p className="text-dark-400 text-sm">Rental Periods</p>
+                <p className="text-neutral-400 text-sm">Rental Periods</p>
               </div>
-              <div className="bg-dark-700/50 rounded-xl p-4 text-center">
+              <div className="bg-white/10 rounded-xl p-4 text-center">
                 <Star className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">5-Star</p>
-                <p className="text-dark-400 text-sm">Rated Service</p>
+                <p className="text-neutral-400 text-sm">Rated Service</p>
               </div>
             </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4">
-              <Link href="/pricing" className="btn-accent flex items-center gap-2">
+              <Link
+                href="/book"
+                className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-4 px-8 rounded-lg transition-colors"
+              >
                 Get {townName} Pricing
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <a href={`tel:${config.phoneRaw}`} className="btn-secondary flex items-center gap-2">
+              <a
+                href={`tel:${config.phoneRaw}`}
+                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold py-4 px-8 rounded-lg transition-colors"
+              >
                 <Phone className="w-5 h-5" />
                 {config.phone}
               </a>
@@ -275,55 +270,54 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Dumpster Sizes Available */}
-      <section className="section">
+      <section className="section bg-neutral-50">
         <div className="container-custom">
-          <h2 className="font-display text-3xl md:text-4xl text-white mb-4 text-center">
-            DUMPSTER SIZES AVAILABLE IN {townName.toUpperCase()}
+          <h2 className="text-3xl font-bold text-neutral-900 mb-4 text-center">
+            Dumpster Sizes Available in {townName}
           </h2>
-          <p className="text-dark-300 text-center mb-12 max-w-2xl mx-auto">
-            We deliver all dumpster sizes to {townName}, IL. Not sure which size you need? 
+          <p className="text-neutral-600 text-center mb-12 max-w-2xl mx-auto">
+            We deliver all dumpster sizes to {townName}, IL. Not sure which size you need?
             Give us a call and we&apos;ll help you choose.
           </p>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {config.dumpsters.map((dumpster) => (
-              <div 
+              <div
                 key={dumpster.id}
-                className="bg-dark-800 rounded-2xl border border-dark-700 p-6 hover:border-primary-500/50 transition-colors"
+                className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center">
-                    <Truck className="w-6 h-6 text-primary-400" />
+                  <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center">
+                    <Truck className="w-6 h-6 text-primary-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">{dumpster.name}</h3>
-                    <p className="text-dark-400 text-sm">{dumpster.dimensions.length} × {dumpster.dimensions.width} × {dumpster.dimensions.height}</p>
+                    <h3 className="text-xl font-bold text-neutral-900">{dumpster.name}</h3>
+                    <p className="text-neutral-500 text-sm">{dumpster.dimensions.display}</p>
                   </div>
                 </div>
 
-                <p className="text-dark-300 text-sm mb-4">{dumpster.description}</p>
+                <p className="text-neutral-600 text-sm mb-4">{dumpster.description}</p>
 
                 <div className="space-y-2 mb-6">
                   <div className="flex justify-between text-sm">
-                    <span className="text-dark-400">3-Day Rental</span>
-                    <span className="text-white font-bold">${dumpster.pricing['3-day']}</span>
+                    <span className="text-neutral-500">3-Day Rental</span>
+                    <span className="text-neutral-900 font-bold">${dumpster.pricing['3-day']}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-dark-400">7-Day Rental</span>
-                    <span className="text-white font-bold">${dumpster.pricing['7-day']}</span>
+                    <span className="text-neutral-500">7-Day Rental</span>
+                    <span className="text-neutral-900 font-bold">${dumpster.pricing['7-day']}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-dark-400">Weight Included</span>
-                    <span className="text-primary-400">{dumpster.weightIncluded}</span>
+                    <span className="text-neutral-500">Weight Included</span>
+                    <span className="text-primary-600">{dumpster.weightIncluded}</span>
                   </div>
                 </div>
 
-                <Link 
-                  href="/pricing"
-                  className="btn-primary w-full flex items-center justify-center gap-2"
+                <Link
+                  href={`/book?size=${dumpster.id}`}
+                  className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition-colors"
                 >
                   Book This Size
-                  <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             ))}
@@ -332,20 +326,19 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Why Choose Us for This City */}
-      <section className="section bg-dark-800">
+      <section className="section bg-white">
         <div className="container-custom">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
             <div>
-              <h2 className="font-display text-3xl md:text-4xl text-white mb-6">
-                WHY {townName.toUpperCase()} CHOOSES{' '}
-                <span className="text-gradient">{config.businessName.toUpperCase()}</span>
+              <h2 className="text-3xl font-bold text-neutral-900 mb-6">
+                Why {townName} Chooses {config.businessName}
               </h2>
-              
+
               <div className="space-y-4">
                 {[
                   {
                     title: `Fast Delivery to ${townName}`,
-                    description: isBaseCity 
+                    description: isBaseCity
                       ? "We're based right here! Same-day delivery is usually available."
                       : `Just ${distance} miles from our base - we can often deliver same-day to ${townName}.`
                   },
@@ -363,10 +356,10 @@ export default function CityPage({ params }) {
                   },
                 ].map((item, index) => (
                   <div key={index} className="flex gap-4">
-                    <CheckCircle2 className="w-6 h-6 text-primary-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-6 h-6 text-primary-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="font-semibold text-white mb-1">{item.title}</h3>
-                      <p className="text-dark-400 text-sm">{item.description}</p>
+                      <h3 className="font-semibold text-neutral-900 mb-1">{item.title}</h3>
+                      <p className="text-neutral-500 text-sm">{item.description}</p>
                     </div>
                   </div>
                 ))}
@@ -374,35 +367,35 @@ export default function CityPage({ params }) {
             </div>
 
             {/* Service Info Card */}
-            <div className="bg-dark-700/50 rounded-3xl p-8 border border-dark-600">
-              <h3 className="font-display text-2xl text-white mb-6">
-                SERVICE DETAILS FOR {townName.toUpperCase()}
+            <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-200">
+              <h3 className="text-2xl font-bold text-neutral-900 mb-6">
+                Service Details for {townName}
               </h3>
-              
+
               <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center py-3 border-b border-dark-600">
-                  <span className="text-dark-300">Distance from Base</span>
-                  <span className="text-white font-semibold">{distance} miles</span>
+                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
+                  <span className="text-neutral-600">Distance from Base</span>
+                  <span className="text-neutral-900 font-semibold">{distance} miles</span>
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-dark-600">
-                  <span className="text-dark-300">Same-Day Delivery</span>
-                  <span className="text-primary-400 font-semibold">Available</span>
+                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
+                  <span className="text-neutral-600">Same-Day Delivery</span>
+                  <span className="text-primary-600 font-semibold">Available</span>
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-dark-600">
-                  <span className="text-dark-300">Delivery Fee</span>
-                  <span className="text-white font-semibold">Included</span>
+                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
+                  <span className="text-neutral-600">Delivery Fee</span>
+                  <span className="text-neutral-900 font-semibold">Included</span>
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-dark-600">
-                  <span className="text-dark-300">Service Hours</span>
-                  <span className="text-white font-semibold">Mon-Sat</span>
+                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
+                  <span className="text-neutral-600">Service Hours</span>
+                  <span className="text-neutral-900 font-semibold">Mon-Sat</span>
                 </div>
               </div>
 
-              <a 
+              <a
                 href={`tel:${config.phoneRaw}`}
-                className="btn-primary w-full flex items-center justify-center gap-2"
+                className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition-colors"
               >
-                <Phone className="w-5 h-5" />
+                <Phone className="w-5 h-5 inline mr-2" />
                 Call Now: {config.phone}
               </a>
             </div>
@@ -411,13 +404,13 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Common Projects in This Area */}
-      <section className="section">
+      <section className="section bg-neutral-50">
         <div className="container-custom">
-          <h2 className="font-display text-3xl text-white mb-8 text-center">
-            COMMON DUMPSTER PROJECTS IN {townName.toUpperCase()}
+          <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            Common Dumpster Projects in {townName}
           </h2>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               {
                 title: 'Home Cleanouts',
@@ -450,13 +443,13 @@ export default function CityPage({ params }) {
                 size: '30 Yard'
               },
             ].map((project, index) => (
-              <div 
+              <div
                 key={index}
-                className="bg-dark-800 rounded-xl p-6 border border-dark-700"
+                className="bg-white rounded-xl p-6 border border-neutral-200"
               >
-                <h3 className="font-semibold text-white mb-2">{project.title}</h3>
-                <p className="text-dark-400 text-sm mb-4">{project.description}</p>
-                <span className="inline-block bg-primary-500/20 text-primary-400 px-3 py-1 rounded-full text-sm">
+                <h3 className="font-semibold text-neutral-900 mb-2">{project.title}</h3>
+                <p className="text-neutral-500 text-sm mb-4">{project.description}</p>
+                <span className="inline-block bg-primary-50 text-primary-600 px-3 py-1 rounded-full text-sm font-medium">
                   Recommended: {project.size}
                 </span>
               </div>
@@ -465,33 +458,33 @@ export default function CityPage({ params }) {
         </div>
       </section>
 
-      {/* Nearby Service Areas - Important for Internal Linking */}
-      <section className="section bg-dark-800">
+      {/* Nearby Service Areas */}
+      <section className="section bg-white">
         <div className="container-custom">
-          <h2 className="font-display text-3xl text-white mb-4 text-center">
-            ALSO SERVING NEAR {townName.toUpperCase()}
+          <h2 className="text-3xl font-bold text-neutral-900 mb-4 text-center">
+            Also Serving Near {townName}
           </h2>
-          <p className="text-dark-300 text-center mb-8">
+          <p className="text-neutral-600 text-center mb-8">
             We deliver dumpsters throughout Southern Illinois. Click a city to learn more.
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
             {nearbyTowns.map((town) => (
               <Link
                 key={town}
                 href={`/dumpster-rental/${slugify(town)}-il`}
-                className="bg-dark-700/50 hover:bg-dark-700 border border-dark-600 hover:border-primary-500/50 rounded-xl p-4 text-center transition-colors"
+                className="bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 hover:border-primary-300 rounded-xl p-4 text-center transition-all"
               >
-                <p className="text-white font-medium">{town}, IL</p>
-                <p className="text-dark-400 text-sm">Dumpster Rental</p>
+                <p className="text-neutral-900 font-medium">{town}, IL</p>
+                <p className="text-neutral-500 text-sm">Dumpster Rental</p>
               </Link>
             ))}
           </div>
 
           <div className="text-center mt-8">
-            <Link 
+            <Link
               href="/service-area"
-              className="text-primary-400 hover:text-primary-300 inline-flex items-center gap-2"
+              className="text-primary-600 hover:text-primary-700 inline-flex items-center gap-2 font-medium"
             >
               View All Service Areas
               <ArrowRight className="w-4 h-4" />
@@ -501,31 +494,30 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Final CTA */}
-      <section className="section">
-        <div className="container-custom">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-3xl p-8 md:p-12 text-center">
-            <h2 className="font-display text-3xl md:text-4xl text-white mb-4">
-              READY TO RENT A DUMPSTER IN {townName.toUpperCase()}?
-            </h2>
-            <p className="text-primary-100 text-lg mb-8 max-w-2xl mx-auto">
-              Get an instant quote or call us now. We&apos;ll deliver your dumpster to {townName} fast.
-            </p>
+      <section className="section bg-primary-600">
+        <div className="container-custom text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Ready to Rent a Dumpster in {townName}?
+          </h2>
+          <p className="text-primary-100 text-lg mb-8 max-w-2xl mx-auto">
+            Get an instant quote or call us now. We&apos;ll deliver your dumpster to {townName} fast.
+          </p>
 
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link 
-                href="/pricing" 
-                className="bg-white text-primary-600 font-bold py-4 px-8 rounded-lg hover:bg-primary-50 transition-colors"
-              >
-                Get {townName} Pricing
-              </Link>
-              <a 
-                href={`tel:${config.phoneRaw}`}
-                className="bg-primary-700 text-white font-bold py-4 px-8 rounded-lg hover:bg-primary-800 transition-colors flex items-center gap-2"
-              >
-                <Phone className="w-5 h-5" />
-                {config.phone}
-              </a>
-            </div>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link
+              href="/book"
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+            >
+              Get {townName} Pricing
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <a
+              href={`tel:${config.phoneRaw}`}
+              className="inline-flex items-center justify-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold py-4 px-8 rounded-lg transition-colors border border-primary-500"
+            >
+              <Phone className="w-5 h-5" />
+              {config.phone}
+            </a>
           </div>
         </div>
       </section>

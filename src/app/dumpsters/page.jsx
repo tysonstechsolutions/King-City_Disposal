@@ -1,14 +1,12 @@
 import Link from 'next/link'
 import { config } from '../../config'
-import { 
-  Truck, 
-  Check, 
+import {
+  Truck,
+  Check,
   ArrowRight,
   Phone,
-  Ruler,
-  Scale,
-  Clock,
-  Package
+  Package,
+  Scale
 } from 'lucide-react'
 
 export const metadata = {
@@ -20,14 +18,14 @@ export default function DumpstersPage() {
   return (
     <>
       {/* Hero */}
-      <section className="section bg-dark-800 pt-32">
+      <section className="bg-neutral-900 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
-            <h1 className="font-display text-5xl md:text-6xl text-white mb-4">
-              DUMPSTER <span className="text-gradient">SIZES</span>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              Dumpster Sizes
             </h1>
-            <p className="text-xl text-dark-300">
-              Not sure which size you need? We&apos;ll help you figure it out. 
+            <p className="text-xl text-neutral-300">
+              Not sure which size you need? We&apos;ll help you figure it out.
               When in doubt, go up a size — it&apos;s better to have extra room.
             </p>
           </div>
@@ -35,65 +33,65 @@ export default function DumpstersPage() {
       </section>
 
       {/* Size Guide */}
-      <section className="section">
+      <section className="section bg-neutral-50">
         <div className="container-custom">
-          <div className="grid gap-8">
-            {config.dumpsters.map((dumpster, index) => (
-              <div 
+          <div className="grid gap-8 max-w-5xl mx-auto">
+            {config.dumpsters.map((dumpster) => (
+              <div
                 key={dumpster.id}
                 id={dumpster.id}
-                className="bg-dark-800 rounded-3xl border border-dark-700 overflow-hidden scroll-mt-24"
+                className="bg-white rounded-xl border border-neutral-200 overflow-hidden scroll-mt-24 hover:shadow-lg transition-shadow"
               >
                 <div className="grid lg:grid-cols-2">
                   {/* Image/Visual */}
-                  <div className="bg-dark-700 p-8 lg:p-12 flex items-center justify-center relative">
+                  <div className="bg-neutral-100 p-8 lg:p-12 flex items-center justify-center relative">
                     <div className="text-center">
-                      <Truck className="w-32 h-32 text-dark-500 mx-auto mb-4" />
-                      <div className="inline-block bg-primary-500 text-white px-4 py-2 rounded-full font-bold">
+                      <Truck className="w-32 h-32 text-neutral-300 mx-auto mb-4" />
+                      <div className="inline-block bg-primary-600 text-white px-4 py-2 rounded-full font-bold">
                         {dumpster.id.replace('yd', ' Yard')}
                       </div>
                     </div>
                     {/* Dimension overlay */}
-                    <div className="absolute bottom-4 left-4 right-4 bg-dark-800/80 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-white text-sm">
-                        <span className="text-dark-400">Dimensions:</span>{' '}
-                        {dumpster.dimensions.display}
+                    <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 text-center border border-neutral-200">
+                      <p className="text-neutral-900 text-sm">
+                        <span className="text-neutral-500">Dimensions:</span>{' '}
+                        <span className="font-medium">{dumpster.dimensions.display}</span>
                       </p>
                     </div>
                   </div>
 
                   {/* Details */}
                   <div className="p-8 lg:p-12">
-                    <h2 className="font-display text-3xl text-white mb-2">
-                      {dumpster.name.toUpperCase()}
+                    <h2 className="text-3xl font-bold text-neutral-900 mb-2">
+                      {dumpster.name}
                     </h2>
-                    <p className="text-dark-300 mb-6">{dumpster.description}</p>
+                    <p className="text-neutral-600 mb-6">{dumpster.description}</p>
 
                     {/* Quick specs */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="bg-dark-700/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-dark-400 text-sm mb-1">
+                      <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                        <div className="flex items-center gap-2 text-neutral-500 text-sm mb-1">
                           <Package className="w-4 h-4" />
                           Capacity
                         </div>
-                        <p className="text-white font-semibold">{dumpster.capacity}</p>
+                        <p className="text-neutral-900 font-semibold">{dumpster.capacity}</p>
                       </div>
-                      <div className="bg-dark-700/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-dark-400 text-sm mb-1">
+                      <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                        <div className="flex items-center gap-2 text-neutral-500 text-sm mb-1">
                           <Scale className="w-4 h-4" />
                           Weight Included
                         </div>
-                        <p className="text-white font-semibold">{dumpster.weightIncluded}</p>
+                        <p className="text-neutral-900 font-semibold">{dumpster.weightIncluded}</p>
                       </div>
                     </div>
 
                     {/* Best for */}
                     <div className="mb-6">
-                      <h3 className="text-white font-semibold mb-3">Best For:</h3>
+                      <h3 className="text-neutral-900 font-semibold mb-3">Best For:</h3>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {dumpster.bestFor.map((use, i) => (
-                          <li key={i} className="flex items-center gap-2 text-dark-300 text-sm">
-                            <Check className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                          <li key={i} className="flex items-center gap-2 text-neutral-600 text-sm">
+                            <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
                             {use}
                           </li>
                         ))}
@@ -101,36 +99,35 @@ export default function DumpstersPage() {
                     </div>
 
                     {/* Pricing */}
-                    <div className="bg-dark-700/50 rounded-xl p-6 mb-6">
+                    <div className="bg-neutral-50 rounded-xl p-6 mb-6 border border-neutral-200">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <p className="text-dark-400 text-sm">3-Day Rental</p>
-                          <p className="text-3xl font-bold text-white">${dumpster.pricing['3-day']}</p>
+                          <p className="text-neutral-500 text-sm">3-Day Rental</p>
+                          <p className="text-3xl font-bold text-neutral-900">${dumpster.pricing['3-day']}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-dark-400 text-sm">7-Day Rental</p>
-                          <p className="text-3xl font-bold text-white">${dumpster.pricing['7-day']}</p>
+                          <p className="text-neutral-500 text-sm">7-Day Rental</p>
+                          <p className="text-3xl font-bold text-neutral-900">${dumpster.pricing['7-day']}</p>
                         </div>
                       </div>
-                      <div className="border-t border-dark-600 pt-4 grid grid-cols-2 gap-4 text-sm">
+                      <div className="border-t border-neutral-200 pt-4 grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-dark-400">Extra weight:</span>{' '}
-                          <span className="text-white">${dumpster.weightOverage}/ton</span>
+                          <span className="text-neutral-500">Extra weight:</span>{' '}
+                          <span className="text-neutral-700">${dumpster.weightOverage}/ton</span>
                         </div>
                         <div>
-                          <span className="text-dark-400">Extra days:</span>{' '}
-                          <span className="text-white">${dumpster.dailyExtension}/day</span>
+                          <span className="text-neutral-500">Extra days:</span>{' '}
+                          <span className="text-neutral-700">${dumpster.dailyExtension}/day</span>
                         </div>
                       </div>
                     </div>
 
                     {/* CTA */}
-                    <Link 
-                      href="/pricing"
-                      className="btn-primary w-full flex items-center justify-center gap-2"
+                    <Link
+                      href={`/book?size=${dumpster.id}`}
+                      className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition-colors"
                     >
                       Book This Dumpster
-                      <ArrowRight className="w-5 h-5" />
                     </Link>
                   </div>
                 </div>
@@ -141,69 +138,69 @@ export default function DumpstersPage() {
       </section>
 
       {/* Size Comparison Table */}
-      <section className="section bg-dark-800">
+      <section className="section bg-white">
         <div className="container-custom">
-          <h2 className="font-display text-4xl text-white mb-8 text-center">
-            QUICK <span className="text-gradient">COMPARISON</span>
+          <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            Quick Comparison
           </h2>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+          <div className="overflow-x-auto max-w-4xl mx-auto">
+            <table className="w-full min-w-[600px] bg-white rounded-xl border border-neutral-200 overflow-hidden">
               <thead>
-                <tr className="border-b border-dark-700">
-                  <th className="text-left py-4 px-4 text-dark-400 font-medium">Feature</th>
+                <tr className="bg-neutral-50 border-b border-neutral-200">
+                  <th className="text-left py-4 px-6 text-neutral-600 font-medium">Feature</th>
                   {config.dumpsters.map((d) => (
-                    <th key={d.id} className="text-center py-4 px-4 text-white font-semibold">
+                    <th key={d.id} className="text-center py-4 px-6 text-neutral-900 font-semibold">
                       {d.name}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dark-700">
+              <tbody className="divide-y divide-neutral-100">
                 <tr>
-                  <td className="py-4 px-4 text-dark-300">Dimensions</td>
+                  <td className="py-4 px-6 text-neutral-600">Dimensions</td>
                   {config.dumpsters.map((d) => (
-                    <td key={d.id} className="py-4 px-4 text-center text-white">
+                    <td key={d.id} className="py-4 px-6 text-center text-neutral-900">
                       {d.dimensions.display}
                     </td>
                   ))}
                 </tr>
-                <tr>
-                  <td className="py-4 px-4 text-dark-300">Capacity</td>
+                <tr className="bg-neutral-50">
+                  <td className="py-4 px-6 text-neutral-600">Capacity</td>
                   {config.dumpsters.map((d) => (
-                    <td key={d.id} className="py-4 px-4 text-center text-white">
+                    <td key={d.id} className="py-4 px-6 text-center text-neutral-900">
                       {d.capacity}
                     </td>
                   ))}
                 </tr>
                 <tr>
-                  <td className="py-4 px-4 text-dark-300">Weight Included</td>
+                  <td className="py-4 px-6 text-neutral-600">Weight Included</td>
                   {config.dumpsters.map((d) => (
-                    <td key={d.id} className="py-4 px-4 text-center text-white">
+                    <td key={d.id} className="py-4 px-6 text-center text-neutral-900">
                       {d.weightIncluded}
                     </td>
                   ))}
                 </tr>
-                <tr>
-                  <td className="py-4 px-4 text-dark-300">3-Day Price</td>
+                <tr className="bg-neutral-50">
+                  <td className="py-4 px-6 text-neutral-600">3-Day Price</td>
                   {config.dumpsters.map((d) => (
-                    <td key={d.id} className="py-4 px-4 text-center text-primary-400 font-bold">
+                    <td key={d.id} className="py-4 px-6 text-center text-primary-600 font-bold">
                       ${d.pricing['3-day']}
                     </td>
                   ))}
                 </tr>
                 <tr>
-                  <td className="py-4 px-4 text-dark-300">7-Day Price</td>
+                  <td className="py-4 px-6 text-neutral-600">7-Day Price</td>
                   {config.dumpsters.map((d) => (
-                    <td key={d.id} className="py-4 px-4 text-center text-primary-400 font-bold">
+                    <td key={d.id} className="py-4 px-6 text-center text-primary-600 font-bold">
                       ${d.pricing['7-day']}
                     </td>
                   ))}
                 </tr>
-                <tr>
-                  <td className="py-4 px-4 text-dark-300">Wheelbarrow Loads</td>
+                <tr className="bg-neutral-50">
+                  <td className="py-4 px-6 text-neutral-600">Wheelbarrow Loads</td>
                   {config.dumpsters.map((d) => (
-                    <td key={d.id} className="py-4 px-4 text-center text-white">
+                    <td key={d.id} className="py-4 px-6 text-center text-neutral-900">
                       {d.wheelbarrowLoads}
                     </td>
                   ))}
@@ -215,29 +212,31 @@ export default function DumpstersPage() {
       </section>
 
       {/* Not sure section */}
-      <section className="section">
-        <div className="container-custom">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-3xl p-8 md:p-12 text-center">
-            <h2 className="font-display text-4xl text-white mb-4">
-              NOT SURE WHICH SIZE?
-            </h2>
-            <p className="text-primary-100 text-lg mb-8 max-w-xl mx-auto">
-              Tell us about your project and we&apos;ll recommend the right dumpster. 
-              We&apos;d rather you have too much space than not enough!
-            </p>
+      <section className="section bg-primary-600">
+        <div className="container-custom text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Not Sure Which Size?
+          </h2>
+          <p className="text-primary-100 text-lg mb-8 max-w-xl mx-auto">
+            Tell us about your project and we&apos;ll recommend the right dumpster.
+            We&apos;d rather you have too much space than not enough!
+          </p>
 
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/contact" className="bg-white text-primary-600 font-bold py-4 px-8 rounded-lg hover:bg-primary-50 transition-colors">
-                Get a Recommendation
-              </Link>
-              <a 
-                href={`tel:${config.phoneRaw}`}
-                className="bg-primary-700 text-white font-bold py-4 px-8 rounded-lg hover:bg-primary-800 transition-colors flex items-center gap-2"
-              >
-                <Phone className="w-5 h-5" />
-                Call {config.phone}
-              </a>
-            </div>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+            >
+              Get a Recommendation
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <a
+              href={`tel:${config.phoneRaw}`}
+              className="inline-flex items-center justify-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold py-4 px-8 rounded-lg transition-colors border border-primary-500"
+            >
+              <Phone className="w-5 h-5" />
+              {config.phone}
+            </a>
           </div>
         </div>
       </section>

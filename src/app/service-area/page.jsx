@@ -19,14 +19,14 @@ export default function ServiceAreaPage() {
   return (
     <>
       {/* Hero */}
-      <section className="section bg-dark-800 pt-32">
+      <section className="bg-neutral-900 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
-            <h1 className="font-display text-5xl md:text-6xl text-white mb-4">
-              SERVICE <span className="text-gradient">AREA</span>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              Service Area
             </h1>
-            <p className="text-xl text-dark-300">
-              We deliver dumpsters throughout Southern Illinois. If you&apos;re within 
+            <p className="text-xl text-neutral-300">
+              We deliver dumpsters throughout Southern Illinois. If you&apos;re within{' '}
               {config.serviceRadius} miles of {config.address.city}, we&apos;ve got you covered.
             </p>
           </div>
@@ -34,15 +34,15 @@ export default function ServiceAreaPage() {
       </section>
 
       {/* Map placeholder + service radius */}
-      <section className="section">
+      <section className="section bg-neutral-50">
         <div className="container-custom">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
             {/* Map */}
-            <div className="bg-dark-800 rounded-3xl p-8 h-96 flex items-center justify-center border border-dark-700">
+            <div className="bg-white rounded-xl p-8 h-96 flex items-center justify-center border border-neutral-200">
               <div className="text-center">
-                <MapPin className="w-16 h-16 text-primary-500 mx-auto mb-4" />
-                <p className="text-dark-400">Interactive map coming soon</p>
-                <p className="text-dark-500 text-sm">
+                <MapPin className="w-16 h-16 text-primary-600 mx-auto mb-4" />
+                <p className="text-neutral-500">Interactive map coming soon</p>
+                <p className="text-neutral-400 text-sm">
                   {config.serviceRadius}-mile radius from {config.address.city}, IL
                 </p>
               </div>
@@ -50,52 +50,52 @@ export default function ServiceAreaPage() {
 
             {/* Info */}
             <div>
-              <h2 className="font-display text-3xl text-white mb-6">
-                DELIVERING TO YOUR DOOR
+              <h2 className="text-3xl font-bold text-neutral-900 mb-6">
+                Delivering to Your Door
               </h2>
-              <p className="text-dark-300 mb-6">
-                Based in {config.address.city}, Illinois, we serve homeowners, contractors, 
-                and businesses throughout the region. Same-day and next-day delivery 
+              <p className="text-neutral-600 mb-6">
+                Based in {config.address.city}, Illinois, we serve homeowners, contractors,
+                and businesses throughout the region. Same-day and next-day delivery
                 available for most locations.
               </p>
 
               <div className="space-y-4 mb-8">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-6 h-6 text-primary-500 mt-0.5" />
+                  <CheckCircle2 className="w-6 h-6 text-primary-600 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">Same-Day Delivery</p>
-                    <p className="text-dark-400 text-sm">
+                    <p className="font-semibold text-neutral-900">Same-Day Delivery</p>
+                    <p className="text-neutral-500 text-sm">
                       Order before noon for same-day delivery (availability varies)
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-6 h-6 text-primary-500 mt-0.5" />
+                  <CheckCircle2 className="w-6 h-6 text-primary-600 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">No Mileage Fees</p>
-                    <p className="text-dark-400 text-sm">
+                    <p className="font-semibold text-neutral-900">No Mileage Fees</p>
+                    <p className="text-neutral-500 text-sm">
                       Delivery is included in your rental price — no extra charges
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-6 h-6 text-primary-500 mt-0.5" />
+                  <CheckCircle2 className="w-6 h-6 text-primary-600 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">Flexible Placement</p>
-                    <p className="text-dark-400 text-sm">
+                    <p className="font-semibold text-neutral-900">Flexible Placement</p>
+                    <p className="text-neutral-500 text-sm">
                       Driveway, street, job site — we&apos;ll put it where you need it
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-dark-700/50 rounded-xl p-6">
-                <p className="text-dark-300 mb-4">
+              <div className="bg-primary-50 rounded-xl p-6 border border-primary-200">
+                <p className="text-neutral-700 mb-4">
                   Not sure if we deliver to your area?
                 </p>
-                <a 
+                <a
                   href={`tel:${config.phoneRaw}`}
-                  className="btn-primary inline-flex items-center gap-2"
+                  className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
                 >
                   <Phone className="w-5 h-5" />
                   Call {config.phone}
@@ -107,28 +107,28 @@ export default function ServiceAreaPage() {
       </section>
 
       {/* Towns List */}
-      <section className="section bg-dark-800">
+      <section className="section bg-white">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="font-display text-4xl text-white mb-4">
-              TOWNS WE <span className="text-gradient">SERVE</span>
+            <h2 className="text-3xl font-bold text-neutral-900 mb-4">
+              Towns We Serve
             </h2>
-            <p className="text-dark-300 max-w-2xl mx-auto">
-              From small towns to bigger cities, we deliver dumpsters across Southern Illinois. 
+            <p className="text-neutral-600 max-w-2xl mx-auto">
+              From small towns to bigger cities, we deliver dumpsters across Southern Illinois.
               Don&apos;t see your town? Give us a call — we probably cover it!
             </p>
           </div>
 
           {/* Alphabetical town grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 max-w-6xl mx-auto">
             {Object.entries(groupedTowns).sort().map(([letter, towns]) => (
               <div key={letter}>
-                <h3 className="font-display text-2xl text-primary-400 mb-3 border-b border-dark-700 pb-2">
+                <h3 className="text-2xl font-bold text-primary-600 mb-3 border-b border-neutral-200 pb-2">
                   {letter}
                 </h3>
                 <ul className="space-y-1">
                   {towns.sort().map((town) => (
-                    <li key={town} className="text-dark-300 hover:text-white transition-colors">
+                    <li key={town} className="text-neutral-600 hover:text-neutral-900 transition-colors">
                       {town}, IL
                     </li>
                   ))}
@@ -138,12 +138,12 @@ export default function ServiceAreaPage() {
           </div>
 
           <div className="text-center mt-12">
-            <p className="text-dark-400 mb-4">
+            <p className="text-neutral-500 mb-4">
               Live outside these areas? We may still be able to help!
             </p>
-            <a 
+            <a
               href={`tel:${config.phoneRaw}`}
-              className="text-primary-400 hover:text-primary-300 font-semibold"
+              className="text-primary-600 hover:text-primary-700 font-semibold"
             >
               Call {config.phone} to check availability
             </a>
@@ -152,27 +152,27 @@ export default function ServiceAreaPage() {
       </section>
 
       {/* Service-specific pages for SEO */}
-      <section className="section">
+      <section className="section bg-neutral-50">
         <div className="container-custom">
-          <h2 className="font-display text-3xl text-white mb-8 text-center">
-            DUMPSTER RENTAL BY CITY
+          <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            Dumpster Rental by City
           </h2>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {config.serviceTowns.slice(0, 12).map((town) => (
-              <div 
+              <div
                 key={town}
-                className="bg-dark-800 rounded-xl p-6 border border-dark-700 hover:border-primary-500/50 transition-colors"
+                className="bg-white rounded-xl p-6 border border-neutral-200 hover:border-primary-300 hover:shadow-md transition-all"
               >
-                <h3 className="font-semibold text-white mb-2">
+                <h3 className="font-semibold text-neutral-900 mb-2">
                   Dumpster Rental in {town}, IL
                 </h3>
-                <p className="text-dark-400 text-sm mb-4">
+                <p className="text-neutral-500 text-sm mb-4">
                   Fast, affordable dumpster rentals delivered to {town} and surrounding areas.
                 </p>
-                <Link 
-                  href="/pricing"
-                  className="text-primary-400 hover:text-primary-300 text-sm inline-flex items-center gap-1"
+                <Link
+                  href="/book"
+                  className="text-primary-600 hover:text-primary-700 text-sm inline-flex items-center gap-1 font-medium"
                 >
                   Get pricing
                   <ArrowRight className="w-4 h-4" />
@@ -184,29 +184,31 @@ export default function ServiceAreaPage() {
       </section>
 
       {/* CTA */}
-      <section className="section bg-dark-800">
-        <div className="container-custom">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-3xl p-8 md:p-12 text-center">
-            <h2 className="font-display text-4xl text-white mb-4">
-              READY TO GET A DUMPSTER?
-            </h2>
-            <p className="text-primary-100 text-lg mb-8 max-w-xl mx-auto">
-              Enter your address in our booking tool to confirm we deliver to your location 
-              and get an instant quote.
-            </p>
+      <section className="section bg-primary-600">
+        <div className="container-custom text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Ready to Get a Dumpster?
+          </h2>
+          <p className="text-primary-100 text-lg mb-8 max-w-xl mx-auto">
+            Enter your address in our booking tool to confirm we deliver to your location
+            and get an instant quote.
+          </p>
 
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/pricing" className="bg-white text-primary-600 font-bold py-4 px-8 rounded-lg hover:bg-primary-50 transition-colors">
-                Get Your Quote
-              </Link>
-              <a 
-                href={`tel:${config.phoneRaw}`}
-                className="bg-primary-700 text-white font-bold py-4 px-8 rounded-lg hover:bg-primary-800 transition-colors flex items-center gap-2"
-              >
-                <Phone className="w-5 h-5" />
-                {config.phone}
-              </a>
-            </div>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link
+              href="/book"
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+            >
+              Get Your Quote
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <a
+              href={`tel:${config.phoneRaw}`}
+              className="inline-flex items-center justify-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold py-4 px-8 rounded-lg transition-colors border border-primary-500"
+            >
+              <Phone className="w-5 h-5" />
+              {config.phone}
+            </a>
           </div>
         </div>
       </section>

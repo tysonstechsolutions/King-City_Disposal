@@ -1,16 +1,16 @@
 import { config } from '../../config'
 import Script from 'next/script'
 import Link from 'next/link'
-import { 
-  ChevronDown, 
-  AlertTriangle, 
-  Phone, 
+import {
+  AlertTriangle,
+  Phone,
   HelpCircle,
   DollarSign,
   Truck,
   Clock,
   Scale,
-  Ban
+  Ban,
+  ArrowRight
 } from 'lucide-react'
 import FAQAccordion from './FAQAccordion'
 
@@ -187,15 +187,15 @@ export default function FAQPage() {
   return (
     <>
       <FAQSchema />
-      
+
       {/* Hero */}
-      <section className="section bg-dark-800 pt-32">
+      <section className="bg-neutral-900 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
-            <h1 className="font-display text-5xl md:text-6xl text-white mb-4">
-              FREQUENTLY ASKED <span className="text-gradient">QUESTIONS</span>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              Frequently Asked Questions
             </h1>
-            <p className="text-xl text-dark-300">
+            <p className="text-xl text-neutral-300">
               Everything you need to know about renting a dumpster in {config.address.city} and Southern Illinois.
               Can&apos;t find your answer? Call us at{' '}
               <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:text-primary-300">
@@ -207,21 +207,21 @@ export default function FAQPage() {
       </section>
 
       {/* FAQ Categories */}
-      <section className="section">
+      <section className="section bg-neutral-50">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
             {faqCategories.map((category, catIndex) => (
               <div key={catIndex} className="mb-12">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center">
-                    <category.icon className="w-5 h-5 text-primary-400" />
+                  <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
+                    <category.icon className="w-5 h-5 text-primary-600" />
                   </div>
-                  <h2 className="font-display text-2xl text-white">{category.name}</h2>
+                  <h2 className="text-2xl font-bold text-neutral-900">{category.name}</h2>
                 </div>
 
                 <div className="space-y-4">
                   {category.questions.map((faq, faqIndex) => (
-                    <FAQAccordion 
+                    <FAQAccordion
                       key={faqIndex}
                       question={faq.q.replace('${config.address.city}', config.address.city)}
                       answer={faq.a}
@@ -235,30 +235,30 @@ export default function FAQPage() {
       </section>
 
       {/* Prohibited Items Section */}
-      <section className="section bg-dark-800">
+      <section id="prohibited" className="section bg-white scroll-mt-24">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
-              <h2 className="font-display text-3xl text-white">PROHIBITED ITEMS</h2>
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+              <h2 className="text-3xl font-bold text-neutral-900">Prohibited Items</h2>
             </div>
-            
-            <p className="text-dark-300 mb-8">
-              Illinois law and landfill regulations prohibit certain items from being disposed of in dumpsters. 
+
+            <p className="text-neutral-600 mb-8">
+              Illinois law and landfill regulations prohibit certain items from being disposed of in dumpsters.
               Please review this list before loading your dumpster.
             </p>
 
             <div className="grid md:grid-cols-2 gap-4">
               {config.prohibitedItems?.map((item, index) => (
-                <div 
+                <div
                   key={index}
-                  className="bg-dark-700/50 rounded-xl p-4 border border-dark-600"
+                  className="bg-neutral-50 rounded-xl p-4 border border-neutral-200"
                 >
                   <div className="flex items-start gap-3">
-                    <Ban className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <Ban className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-white font-medium">{item.item}</p>
-                      <p className="text-dark-400 text-sm">{item.reason}</p>
+                      <p className="text-neutral-900 font-medium">{item.item}</p>
+                      <p className="text-neutral-500 text-sm">{item.reason}</p>
                     </div>
                   </div>
                 </div>
@@ -270,34 +270,34 @@ export default function FAQPage() {
 
       {/* Surcharge Items */}
       {config.surchargeItems && config.surchargeItems.length > 0 && (
-        <section className="section">
+        <section className="section bg-neutral-50">
           <div className="container-custom">
             <div className="max-w-4xl mx-auto">
-              <h2 className="font-display text-3xl text-white mb-6">
-                ITEMS WITH <span className="text-gradient">SURCHARGES</span>
+              <h2 className="text-3xl font-bold text-neutral-900 mb-6">
+                Items with Surcharges
               </h2>
-              
-              <p className="text-dark-300 mb-8">
+
+              <p className="text-neutral-600 mb-8">
                 These items can go in the dumpster but require an additional fee due to special disposal requirements.
               </p>
 
-              <div className="bg-dark-800 rounded-2xl border border-dark-700 overflow-hidden">
+              <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-dark-700">
-                      <th className="text-left p-4 text-dark-400 font-medium">Item</th>
-                      <th className="text-right p-4 text-dark-400 font-medium">Fee</th>
+                    <tr className="border-b border-neutral-200 bg-neutral-50">
+                      <th className="text-left p-4 text-neutral-600 font-medium">Item</th>
+                      <th className="text-right p-4 text-neutral-600 font-medium">Fee</th>
                     </tr>
                   </thead>
                   <tbody>
                     {config.surchargeItems.map((item, index) => (
-                      <tr key={index} className="border-b border-dark-700 last:border-0">
-                        <td className="p-4 text-white">{item.item}</td>
+                      <tr key={index} className="border-b border-neutral-100 last:border-0">
+                        <td className="p-4 text-neutral-900">{item.item}</td>
                         <td className="p-4 text-right">
                           {item.fee ? (
-                            <span className="text-primary-400 font-semibold">${item.fee}/{item.unit}</span>
+                            <span className="text-amber-600 font-semibold">${item.fee}/{item.unit}</span>
                           ) : (
-                            <span className="text-dark-400">{item.unit}</span>
+                            <span className="text-neutral-500">{item.unit}</span>
                           )}
                         </td>
                       </tr>
@@ -311,32 +311,31 @@ export default function FAQPage() {
       )}
 
       {/* CTA */}
-      <section className="section bg-dark-800">
-        <div className="container-custom">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-3xl p-8 md:p-12 text-center">
-            <HelpCircle className="w-12 h-12 text-white mx-auto mb-4" />
-            <h2 className="font-display text-3xl text-white mb-4">
-              STILL HAVE QUESTIONS?
-            </h2>
-            <p className="text-primary-100 text-lg mb-8 max-w-xl mx-auto">
-              We&apos;re here to help! Give us a call and we&apos;ll answer any questions about your project.
-            </p>
+      <section className="section bg-primary-600">
+        <div className="container-custom text-center">
+          <HelpCircle className="w-12 h-12 text-white mx-auto mb-4" />
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Still Have Questions?
+          </h2>
+          <p className="text-primary-100 text-lg mb-8 max-w-xl mx-auto">
+            We&apos;re here to help! Give us a call and we&apos;ll answer any questions about your project.
+          </p>
 
-            <div className="flex flex-wrap justify-center gap-4">
-              <a 
-                href={`tel:${config.phoneRaw}`}
-                className="bg-white text-primary-600 font-bold py-4 px-8 rounded-lg hover:bg-primary-50 transition-colors flex items-center gap-2"
-              >
-                <Phone className="w-5 h-5" />
-                {config.phone}
-              </a>
-              <Link 
-                href="/contact"
-                className="bg-primary-700 text-white font-bold py-4 px-8 rounded-lg hover:bg-primary-800 transition-colors"
-              >
-                Contact Us
-              </Link>
-            </div>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <a
+              href={`tel:${config.phoneRaw}`}
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+            >
+              <Phone className="w-5 h-5" />
+              {config.phone}
+            </a>
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold py-4 px-8 rounded-lg transition-colors border border-primary-500"
+            >
+              Contact Us
+              <ArrowRight className="w-5 h-5" />
+            </Link>
           </div>
         </div>
       </section>

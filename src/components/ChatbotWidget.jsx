@@ -27,6 +27,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 
 const STEPS = {
@@ -74,10 +76,15 @@ export default function ChatbotWidget() {
     size: '',
     duration: '3-day',
     deliveryDate: '',
+    deliveryDateRaw: '', // YYYY-MM-DD format for API
     name: '',
     phone: '',
     surcharges: {},
   })
+
+  // Availability state
+  const [availability, setAvailability] = useState({})
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
 
   const messagesEndRef = useRef(null)
   const mapContainerRef = useRef(null)
@@ -453,14 +460,46 @@ export default function ChatbotWidget() {
       const date = new Date(today)
       date.setDate(today.getDate() + i)
       if (date.getDay() !== 0) {
-        dates.push(date.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric'
-        }))
+        dates.push({
+          label: date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+          }),
+          value: date.toISOString().split('T')[0] // YYYY-MM-DD
+        })
       }
     }
     return dates.slice(0, 6)
+  }
+
+  // Fetch availability for a date
+  const fetchAvailability = async (dateRaw) => {
+    if (!dateRaw) return
+    setLoadingAvailability(true)
+    try {
+      const response = await fetch(`/api/availability?date=${dateRaw}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAvailability(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch availability:', error)
+    } finally {
+      setLoadingAvailability(false)
+    }
+  }
+
+  // Check if size is sold out
+  const isSizeAvailable = (size) => {
+    if (Object.keys(availability).length === 0) return true
+    const avail = availability[size]
+    return avail ? avail.available > 0 : true
+  }
+
+  // Get availability info
+  const getAvailabilityInfo = (size) => {
+    return availability[size] || { total: 0, booked: 0, available: 0 }
   }
 
   const getPlaceholder = () => {
@@ -768,20 +807,54 @@ export default function ChatbotWidget() {
                   <div className="grid grid-cols-3 gap-2">
                     {getAvailableDates().map((date) => (
                       <button
-                        key={date}
-                        onClick={() => setBookingData(prev => ({ ...prev, deliveryDate: date }))}
+                        key={date.value}
+                        onClick={() => {
+                          setBookingData(prev => ({
+                            ...prev,
+                            deliveryDate: date.label,
+                            deliveryDateRaw: date.value
+                          }))
+                          fetchAvailability(date.value)
+                        }}
                         className={`rounded-xl p-3 text-center transition-colors ${
-                          bookingData.deliveryDate === date
+                          bookingData.deliveryDateRaw === date.value
                             ? 'bg-primary-500/20 border-2 border-primary-500'
                             : 'bg-dark-700 hover:bg-dark-600 border-2 border-transparent'
                         }`}
                       >
-                        <Calendar className={`w-4 h-4 mx-auto mb-1 ${bookingData.deliveryDate === date ? 'text-primary-400' : 'text-dark-400'}`} />
-                        <p className="text-xs text-white font-medium">{date}</p>
+                        <Calendar className={`w-4 h-4 mx-auto mb-1 ${bookingData.deliveryDateRaw === date.value ? 'text-primary-400' : 'text-dark-400'}`} />
+                        <p className="text-xs text-white font-medium">{date.label}</p>
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Availability warning */}
+                {bookingData.deliveryDateRaw && loadingAvailability && (
+                  <div className="flex items-center gap-2 text-dark-400 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Checking availability...
+                  </div>
+                )}
+                {bookingData.deliveryDateRaw && !loadingAvailability && !isSizeAvailable(bookingData.size) && (
+                  <div className="bg-red-500/20 border border-red-500 rounded-xl p-3 flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-red-400 font-medium text-sm">
+                        {selectedDumpster?.shortName || bookingData.size} sold out for {bookingData.deliveryDate}
+                      </p>
+                      <p className="text-dark-300 text-xs mt-1">Please select a different date or size</p>
+                    </div>
+                  </div>
+                )}
+                {bookingData.deliveryDateRaw && !loadingAvailability && isSizeAvailable(bookingData.size) && getAvailabilityInfo(bookingData.size).available === 1 && (
+                  <div className="bg-orange-500/20 border border-orange-500 rounded-xl p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-orange-400 font-medium text-sm">
+                      Only 1 {selectedDumpster?.shortName || bookingData.size} left for {bookingData.deliveryDate}!
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <p className="text-dark-400 text-sm mb-2">How long do you need it?</p>
@@ -812,13 +885,32 @@ export default function ChatbotWidget() {
                   </div>
                 </div>
 
-                {bookingData.deliveryDate && (
+                {bookingData.deliveryDateRaw && (
                   <button
                     onClick={() => handleDateDuration(bookingData.deliveryDate, bookingData.duration)}
-                    className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+                    disabled={loadingAvailability || !isSizeAvailable(bookingData.size)}
+                    className={`w-full py-3 flex items-center justify-center gap-2 rounded-xl font-semibold ${
+                      loadingAvailability || !isSizeAvailable(bookingData.size)
+                        ? 'bg-dark-600 text-dark-400 cursor-not-allowed'
+                        : 'btn-primary'
+                    }`}
                   >
-                    Continue
-                    <ArrowRight className="w-5 h-5" />
+                    {loadingAvailability ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Checking...
+                      </>
+                    ) : !isSizeAvailable(bookingData.size) ? (
+                      <>
+                        <AlertCircle className="w-5 h-5" />
+                        Not Available
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
                   </button>
                 )}
               </div>

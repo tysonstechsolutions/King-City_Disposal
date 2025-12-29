@@ -26,6 +26,7 @@ import {
   Check,
   Mail,
   Loader2,
+  AlertCircle,
 } from 'lucide-react'
 
 const STEPS = [
@@ -107,6 +108,10 @@ function BookingPageContent() {
   const [rotation, setRotation] = useState(0)
   const [addressValidated, setAddressValidated] = useState(false)
 
+  // Availability state
+  const [availability, setAvailability] = useState({}) // { '20yd': { total: 3, booked: 1, available: 2 }, ... }
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
+
   // Refs
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
@@ -165,6 +170,49 @@ function BookingPageContent() {
       if (dates.length >= 14) break
     }
     return dates
+  }
+
+  // Fetch availability when date changes
+  const fetchAvailability = async (date) => {
+    if (!date) return
+    setLoadingAvailability(true)
+    try {
+      const response = await fetch(`/api/availability?date=${date}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAvailability(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch availability:', error)
+    } finally {
+      setLoadingAvailability(false)
+    }
+  }
+
+  // Check availability when date changes
+  useEffect(() => {
+    if (formData.deliveryDate) {
+      fetchAvailability(formData.deliveryDate)
+    }
+  }, [formData.deliveryDate])
+
+  // Get availability info for a size
+  const getAvailabilityForSize = (size) => {
+    return availability[size] || { total: 0, booked: 0, available: 0 }
+  }
+
+  // Check if size is sold out
+  const isSoldOut = (size) => {
+    if (!formData.deliveryDate || Object.keys(availability).length === 0) return false
+    const avail = getAvailabilityForSize(size)
+    return avail.available === 0
+  }
+
+  // Check if size is low availability (1-2 left)
+  const isLowAvailability = (size) => {
+    if (!formData.deliveryDate || Object.keys(availability).length === 0) return false
+    const avail = getAvailabilityForSize(size)
+    return avail.available > 0 && avail.available <= 2
   }
 
   // Load Google Maps API
@@ -278,7 +326,7 @@ function BookingPageContent() {
           scale: 10,
           fillColor: '#ffffff',
           fillOpacity: 1,
-          strokeColor: '#22c55e',
+          strokeColor: '#3d8b64',
           strokeWeight: 3,
         },
         title: 'Delivery Address'
@@ -339,9 +387,9 @@ function BookingPageContent() {
       map: map,
       draggable: true,
       geodesic: true,
-      fillColor: '#22c55e',
+      fillColor: '#3d8b64',
       fillOpacity: 0.5,
-      strokeColor: '#22c55e',
+      strokeColor: '#3d8b64',
       strokeWeight: 3,
       strokeOpacity: 1,
     })
@@ -393,10 +441,18 @@ function BookingPageContent() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
+        // Also check that selected size is available if date is set
+        if (formData.deliveryDate && formData.dumpsterSize) {
+          if (isSoldOut(formData.dumpsterSize)) return false
+        }
         return formData.projectType && formData.dumpsterSize
       case 2:
         return formData.address && dumpsterPlaced
       case 3:
+        // Check availability for selected date and size
+        if (formData.deliveryDate && formData.dumpsterSize) {
+          if (isSoldOut(formData.dumpsterSize)) return false
+        }
         return formData.deliveryDate
       case 4:
         return formData.customerName && formData.customerPhone
@@ -473,24 +529,24 @@ function BookingPageContent() {
   const recommendedSize = getRecommendedSize()
 
   return (
-    <div className="min-h-screen bg-dark-900 py-8 px-4">
+    <div className="min-h-screen bg-neutral-100 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl md:text-4xl text-white mb-2">
-            BOOK YOUR <span className="text-gradient">DUMPSTER</span>
+          <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-2">
+            Book Your Dumpster
           </h1>
-          <p className="text-dark-400">Quick & easy - takes about 2 minutes</p>
+          <p className="text-neutral-500">Quick & easy - takes about 2 minutes</p>
         </div>
 
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between relative">
             {/* Progress line background */}
-            <div className="absolute top-5 left-0 right-0 h-0.5 bg-dark-700" />
+            <div className="absolute top-5 left-0 right-0 h-0.5 bg-neutral-300" />
             {/* Progress line fill */}
             <div
-              className="absolute top-5 left-0 h-0.5 bg-primary-500 transition-all duration-300"
+              className="absolute top-5 left-0 h-0.5 bg-primary-600 transition-all duration-300"
               style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
             />
 
@@ -503,15 +559,15 @@ function BookingPageContent() {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-colors ${
                       isActive
-                        ? 'bg-primary-500 text-white ring-4 ring-primary-500/30'
+                        ? 'bg-primary-600 text-white ring-4 ring-primary-200'
                         : isCompleted
-                        ? 'bg-green-500 text-white'
-                        : 'bg-dark-700 text-dark-400'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-neutral-200 text-neutral-400'
                     }`}
                   >
                     {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   </div>
-                  <span className={`text-xs hidden sm:block ${isActive ? 'text-white' : 'text-dark-400'}`}>
+                  <span className={`text-xs hidden sm:block ${isActive ? 'text-neutral-900 font-medium' : 'text-neutral-500'}`}>
                     {step.name}
                   </span>
                 </div>
@@ -521,13 +577,13 @@ function BookingPageContent() {
         </div>
 
         {/* Step Content */}
-        <div className="bg-dark-800 rounded-2xl border border-dark-700 p-6 mb-6">
+        <div className="bg-white rounded-xl border border-neutral-200 p-6 mb-6 shadow-sm">
 
           {/* Step 1: Project & Size */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-white mb-4">What's your project?</h2>
+                <h2 className="text-xl font-semibold text-neutral-900 mb-4">What's your project?</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {config.projectTypes.map((project) => {
                     const Icon = projectIcons[project.id]
@@ -538,13 +594,13 @@ function BookingPageContent() {
                         onClick={() => setFormData(prev => ({ ...prev, projectType: project.id }))}
                         className={`p-4 rounded-xl border-2 transition-all text-left ${
                           isSelected
-                            ? 'border-primary-500 bg-primary-500/10'
-                            : 'border-dark-600 bg-dark-700 hover:border-dark-500'
+                            ? 'border-primary-600 bg-primary-50'
+                            : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
                         }`}
                       >
-                        <Icon className={`w-6 h-6 mb-2 ${isSelected ? 'text-primary-400' : 'text-dark-400'}`} />
-                        <p className="font-medium text-white text-sm">{project.label}</p>
-                        <p className="text-xs text-dark-400">{project.description}</p>
+                        <Icon className={`w-6 h-6 mb-2 ${isSelected ? 'text-primary-600' : 'text-neutral-400'}`} />
+                        <p className="font-medium text-neutral-900 text-sm">{project.label}</p>
+                        <p className="text-xs text-neutral-500">{project.description}</p>
                       </button>
                     )
                   })}
@@ -552,44 +608,71 @@ function BookingPageContent() {
               </div>
 
               <div>
-                <h2 className="text-xl font-semibold text-white mb-4">Choose your dumpster size</h2>
+                <h2 className="text-xl font-semibold text-neutral-900 mb-4">Choose your dumpster size</h2>
+                {formData.deliveryDate && loadingAvailability && (
+                  <div className="flex items-center gap-2 text-neutral-500 text-sm mb-3">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Checking availability...
+                  </div>
+                )}
                 <div className="space-y-3">
                   {config.dumpsters.map((dumpster) => {
                     const isSelected = formData.dumpsterSize === dumpster.id
                     const isRecommended = recommendedSize === dumpster.id
                     const price = dumpster.pricing[formData.rentalDuration]
+                    const soldOut = isSoldOut(dumpster.id)
+                    const lowStock = isLowAvailability(dumpster.id)
+                    const avail = getAvailabilityForSize(dumpster.id)
+
                     return (
                       <button
                         key={dumpster.id}
-                        onClick={() => setFormData(prev => ({ ...prev, dumpsterSize: dumpster.id }))}
+                        onClick={() => {
+                          if (!soldOut) {
+                            setFormData(prev => ({ ...prev, dumpsterSize: dumpster.id }))
+                          }
+                        }}
+                        disabled={soldOut}
                         className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                          isSelected
-                            ? 'border-primary-500 bg-primary-500/10'
+                          soldOut
+                            ? 'border-neutral-200 bg-neutral-100 opacity-60 cursor-not-allowed'
+                            : isSelected
+                            ? 'border-primary-600 bg-primary-50'
                             : isRecommended
-                            ? 'border-green-500/50 bg-green-500/5 hover:border-green-500'
-                            : 'border-dark-600 bg-dark-700 hover:border-dark-500'
+                            ? 'border-green-500/50 bg-green-50 hover:border-green-500'
+                            : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <Truck className={`w-10 h-10 ${isSelected ? 'text-primary-400' : 'text-dark-400'}`} />
+                            <Truck className={`w-10 h-10 ${soldOut ? 'text-neutral-300' : isSelected ? 'text-primary-600' : 'text-neutral-400'}`} />
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-semibold text-white">{dumpster.name}</p>
-                                {isRecommended && formData.projectType && (
-                                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                                <p className={`font-semibold ${soldOut ? 'text-neutral-400' : 'text-neutral-900'}`}>{dumpster.name}</p>
+                                {isRecommended && formData.projectType && !soldOut && (
+                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                     Recommended
                                   </span>
                                 )}
+                                {soldOut && formData.deliveryDate && (
+                                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                    Sold out for this date
+                                  </span>
+                                )}
+                                {lowStock && !soldOut && formData.deliveryDate && (
+                                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                                    Only {avail.available} left!
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-sm text-dark-400">
+                              <p className={`text-sm ${soldOut ? 'text-neutral-400' : 'text-neutral-500'}`}>
                                 {dumpster.dimensions?.display || `${dumpster.dimensions?.length}ft × ${dumpster.dimensions?.width}ft`} &bull; {dumpster.weightIncluded} included
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold text-primary-400">${price}</p>
-                            <p className="text-xs text-dark-400">{formData.rentalDuration === '3-day' ? '3-day' : '7-day'}</p>
+                            <p className={`text-2xl font-bold ${soldOut ? 'text-neutral-400' : 'text-primary-600'}`}>${price}</p>
+                            <p className="text-xs text-neutral-500">{formData.rentalDuration === '3-day' ? '3-day' : '7-day'}</p>
                           </div>
                         </div>
                       </button>
@@ -599,7 +682,7 @@ function BookingPageContent() {
               </div>
 
               <div>
-                <h3 className="text-lg font-medium text-white mb-3">Rental period</h3>
+                <h3 className="text-lg font-medium text-neutral-900 mb-3">Rental period</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {['3-day', '7-day'].map((duration) => {
                     const isSelected = formData.rentalDuration === duration
@@ -610,16 +693,16 @@ function BookingPageContent() {
                         onClick={() => setFormData(prev => ({ ...prev, rentalDuration: duration }))}
                         className={`p-4 rounded-xl border-2 transition-all text-center ${
                           isSelected
-                            ? 'border-primary-500 bg-primary-500/10'
-                            : 'border-dark-600 bg-dark-700 hover:border-dark-500'
+                            ? 'border-primary-600 bg-primary-50'
+                            : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
                         }`}
                       >
-                        <p className="font-bold text-white text-lg">{label}</p>
+                        <p className="font-bold text-neutral-900 text-lg">{label}</p>
                         {selectedDumpster && (
-                          <p className="text-primary-400 font-semibold">${selectedDumpster.pricing[duration]}</p>
+                          <p className="text-primary-600 font-semibold">${selectedDumpster.pricing[duration]}</p>
                         )}
                         {duration === '7-day' && (
-                          <p className="text-xs text-green-400 mt-1">Most popular</p>
+                          <p className="text-xs text-green-600 mt-1">Most popular</p>
                         )}
                       </button>
                     )
@@ -633,9 +716,9 @@ function BookingPageContent() {
           {currentStep === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-white mb-4">Delivery address</h2>
+                <h2 className="text-xl font-semibold text-neutral-900 mb-4">Delivery address</h2>
                 <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                   <input
                     ref={addressInputRef}
                     type="text"
@@ -647,33 +730,33 @@ function BookingPageContent() {
                       setDumpsterPlaced(false)
                     }}
                     placeholder="Enter your address..."
-                    className="input-field w-full pl-12"
+                    className="w-full pl-12 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
                   />
                 </div>
-                <p className="text-xs text-dark-500 mt-2">Start typing and select from suggestions</p>
+                <p className="text-xs text-neutral-500 mt-2">Start typing and select from suggestions</p>
               </div>
 
               {/* Map Container - shows after address validated */}
               {(addressValidated || formData.address.length > 15) && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-medium text-white mb-2">Where should we place the dumpster?</h3>
-                    <p className="text-sm text-dark-400 mb-3">
+                    <h3 className="text-lg font-medium text-neutral-900 mb-2">Where should we place the dumpster?</h3>
+                    <p className="text-sm text-neutral-500 mb-3">
                       Tap "Place Dumpster" then drag the green rectangle to the exact spot
                     </p>
                   </div>
 
-                  <div className="bg-dark-700 rounded-xl overflow-hidden">
+                  <div className="bg-neutral-100 rounded-xl overflow-hidden border border-neutral-200">
                     <div className="relative" style={{ height: '280px' }}>
-                      <div ref={mapContainerRef} className="h-full w-full bg-dark-600" />
+                      <div ref={mapContainerRef} className="h-full w-full bg-neutral-200" />
 
                       {!mapLoaded && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-600">
-                          <Loader2 className="w-10 h-10 text-primary-400 animate-spin mb-3" />
-                          <p className="text-white font-medium">Loading satellite view...</p>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-200">
+                          <Loader2 className="w-10 h-10 text-primary-600 animate-spin mb-3" />
+                          <p className="text-neutral-700 font-medium">Loading satellite view...</p>
                           <button
                             onClick={() => loadMap(formData.address)}
-                            className="mt-3 text-primary-400 hover:underline text-sm"
+                            className="mt-3 text-primary-600 hover:underline text-sm"
                           >
                             Click to load map
                           </button>
@@ -684,7 +767,7 @@ function BookingPageContent() {
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                           <button
                             onClick={placeDumpster}
-                            className="bg-primary-500 hover:bg-primary-600 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
+                            className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
                           >
                             <Plus className="w-5 h-5" />
                             Place Dumpster Here
@@ -696,37 +779,37 @@ function BookingPageContent() {
                         <div className="absolute bottom-3 right-3 flex gap-2">
                           <button
                             onClick={rotateLeft}
-                            className="w-10 h-10 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                            className="w-10 h-10 bg-white/90 hover:bg-white text-neutral-700 rounded-full flex items-center justify-center shadow-lg border border-neutral-200"
                           >
-                            <RotateCcw className="w-5 h-5 text-primary-400" />
+                            <RotateCcw className="w-5 h-5 text-primary-600" />
                           </button>
                           <button
                             onClick={rotateRight}
-                            className="w-10 h-10 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                            className="w-10 h-10 bg-white/90 hover:bg-white text-neutral-700 rounded-full flex items-center justify-center shadow-lg border border-neutral-200"
                           >
-                            <RotateCw className="w-5 h-5 text-primary-400" />
+                            <RotateCw className="w-5 h-5 text-primary-600" />
                           </button>
                         </div>
                       )}
                     </div>
 
-                    <div className="p-3 bg-dark-800 border-t border-dark-600 flex items-center justify-between">
+                    <div className="p-3 bg-white border-t border-neutral-200 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-3 bg-primary-500/60 border-2 border-primary-500 rounded-sm"></div>
-                        <span className="text-sm text-dark-300">22ft × 8ft dumpster</span>
+                        <div className="w-5 h-3 bg-primary-600/50 border-2 border-primary-600 rounded-sm"></div>
+                        <span className="text-sm text-neutral-600">22ft × 8ft dumpster</span>
                       </div>
-                      {dumpsterPlaced && <span className="text-primary-400 text-sm">Drag to reposition</span>}
+                      {dumpsterPlaced && <span className="text-primary-600 text-sm font-medium">Drag to reposition</span>}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-dark-400 mb-2">Placement notes (optional)</label>
+                    <label className="block text-sm text-neutral-600 mb-2">Placement notes (optional)</label>
                     <input
                       type="text"
                       value={formData.placementNotes}
                       onChange={(e) => setFormData(prev => ({ ...prev, placementNotes: e.target.value }))}
                       placeholder="e.g., Left side of driveway, near garage"
-                      className="input-field w-full"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -738,8 +821,8 @@ function BookingPageContent() {
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-white mb-2">When do you need it?</h2>
-                <p className="text-dark-400 text-sm mb-4">
+                <h2 className="text-xl font-semibold text-neutral-900 mb-2">When do you need it?</h2>
+                <p className="text-neutral-500 text-sm mb-4">
                   Select your delivery date. We deliver between 8am-12pm.
                 </p>
               </div>
@@ -753,37 +836,75 @@ function BookingPageContent() {
                       onClick={() => setFormData(prev => ({ ...prev, deliveryDate: date.value }))}
                       className={`p-4 rounded-xl border-2 transition-all text-center ${
                         isSelected
-                          ? 'border-primary-500 bg-primary-500/10'
-                          : 'border-dark-600 bg-dark-700 hover:border-dark-500'
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
                       }`}
                     >
-                      <Calendar className={`w-5 h-5 mx-auto mb-1 ${isSelected ? 'text-primary-400' : 'text-dark-400'}`} />
-                      <p className="text-sm font-medium text-white">{date.label}</p>
+                      <Calendar className={`w-5 h-5 mx-auto mb-1 ${isSelected ? 'text-primary-600' : 'text-neutral-400'}`} />
+                      <p className="text-sm font-medium text-neutral-900">{date.label}</p>
                     </button>
                   )
                 })}
               </div>
 
               {formData.deliveryDate && (
-                <div className="bg-dark-700 rounded-xl p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-dark-400 text-sm">Delivery</p>
-                      <p className="text-white font-medium">
-                        {new Date(formData.deliveryDate + 'T12:00:00').toLocaleDateString('en-US', {
-                          weekday: 'long', month: 'short', day: 'numeric'
-                        })}
-                      </p>
+                <div className="space-y-4">
+                  <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-neutral-500 text-sm">Delivery</p>
+                        <p className="text-neutral-900 font-medium">
+                          {new Date(formData.deliveryDate + 'T12:00:00').toLocaleDateString('en-US', {
+                            weekday: 'long', month: 'short', day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-neutral-400" />
+                      <div className="text-right">
+                        <p className="text-neutral-500 text-sm">Pickup</p>
+                        <p className="text-neutral-900 font-medium">{getPickupDate()}</p>
+                      </div>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-dark-500" />
-                    <div className="text-right">
-                      <p className="text-dark-400 text-sm">Pickup</p>
-                      <p className="text-white font-medium">{getPickupDate()}</p>
-                    </div>
+                    <p className="text-xs text-neutral-500 mt-2 text-center">
+                      {formData.rentalDuration === '3-day' ? '3' : '7'}-day rental period
+                    </p>
                   </div>
-                  <p className="text-xs text-dark-400 mt-2 text-center">
-                    {formData.rentalDuration === '3-day' ? '3' : '7'}-day rental period
-                  </p>
+
+                  {/* Availability warning */}
+                  {loadingAvailability && (
+                    <div className="flex items-center gap-2 text-neutral-500 text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Checking availability for your selected size...
+                    </div>
+                  )}
+
+                  {!loadingAvailability && isSoldOut(formData.dumpsterSize) && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-red-800 font-medium">
+                          {selectedDumpster?.name || 'This size'} is sold out for this date
+                        </p>
+                        <p className="text-red-600 text-sm mt-1">
+                          Please go back and choose a different size, or select another delivery date.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {!loadingAvailability && isLowAvailability(formData.dumpsterSize) && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-amber-800 font-medium">
+                          Only {getAvailabilityForSize(formData.dumpsterSize).available} left for this date!
+                        </p>
+                        <p className="text-amber-600 text-sm mt-1">
+                          Book now to secure your {selectedDumpster?.name || 'dumpster'}.
+                        </p>
+                      </div>
+                    </div>
+                  )
                 </div>
               )}
             </div>
@@ -793,51 +914,51 @@ function BookingPageContent() {
           {currentStep === 4 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-white mb-2">Your contact info</h2>
-                <p className="text-dark-400 text-sm mb-4">
+                <h2 className="text-xl font-semibold text-neutral-900 mb-2">Your contact info</h2>
+                <p className="text-neutral-500 text-sm mb-4">
                   We'll text you delivery updates and confirmation.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-dark-400 mb-2">Full Name *</label>
+                  <label className="block text-sm text-neutral-700 mb-2 font-medium">Full Name *</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                     <input
                       type="text"
                       value={formData.customerName}
                       onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
                       placeholder="John Smith"
-                      className="input-field w-full pl-10"
+                      className="w-full pl-10 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-dark-400 mb-2">Phone Number *</label>
+                  <label className="block text-sm text-neutral-700 mb-2 font-medium">Phone Number *</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                     <input
                       type="tel"
                       value={formData.customerPhone}
                       onChange={(e) => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
                       placeholder="(618) 555-1234"
-                      className="input-field w-full pl-10"
+                      className="w-full pl-10 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-dark-400 mb-2">Email (optional)</label>
+                  <label className="block text-sm text-neutral-700 mb-2 font-medium">Email (optional)</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                     <input
                       type="email"
                       value={formData.customerEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
                       placeholder="john@example.com"
-                      className="input-field w-full pl-10"
+                      className="w-full pl-10 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -848,49 +969,49 @@ function BookingPageContent() {
           {/* Step 5: Review & Book */}
           {currentStep === 5 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-white">Review your order</h2>
+              <h2 className="text-xl font-semibold text-neutral-900">Review your order</h2>
 
               {/* Order Summary */}
-              <div className="bg-dark-700 rounded-xl p-4 space-y-3">
-                <div className="flex justify-between py-2 border-b border-dark-600">
-                  <span className="text-dark-400">Address</span>
-                  <span className="text-white text-right max-w-[60%]">{formData.address}</span>
+              <div className="bg-neutral-50 rounded-xl p-4 space-y-3 border border-neutral-200">
+                <div className="flex justify-between py-2 border-b border-neutral-200">
+                  <span className="text-neutral-500">Address</span>
+                  <span className="text-neutral-900 text-right max-w-[60%]">{formData.address}</span>
                 </div>
                 {formData.placementNotes && (
-                  <div className="flex justify-between py-2 border-b border-dark-600">
-                    <span className="text-dark-400">Placement</span>
-                    <span className="text-white text-right max-w-[60%]">{formData.placementNotes}</span>
+                  <div className="flex justify-between py-2 border-b border-neutral-200">
+                    <span className="text-neutral-500">Placement</span>
+                    <span className="text-neutral-900 text-right max-w-[60%]">{formData.placementNotes}</span>
                   </div>
                 )}
-                <div className="flex justify-between py-2 border-b border-dark-600">
-                  <span className="text-dark-400">Dumpster</span>
-                  <span className="text-white">{selectedDumpster?.name}</span>
+                <div className="flex justify-between py-2 border-b border-neutral-200">
+                  <span className="text-neutral-500">Dumpster</span>
+                  <span className="text-neutral-900">{selectedDumpster?.name}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-dark-600">
-                  <span className="text-dark-400">Weight Included</span>
-                  <span className="text-white">{selectedDumpster?.weightIncluded}</span>
+                <div className="flex justify-between py-2 border-b border-neutral-200">
+                  <span className="text-neutral-500">Weight Included</span>
+                  <span className="text-neutral-900">{selectedDumpster?.weightIncluded}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-dark-600">
-                  <span className="text-dark-400">Rental Period</span>
-                  <span className="text-white">{formData.rentalDuration === '3-day' ? '3 Days' : '7 Days'}</span>
+                <div className="flex justify-between py-2 border-b border-neutral-200">
+                  <span className="text-neutral-500">Rental Period</span>
+                  <span className="text-neutral-900">{formData.rentalDuration === '3-day' ? '3 Days' : '7 Days'}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-dark-600">
-                  <span className="text-dark-400">Delivery</span>
-                  <span className="text-white">
+                <div className="flex justify-between py-2 border-b border-neutral-200">
+                  <span className="text-neutral-500">Delivery</span>
+                  <span className="text-neutral-900">
                     {new Date(formData.deliveryDate + 'T12:00:00').toLocaleDateString('en-US', {
                       weekday: 'short', month: 'short', day: 'numeric'
                     })}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-dark-600">
-                  <span className="text-dark-400">Pickup</span>
-                  <span className="text-white">{getPickupDate()}</span>
+                <div className="flex justify-between py-2 border-b border-neutral-200">
+                  <span className="text-neutral-500">Pickup</span>
+                  <span className="text-neutral-900">{getPickupDate()}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-dark-600">
-                  <span className="text-dark-400">Contact</span>
-                  <span className="text-white text-right">
+                <div className="flex justify-between py-2 border-b border-neutral-200">
+                  <span className="text-neutral-500">Contact</span>
+                  <span className="text-neutral-900 text-right">
                     {formData.customerName}<br />
-                    <span className="text-dark-300">{formData.customerPhone}</span>
+                    <span className="text-neutral-600">{formData.customerPhone}</span>
                   </span>
                 </div>
               </div>
@@ -898,19 +1019,19 @@ function BookingPageContent() {
               {/* Surcharges */}
               {config.surchargeItems.filter(s => s.fee).length > 0 && (
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-3">Any of these items?</h3>
-                  <p className="text-sm text-dark-400 mb-3">Additional fees apply for certain items</p>
+                  <h3 className="text-lg font-medium text-neutral-900 mb-3">Any of these items?</h3>
+                  <p className="text-sm text-neutral-500 mb-3">Additional fees apply for certain items</p>
                   <div className="space-y-2">
                     {config.surchargeItems.filter(s => s.fee).map((surcharge) => {
                       const count = formData.surcharges[surcharge.item] || 0
                       return (
                         <div
                           key={surcharge.item}
-                          className="flex items-center justify-between bg-dark-700 rounded-lg p-3"
+                          className="flex items-center justify-between bg-neutral-50 rounded-lg p-3 border border-neutral-200"
                         >
                           <div>
-                            <p className="text-white">{surcharge.item}</p>
-                            <p className="text-sm text-dark-400">${surcharge.fee} {surcharge.unit}</p>
+                            <p className="text-neutral-900">{surcharge.item}</p>
+                            <p className="text-sm text-neutral-500">${surcharge.fee} {surcharge.unit}</p>
                           </div>
                           <div className="flex items-center gap-3">
                             <button
@@ -921,11 +1042,11 @@ function BookingPageContent() {
                                   [surcharge.item]: Math.max(0, count - 1)
                                 }
                               }))}
-                              className="w-8 h-8 bg-dark-600 hover:bg-dark-500 rounded-full flex items-center justify-center text-white"
+                              className="w-8 h-8 bg-neutral-200 hover:bg-neutral-300 rounded-full flex items-center justify-center text-neutral-700"
                             >
                               -
                             </button>
-                            <span className="text-white w-6 text-center">{count}</span>
+                            <span className="text-neutral-900 w-6 text-center">{count}</span>
                             <button
                               onClick={() => setFormData(prev => ({
                                 ...prev,
@@ -934,7 +1055,7 @@ function BookingPageContent() {
                                   [surcharge.item]: count + 1
                                 }
                               }))}
-                              className="w-8 h-8 bg-dark-600 hover:bg-dark-500 rounded-full flex items-center justify-center text-white"
+                              className="w-8 h-8 bg-neutral-200 hover:bg-neutral-300 rounded-full flex items-center justify-center text-neutral-700"
                             >
                               +
                             </button>
@@ -947,32 +1068,32 @@ function BookingPageContent() {
               )}
 
               {/* Prohibited Items - Collapsible */}
-              <div className="bg-dark-700 rounded-xl overflow-hidden">
+              <div className="bg-neutral-50 rounded-xl overflow-hidden border border-neutral-200">
                 <button
                   onClick={() => setShowProhibited(!showProhibited)}
                   className="w-full p-4 flex items-center justify-between text-left"
                 >
                   <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-400" />
-                    <span className="text-white font-medium">What can't go in?</span>
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    <span className="text-neutral-900 font-medium">What can't go in?</span>
                   </div>
                   {showProhibited ? (
-                    <ChevronUp className="w-5 h-5 text-dark-400" />
+                    <ChevronUp className="w-5 h-5 text-neutral-500" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-dark-400" />
+                    <ChevronDown className="w-5 h-5 text-neutral-500" />
                   )}
                 </button>
                 {showProhibited && (
-                  <div className="px-4 pb-4 border-t border-dark-600">
-                    <ul className="text-sm text-dark-300 space-y-1 mt-3">
+                  <div className="px-4 pb-4 border-t border-neutral-200">
+                    <ul className="text-sm text-neutral-600 space-y-1 mt-3">
                       {config.prohibitedItems.slice(0, 10).map((item, idx) => (
                         <li key={idx} className="flex items-start gap-2">
-                          <span className="text-red-400">✕</span>
+                          <span className="text-red-500">✕</span>
                           <span>{item.item}</span>
                         </li>
                       ))}
                     </ul>
-                    <p className="text-xs text-dark-400 mt-3">
+                    <p className="text-xs text-neutral-500 mt-3">
                       Prohibited items found in dumpster = additional fees. When in doubt, ask first!
                     </p>
                   </div>
@@ -980,21 +1101,21 @@ function BookingPageContent() {
               </div>
 
               {/* Total */}
-              <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl p-4">
+              <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-dark-300">Dumpster Rental</p>
+                    <p className="text-neutral-600">Dumpster Rental</p>
                     {getSurchargeTotal() > 0 && (
-                      <p className="text-dark-300">Surcharges</p>
+                      <p className="text-neutral-600">Surcharges</p>
                     )}
-                    <p className="text-white font-bold text-lg mt-2">Total</p>
+                    <p className="text-neutral-900 font-bold text-lg mt-2">Total</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-white">${getPrice()}</p>
+                    <p className="text-neutral-900">${getPrice()}</p>
                     {getSurchargeTotal() > 0 && (
-                      <p className="text-white">${getSurchargeTotal()}</p>
+                      <p className="text-neutral-900">${getSurchargeTotal()}</p>
                     )}
-                    <p className="text-primary-400 font-bold text-2xl mt-2">
+                    <p className="text-primary-600 font-bold text-2xl mt-2">
                       ${getPrice() + getSurchargeTotal()}
                     </p>
                   </div>
@@ -1002,7 +1123,7 @@ function BookingPageContent() {
               </div>
 
               {submitError && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm">
                   {submitError}
                 </div>
               )}
@@ -1015,7 +1136,7 @@ function BookingPageContent() {
           {currentStep > 1 && (
             <button
               onClick={prevStep}
-              className="flex-1 sm:flex-initial bg-dark-700 hover:bg-dark-600 text-white py-4 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+              className="flex-1 sm:flex-initial bg-neutral-200 hover:bg-neutral-300 text-neutral-700 py-4 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               Back
@@ -1028,8 +1149,8 @@ function BookingPageContent() {
               disabled={!canProceed()}
               className={`flex-1 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
                 canProceed()
-                  ? 'btn-primary'
-                  : 'bg-dark-600 text-dark-400 cursor-not-allowed'
+                  ? 'bg-primary-600 hover:bg-primary-700 text-white'
+                  : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
               }`}
             >
               Continue
@@ -1039,7 +1160,7 @@ function BookingPageContent() {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex-1 btn-accent py-4 rounded-xl font-semibold flex items-center justify-center gap-2"
+              className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               {isSubmitting ? (
                 <>
@@ -1058,9 +1179,9 @@ function BookingPageContent() {
 
         {/* Call us */}
         <div className="text-center mt-6">
-          <p className="text-dark-400 text-sm">
+          <p className="text-neutral-500 text-sm">
             Need help? Call us at{' '}
-            <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:underline">
+            <a href={`tel:${config.phoneRaw}`} className="text-primary-600 hover:underline font-medium">
               {config.phone}
             </a>
           </p>

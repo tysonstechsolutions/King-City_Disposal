@@ -113,6 +113,16 @@ export const config = {
   },
   
   // ============================================
+  // 🚛 FLEET INVENTORY
+  // ============================================
+  // How many dumpsters of each size you own
+  // This is used to prevent overbooking
+  fleet: {
+    '20yd': 3,  // Number of 20-yard dumpsters
+    '30yd': 2,  // Number of 30-yard dumpsters
+  },
+
+  // ============================================
   // 🚛 DUMPSTER SIZES & PRICING
   // ============================================
   // Change prices anytime — whole site updates automatically
