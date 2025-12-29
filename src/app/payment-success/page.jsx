@@ -1,11 +1,25 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { CheckCircle, Phone, Home, Calendar } from 'lucide-react'
+import { CheckCircle, Phone, Home, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { config } from '../../config'
 
-export default function PaymentSuccessPage() {
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
+      <div className="text-center">
+        <Loader2 className="w-10 h-10 text-primary-400 animate-spin mx-auto mb-4" />
+        <p className="text-dark-400">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+// Inner component that uses useSearchParams
+function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const bookingId = searchParams.get('booking')
 
@@ -38,7 +52,7 @@ export default function PaymentSuccessPage() {
                 <p className="text-dark-400 text-sm">You'll receive a text confirming your delivery details.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 bg-primary-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-primary-400 font-bold text-sm">2</span>
@@ -48,7 +62,7 @@ export default function PaymentSuccessPage() {
                 <p className="text-dark-400 text-sm">We'll text you the day before delivery with timing.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 bg-primary-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-primary-400 font-bold text-sm">3</span>
@@ -64,11 +78,11 @@ export default function PaymentSuccessPage() {
         {/* SMS Commands Tip */}
         <div className="bg-dark-800/50 border border-dark-700 rounded-xl p-4 mb-8">
           <p className="text-dark-300 text-sm">
-            <strong className="text-white">💡 Pro tip:</strong> During your rental, you can text us:
+            <strong className="text-white">Pro tip:</strong> During your rental, you can text us:
           </p>
           <p className="text-dark-400 text-sm mt-2">
-            <code className="text-primary-400">STATUS</code> to check your rental &bull; 
-            <code className="text-primary-400"> EXTEND</code> for more days &bull; 
+            <code className="text-primary-400">STATUS</code> to check your rental &bull;
+            <code className="text-primary-400"> EXTEND</code> for more days &bull;
             <code className="text-primary-400"> PICKUP</code> when you're done early
           </p>
         </div>
@@ -79,8 +93,8 @@ export default function PaymentSuccessPage() {
             <Home className="w-5 h-5" />
             Back to Home
           </Link>
-          
-          <a 
+
+          <a
             href={`tel:${config.phoneRaw}`}
             className="btn-secondary w-full flex items-center justify-center gap-2"
           >
@@ -97,5 +111,14 @@ export default function PaymentSuccessPage() {
         )}
       </div>
     </div>
+  )
+}
+
+// Main page component with Suspense boundary
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PaymentSuccessContent />
+    </Suspense>
   )
 }
