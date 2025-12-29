@@ -161,17 +161,38 @@ export default function BookingDetailPage() {
       setMapLoaded(true)
     }
 
-    // Check if Google Maps is loaded
-    if (window.google && window.google.maps) {
+    // Check if Google Maps is loaded (including Geocoder)
+    if (window.google?.maps?.Geocoder) {
       initMap()
     } else {
       // Load Google Maps script
-      const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=places`
-      script.async = true
-      script.defer = true
-      script.onload = initMap
-      document.head.appendChild(script)
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
+      if (existingScript) {
+        // Wait for existing script to fully load Geocoder
+        const check = setInterval(() => {
+          if (window.google?.maps?.Geocoder) {
+            clearInterval(check)
+            initMap()
+          }
+        }, 100)
+        setTimeout(() => clearInterval(check), 10000)
+      } else {
+        const script = document.createElement('script')
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=places,geocoding`
+        script.async = true
+        script.defer = true
+        script.onload = () => {
+          // Wait briefly for Geocoder to be available
+          const check = setInterval(() => {
+            if (window.google?.maps?.Geocoder) {
+              clearInterval(check)
+              initMap()
+            }
+          }, 50)
+          setTimeout(() => clearInterval(check), 5000)
+        }
+        document.head.appendChild(script)
+      }
     }
   }, [booking])
 

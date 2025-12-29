@@ -160,15 +160,15 @@ export default function ChatbotWidget() {
     if (!window.google?.maps) {
       if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
         const script = document.createElement('script')
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=geometry&loading=async`
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=geometry,geocoding`
         script.async = true
         document.head.appendChild(script)
       }
 
-      // Wait for it to load
+      // Wait for it to load (including Geocoder)
       await new Promise((resolve) => {
         const check = setInterval(() => {
-          if (window.google?.maps) {
+          if (window.google?.maps?.Geocoder) {
             clearInterval(check)
             resolve()
           }
@@ -177,7 +177,7 @@ export default function ChatbotWidget() {
       })
     }
 
-    if (!window.google?.maps || !mapContainerRef.current) return
+    if (!window.google?.maps?.Geocoder || !mapContainerRef.current) return
 
     // Geocode address
     const geocoder = new window.google.maps.Geocoder()
