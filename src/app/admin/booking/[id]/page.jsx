@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { config } from '../../../../config'
-import { 
+import {
   ArrowLeft,
-  Phone, 
+  Phone,
   Mail,
-  MapPin, 
+  MapPin,
   Calendar,
   Clock,
   DollarSign,
@@ -24,13 +25,23 @@ import {
   ExternalLink
 } from 'lucide-react'
 
+// Dynamically import the map component with SSR disabled
+const BookingDetailMap = dynamic(
+  () => import('../../../../components/BookingDetailMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[300px] md:h-[400px] bg-dark-700 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+      </div>
+    )
+  }
+)
+
 export default function BookingDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const mapRef = useRef(null)
-  const mapInstanceRef = useRef(null)
-  const markerRef = useRef(null)
-  
+
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -39,7 +50,6 @@ export default function BookingDetailPage() {
   const [status, setStatus] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [mapLoaded, setMapLoaded] = useState(false)
 
   // Fetch booking
   const fetchBooking = useCallback(async () => {
@@ -53,7 +63,7 @@ export default function BookingDetailPage() {
           },
         }
       )
-      
+
       if (response.ok) {
         const data = await response.json()
         if (data.length > 0) {
@@ -77,162 +87,6 @@ export default function BookingDetailPage() {
     fetchBooking()
   }, [fetchBooking])
 
-  // Initialize map when booking loads
-  useEffect(() => {
-    if (!booking || !mapRef.current) return
-
-    // Prevent re-initialization if map already exists
-    if (mapInstanceRef.current) return
-
-    // Track intervals for cleanup
-    let checkInterval = null
-    let timeoutId = null
-
-    // Load Google Maps
-    const initMap = () => {
-      // Double-check map doesn't already exist
-      if (mapInstanceRef.current) return
-
-      const lat = booking.placement_lat || null
-      const lng = booking.placement_lng || null
-
-      // Geocode the address if no placement coordinates
-      if (!lat || !lng) {
-        const geocoder = new window.google.maps.Geocoder()
-        geocoder.geocode({ address: booking.address }, (results, status) => {
-          if (status === 'OK' && results[0]) {
-            const location = results[0].geometry.location
-            createMap(location.lat(), location.lng(), false)
-          }
-        })
-      } else {
-        createMap(lat, lng, true)
-      }
-    }
-
-    const createMap = (lat, lng, hasPlacement) => {
-      // Final check before creating map
-      if (mapInstanceRef.current || !mapRef.current) return
-
-      const center = { lat: parseFloat(lat), lng: parseFloat(lng) }
-
-      const map = new window.google.maps.Map(mapRef.current, {
-        center,
-        zoom: 20,
-        mapTypeId: 'satellite',
-        tilt: 0,
-        disableDefaultUI: true,
-        zoomControl: true,
-        fullscreenControl: true,
-      })
-
-      mapInstanceRef.current = map
-
-      if (hasPlacement) {
-        // Add dumpster marker at placement location
-        const marker = new window.google.maps.Marker({
-          position: center,
-          map,
-          icon: {
-            path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-            scale: 8,
-            fillColor: '#22c55e',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 3,
-            rotation: 0,
-          },
-          title: 'Dumpster Placement',
-        })
-        markerRef.current = marker
-
-        // Add info window
-        const infoWindow = new window.google.maps.InfoWindow({
-          content: `
-            <div style="padding: 8px; color: #000;">
-              <strong>📍 Dumpster Placement</strong><br/>
-              <span style="color: #666;">${booking.placement_notes || 'No notes'}</span>
-            </div>
-          `,
-        })
-
-        marker.addListener('click', () => {
-          infoWindow.open(map, marker)
-        })
-
-        // Open by default
-        infoWindow.open(map, marker)
-      } else {
-        // Just show property marker
-        new window.google.maps.Marker({
-          position: center,
-          map,
-          title: booking.address,
-        })
-      }
-
-      setMapLoaded(true)
-    }
-
-    // Check if Google Maps is loaded (including Geocoder)
-    if (window.google?.maps?.Geocoder) {
-      initMap()
-    } else {
-      // Load Google Maps script
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
-      if (existingScript) {
-        // Wait for existing script to fully load Geocoder
-        checkInterval = setInterval(() => {
-          if (window.google?.maps?.Geocoder) {
-            clearInterval(checkInterval)
-            initMap()
-          }
-        }, 100)
-        timeoutId = setTimeout(() => clearInterval(checkInterval), 10000)
-      } else {
-        const script = document.createElement('script')
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=places,geocoding`
-        script.async = true
-        script.defer = true
-        script.onload = () => {
-          // Wait briefly for Geocoder to be available
-          checkInterval = setInterval(() => {
-            if (window.google?.maps?.Geocoder) {
-              clearInterval(checkInterval)
-              initMap()
-            }
-          }, 50)
-          timeoutId = setTimeout(() => clearInterval(checkInterval), 5000)
-        }
-        document.head.appendChild(script)
-      }
-    }
-
-    // Cleanup function to properly remove map on unmount
-    return () => {
-      // Clear any pending intervals/timeouts
-      if (checkInterval) clearInterval(checkInterval)
-      if (timeoutId) clearTimeout(timeoutId)
-
-      // Remove marker
-      if (markerRef.current) {
-        markerRef.current.setMap(null)
-        markerRef.current = null
-      }
-
-      // Remove map - this is crucial to prevent DOM conflicts
-      if (mapInstanceRef.current) {
-        // Google Maps doesn't have a destroy method, but we can clear the div
-        if (mapRef.current) {
-          mapRef.current.innerHTML = ''
-        }
-        mapInstanceRef.current = null
-      }
-
-      setMapLoaded(false)
-    }
-  }, [booking])
-
   // Save changes
   const handleSave = async () => {
     setSaving(true)
@@ -249,7 +103,7 @@ export default function BookingDetailPage() {
           body: JSON.stringify({ notes, status }),
         }
       )
-      
+
       if (response.ok) {
         setBooking({ ...booking, notes, status })
       }
@@ -272,7 +126,7 @@ export default function BookingDetailPage() {
           },
         }
       )
-      
+
       if (response.ok) {
         router.push('/admin')
       }
@@ -360,14 +214,14 @@ export default function BookingDetailPage() {
       <div className="bg-dark-800 border-b border-dark-700 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <button 
+            <button
               onClick={() => router.push('/admin')}
               className="flex items-center gap-2 text-dark-300 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               <span className="hidden sm:inline">Back to Bookings</span>
             </button>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={copyLink}
@@ -391,7 +245,7 @@ export default function BookingDetailPage() {
 
       <div className="max-w-6xl mx-auto p-4 md:p-8">
         <div className="grid lg:grid-cols-2 gap-6">
-          
+
           {/* Left Column - Map */}
           <div className="space-y-6">
             {/* Map */}
@@ -409,18 +263,15 @@ export default function BookingDetailPage() {
                   Open in Maps
                 </button>
               </div>
-              
-              <div 
-                ref={mapRef} 
-                className="w-full h-[300px] md:h-[400px] bg-dark-700"
-              >
-                {!mapLoaded && (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
-                  </div>
-                )}
-              </div>
-              
+
+              {/* Dynamically imported map component - isolated from React reconciliation */}
+              <BookingDetailMap
+                lat={booking.placement_lat}
+                lng={booking.placement_lng}
+                address={booking.address}
+                placementNotes={booking.placement_notes}
+              />
+
               {booking.placement_notes && (
                 <div className="p-4 bg-dark-700/50">
                   <p className="text-sm text-dark-400">Placement Notes:</p>
@@ -443,23 +294,23 @@ export default function BookingDetailPage() {
 
           {/* Right Column - Details */}
           <div className="space-y-6">
-            
+
             {/* Customer Info */}
             <div className="bg-dark-800 rounded-2xl border border-dark-700 p-6">
               <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
                 <User className="w-5 h-5 text-primary-400" />
                 Customer
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <p className="text-dark-400 text-sm">Name</p>
                   <p className="text-white text-lg font-medium">{booking.customer_name}</p>
                 </div>
-                
+
                 <div>
                   <p className="text-dark-400 text-sm">Phone</p>
-                  <a 
+                  <a
                     href={`tel:${booking.customer_phone}`}
                     className="text-primary-400 text-lg font-medium hover:text-primary-300 flex items-center gap-2"
                   >
@@ -467,11 +318,11 @@ export default function BookingDetailPage() {
                     {booking.customer_phone}
                   </a>
                 </div>
-                
+
                 {booking.customer_email && (
                   <div>
                     <p className="text-dark-400 text-sm">Email</p>
-                    <a 
+                    <a
                       href={`mailto:${booking.customer_email}`}
                       className="text-primary-400 hover:text-primary-300 flex items-center gap-2"
                     >
@@ -489,19 +340,19 @@ export default function BookingDetailPage() {
                 <Truck className="w-5 h-5 text-primary-400" />
                 Booking Details
               </h2>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-dark-400 text-sm">Dumpster Size</p>
                   <p className="text-white font-medium">{dumpster.name}</p>
                   <p className="text-dark-500 text-xs">{dumpster.dimensions?.display || `${dumpster.dimensions?.length}' x ${dumpster.dimensions?.width}' x ${dumpster.dimensions?.height}'`}</p>
                 </div>
-                
+
                 <div>
                   <p className="text-dark-400 text-sm">Project Type</p>
                   <p className="text-white font-medium capitalize">{booking.project_type || 'Not specified'}</p>
                 </div>
-                
+
                 <div>
                   <p className="text-dark-400 text-sm">Delivery Date</p>
                   <p className="text-white font-medium flex items-center gap-1">
@@ -509,7 +360,7 @@ export default function BookingDetailPage() {
                     {formatDate(booking.delivery_date)}
                   </p>
                 </div>
-                
+
                 <div>
                   <p className="text-dark-400 text-sm">Duration</p>
                   <p className="text-white font-medium flex items-center gap-1">
@@ -517,7 +368,7 @@ export default function BookingDetailPage() {
                     {booking.rental_duration}
                   </p>
                 </div>
-                
+
                 <div>
                   <p className="text-dark-400 text-sm">Price</p>
                   <p className="text-primary-400 font-bold text-xl flex items-center gap-1">
@@ -525,7 +376,7 @@ export default function BookingDetailPage() {
                     {booking.price_cents ? (booking.price_cents / 100).toFixed(0) : 'TBD'}
                   </p>
                 </div>
-                
+
                 <div>
                   <p className="text-dark-400 text-sm">Paid</p>
                   <p className={`font-medium ${booking.paid ? 'text-green-400' : 'text-yellow-400'}`}>
@@ -538,14 +389,14 @@ export default function BookingDetailPage() {
             {/* Status */}
             <div className="bg-dark-800 rounded-2xl border border-dark-700 p-6">
               <h2 className="font-semibold text-white mb-4">Status</h2>
-              
+
               <div className="flex flex-wrap gap-2">
                 {['pending', 'confirmed', 'delivered', 'completed', 'cancelled'].map((s) => (
                   <button
                     key={s}
                     onClick={() => setStatus(s)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                      status === s 
+                      status === s
                         ? getStatusColor(s)
                         : 'bg-dark-700 text-dark-400 border-dark-600 hover:border-dark-500'
                     }`}
@@ -562,7 +413,7 @@ export default function BookingDetailPage() {
                 <FileText className="w-5 h-5 text-primary-400" />
                 Internal Notes
               </h2>
-              
+
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -578,7 +429,7 @@ export default function BookingDetailPage() {
               <p className="text-dark-400 text-sm mb-4">
                 Permanently delete this booking. This cannot be undone.
               </p>
-              
+
               {!showDeleteConfirm ? (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}

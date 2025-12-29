@@ -46,7 +46,7 @@ export default function HomePage() {
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap gap-4 mb-8">
-                <Link href="/pricing" className="btn-accent flex items-center gap-2 text-lg">
+                <Link href="/book" className="btn-accent flex items-center gap-2 text-lg">
                   <Zap className="w-5 h-5" />
                   Get Instant Quote
                 </Link>
@@ -333,7 +333,7 @@ export default function HomePage() {
               </p>
 
               <div className="flex flex-wrap justify-center gap-4">
-                <Link href="/pricing" className="bg-white text-primary-600 font-bold py-4 px-8 rounded-lg hover:bg-primary-50 transition-colors">
+                <Link href="/book" className="bg-white text-primary-600 font-bold py-4 px-8 rounded-lg hover:bg-primary-50 transition-colors">
                   Get Your Quote
                 </Link>
                 <a 
