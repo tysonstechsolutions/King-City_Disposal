@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/reminders",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/daily-route",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/late-fees",
+      "schedule": "0 15 * * *"
     }
   ]
 }

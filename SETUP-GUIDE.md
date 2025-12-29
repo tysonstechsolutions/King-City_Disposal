@@ -1,271 +1,290 @@
-# 🚀 New Features Setup Guide
+# 🚀 King City Disposal - All Features Setup Guide
 
-Everything you need to activate the new features for King City Disposal.
+Complete guide to set up every feature.
 
 ---
 
-## What's New
+## Feature Summary
 
-| Feature | What It Does |
-|---------|--------------|
-| **Missed Call Text-Back** | Auto-texts callers when you miss their call |
-| **Customer Self-Service SMS** | Customers text EXTEND, PICKUP, STATUS |
-| **Auto Reminders** | Day-before delivery & pickup texts |
-| **Review Requests** | Auto-asks for Google reviews after completion |
-| **Stripe Payment Links** | One-tap payment links in SMS |
-| **Container Board** | Visual dashboard of all active dumpsters |
+| Feature | Type | File |
+|---------|------|------|
+| **Missed Call Text-Back** | Auto | `/api/twilio/voice/status/route.js` |
+| **Customer SMS Commands** | Auto | `/api/twilio/sms/route.js` |
+| **Owner SMS Commands** | Auto | `/api/twilio/sms/route.js` |
+| **Auto Reminders** | Cron | `/api/cron/reminders/route.js` |
+| **Daily Route Text** | Cron | `/api/cron/daily-route/route.js` |
+| **Late Fee Automation** | Cron | `/api/cron/late-fees/route.js` |
+| **Stripe Payment Links** | API | `/api/stripe/payment-link/route.js` |
+| **Container Board** | Page | `/admin/containers/page.jsx` |
+| **Driver Checklist** | Page | `/driver/page.jsx` |
+| **Capacity Calendar** | Page | `/admin/capacity/page.jsx` |
 
 ---
 
 ## Quick Setup Checklist
 
 - [ ] Run database migration in Supabase
-- [ ] Add new environment variables to Vercel
-- [ ] Update Twilio webhooks
-- [ ] Deploy updated code
-- [ ] Test the flow
+- [ ] Add environment variables to Vercel
+- [ ] Set up Twilio webhooks
+- [ ] Deploy to Vercel
+- [ ] Test each feature
 
 ---
 
 ## Step 1: Database Migration
 
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
-2. Select your project
-3. Go to **SQL Editor**
-4. Paste contents of `database-migration.sql`
-5. Click **Run**
-
-This adds columns for:
-- Reminder tracking (delivery_reminder_sent, etc.)
-- Pickup requests
-- SMS conversation logging
-- Payment link tracking
+2. Select your project → **SQL Editor**
+3. Paste contents of `database-migration.sql`
+4. Click **Run**
 
 ---
 
 ## Step 2: Environment Variables
 
-Add these to **Vercel → Settings → Environment Variables**:
+Add to **Vercel → Settings → Environment Variables**:
 
-### Required for SMS Features
 ```
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Twilio (required for SMS features)
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxx
 TWILIO_PHONE_NUMBER=+16185551234
 OWNER_PHONE=+16185551234
-```
 
-### Required for Payment Links
-```
-STRIPE_SECRET_KEY=your_stripe_secret_key_here
-```
+# Stripe (required for payment links)
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_webhook_secret
 
-### Optional (for cron security)
-```
-CRON_SECRET=your-random-secret-string
-```
-
-### Your Site URL (for links in SMS)
-```
+# Site URL (for links in messages)
 NEXT_PUBLIC_SITE_URL=https://kingcitydisposal.com
+
+# Cron security (optional)
+CRON_SECRET=your-random-secret
 ```
 
 ---
 
-## Step 3: Twilio Webhook Setup
+## Step 3: Twilio Webhooks
 
-### Voice Webhook (Missed Calls)
-1. Go to [Twilio Console](https://console.twilio.com)
-2. Phone Numbers → Manage → Active Numbers
-3. Click your number
-4. Under **Voice & Fax**:
-   - **A CALL COMES IN**: Webhook → `https://yourdomain.com/api/twilio/voice`
-   - **CALL STATUS CHANGES**: Webhook → `https://yourdomain.com/api/twilio/voice/status`
+Go to **Twilio Console → Phone Numbers → Your Number**
 
-### SMS Webhook (Customer Replies)
-1. Same page, under **Messaging**:
-   - **A MESSAGE COMES IN**: Webhook → `https://yourdomain.com/api/twilio/sms`
+### Voice (Missed Calls)
+- **A CALL COMES IN**: `https://yourdomain.com/api/twilio/voice`
+- **CALL STATUS CHANGES**: `https://yourdomain.com/api/twilio/voice/status`
+
+### SMS (Customer/Owner Commands)
+- **A MESSAGE COMES IN**: `https://yourdomain.com/api/twilio/sms`
 
 ---
 
-## Step 4: Deploy to Vercel
+## Step 4: Stripe Webhook
+
+Go to **Stripe Dashboard → Developers → Webhooks**
+
+1. Add endpoint: `https://yourdomain.com/api/stripe/webhook`
+2. Select event: `checkout.session.completed`
+3. Copy signing secret to `STRIPE_WEBHOOK_SECRET`
+
+---
+
+## Step 5: Deploy
 
 ```bash
-# If using Vercel CLI
-vercel --prod
-
-# Or just push to GitHub - auto-deploys
 git add .
-git commit -m "Add SMS features"
+git commit -m "Add all features"
 git push
 ```
 
-The `vercel.json` file configures the daily reminder cron job automatically.
+Vercel auto-deploys and sets up cron jobs from `vercel.json`.
 
 ---
 
-## Step 5: Test Everything
+## Owner SMS Commands
 
-### Test Missed Call Text-Back
-1. Call your Twilio number from a different phone
-2. Don't answer (let it ring 20+ seconds)
-3. You should receive a text offering to help
+Text your Twilio number from `OWNER_PHONE`:
 
-### Test Customer SMS Commands
-Text your Twilio number:
-- `STATUS` → Should say no active rental found
-- `HELP` → Should list available commands
-- `123 Main St, Flora IL` → Should forward to owner as new lead
+| Command | Example | What It Does |
+|---------|---------|--------------|
+| `ADD` | `ADD 123 Main St, 20yd, tomorrow` | Add new job |
+| `WEIGHT` | `WEIGHT 5280 #42` | Record weight, calc overage |
+| `ROUTE` | `ROUTE` | Get today's optimized route |
+| `LIST` | `LIST` | Show today's jobs |
+| `DELIVERED` | `DELIVERED #42` | Mark as delivered |
+| `PICKEDUP` | `PICKEDUP #42` | Mark as completed |
+| `SEND` | `SEND` | Send pending overage invoice |
+| `HELP` | `HELP` | Show all commands |
 
-### Test Reminders (Manual Trigger)
-```bash
-curl https://yourdomain.com/api/cron/reminders
-```
+### Photo Capture
+Just text a photo! It auto-attaches to the most recent delivery.
 
-### Test Container Board
-1. Go to `/admin` and login
-2. Click "Container Board" link (you may need to add this to nav)
-3. Should show all active rentals with status colors
+---
+
+## Customer SMS Commands
+
+Customers text your Twilio number:
+
+| Command | What It Does |
+|---------|--------------|
+| `STATUS` | Check their rental status |
+| `EXTEND` | Request extension (sends payment link) |
+| `EXTEND 5` | Request 5-day extension |
+| `PICKUP` | Request early pickup |
+| `HELP` | Show available commands |
+
+---
+
+## Cron Jobs (Automatic)
+
+| Job | Time (CST) | What It Does |
+|-----|------------|--------------|
+| Daily Route | 6am | Texts optimized route to owner |
+| Reminders | 8am | Day-before delivery/pickup texts |
+| Late Fees | 9am | Texts overdue customers |
+
+**Note:** Vercel cron requires Pro plan. Free alternative: [cron-job.org](https://cron-job.org)
+
+---
+
+## New Pages
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Driver Checklist | `/driver` | Mobile-friendly, one-tap delivered/pickup |
+| Container Board | `/admin/containers` | See all active dumpsters |
+| Capacity Calendar | `/admin/capacity` | Prevent overbooking |
 
 ---
 
 ## File Structure
 
 ```
-src/
-├── app/
-│   ├── api/
-│   │   ├── twilio/
-│   │   │   ├── voice/
-│   │   │   │   ├── route.js        # Incoming calls
-│   │   │   │   └── status/
-│   │   │   │       └── route.js    # Missed call handler
-│   │   │   └── sms/
-│   │   │       └── route.js        # Incoming SMS
-│   │   ├── cron/
-│   │   │   └── reminders/
-│   │   │       └── route.js        # Daily reminders
-│   │   └── stripe/
-│   │       └── payment-link/
-│   │           └── route.js        # Generate payment links
-│   └── admin/
-│       └── containers/
-│           └── page.jsx            # Container board
-├── config.js                        # Updated with new settings
-└── ...
+src/app/
+├── api/
+│   ├── twilio/
+│   │   ├── voice/route.js           # Incoming calls
+│   │   ├── voice/status/route.js    # Missed call text-back
+│   │   └── sms/route.js             # All SMS commands
+│   ├── cron/
+│   │   ├── daily-route/route.js     # 6am route text
+│   │   ├── reminders/route.js       # Delivery/pickup reminders
+│   │   └── late-fees/route.js       # Overdue notifications
+│   └── stripe/
+│       ├── payment-link/route.js    # Generate payment links
+│       └── webhook/route.js         # Handle payments
+├── driver/page.jsx                   # Driver checklist
+├── admin/
+│   ├── containers/page.jsx          # Container board
+│   └── capacity/page.jsx            # Capacity calendar
+├── payment-success/page.jsx
+└── extension-confirmed/page.jsx
 ```
 
 ---
 
-## How Each Feature Works
+## Testing Each Feature
+
+### 1. Missed Call Text-Back
+- Call Twilio number from different phone
+- Don't answer, let it ring 20+ sec
+- Should receive text offering help
+
+### 2. Owner SMS Commands
+- Text `HELP` from owner phone
+- Text `ADD 123 Test St, 20yd, tomorrow`
+- Text `ROUTE`
+- Text `LIST`
+
+### 3. Customer SMS
+- Text `STATUS` from non-owner phone
+- Text `HELP`
+
+### 4. Driver Checklist
+- Go to `/driver` on mobile
+- Tap a delivery, tap "DELIVERED"
+
+### 5. Container Board
+- Go to `/admin/containers`
+- Should show color-coded active rentals
+
+### 6. Capacity Calendar
+- Go to `/admin/capacity`
+- Should show bookings per day by size
+
+### 7. Daily Route (manual test)
+```bash
+curl https://yourdomain.com/api/cron/daily-route
+```
+
+### 8. Late Fees (manual test)
+```bash
+curl https://yourdomain.com/api/cron/late-fees
+```
+
+---
+
+## What Each Feature Does
 
 ### Missed Call Text-Back
 ```
-Customer calls → You don't answer → System texts:
+Customer calls → You miss it → They get:
 "Hey! This is King City Disposal. Sorry we missed your call!
-Need a dumpster? Just reply with your address..."
+Need a dumpster? Reply with your address..."
 ```
 
-### Customer Self-Service SMS
+### Daily Route Text (6am)
 ```
-Customer texts "EXTEND" →
-System finds their active rental →
-Calculates extension price →
-Sends payment link (if Stripe enabled) or notifies you
+☀️ GOOD MORNING!
+
+🚛 TODAY'S ROUTE (4 stops)
+
+1. 📦 DELIVER 20yd
+   123 Main St
+   👤 John Smith
+   📞 (618) 555-1234
+
+2. 🚛 PICKUP 14yd
+   456 Oak St
+
+...
+
+🗺️ google.com/maps/dir/...
 ```
 
+### Late Fee Text (Day 1)
 ```
-Customer texts "PICKUP" →
-System marks pickup requested →
-Notifies you immediately →
-Confirms to customer
-```
+Hi John! Your dumpster rental ended yesterday.
 
-```
-Customer texts "STATUS" →
-System looks up their rental →
-Sends: address, dumpster size, delivery date, pickup date
-```
-
-### Auto Reminders
-**Day before delivery:**
-```
-"Hi John! Your 20 Yard Dumpster arrives TOMORROW between 8am-12pm.
 📍 123 Main St
-Please make sure the area is clear..."
+
+Late fee: $25/day
+Current charge: $25
+
+Reply PICKUP when you're ready!
 ```
 
-**Day before pickup:**
+### Late Fee Text (Day 4+)
 ```
-"Hi John! Your rental ends TOMORROW...
-Need more time? Reply EXTEND for $20/day"
-```
+URGENT: Your dumpster is 4 days overdue.
 
-**2 days after completion:**
-```
-"Thanks for choosing King City Disposal!
-⭐ Leave a review: [Google link]"
-```
+📍 123 Main St
+💰 Late fees: $100 (and growing)
 
-### Container Board
-Visual dashboard showing:
-- 🔴 **Overdue** - Past pickup date
-- 🟠 **Pickup Today** - Due today
-- 🟡 **Ending Soon** - Due tomorrow
-- 🟢 **Active** - Still has time
-
-Quick actions: Call customer, Open in Maps, View details
-
----
-
-## Troubleshooting
-
-### SMS not sending?
-1. Check Twilio credentials are correct
-2. Make sure phone numbers have +1 prefix
-3. Check Vercel function logs for errors
-
-### Reminders not running?
-1. Vercel cron only works on Pro plan
-2. Alternative: Use [cron-job.org](https://cron-job.org) (free)
-3. Set URL to `https://yourdomain.com/api/cron/reminders`
-
-### Payment links not working?
-1. Verify Stripe key is `sk_live_...` not `sk_test_...`
-2. Check Stripe dashboard for errors
-
-### Container board empty?
-1. Make sure you have bookings with status `confirmed` or `delivered`
-2. Check browser console for API errors
-
----
-
-## Adding Container Board to Admin Nav
-
-Add this link to your admin page navigation:
-
-```jsx
-<Link href="/admin/containers" className="btn-secondary">
-  Container Board
-</Link>
+Please call us ASAP: (618) 214-7656
 ```
 
 ---
 
-## Need Help?
+## Revenue Impact
 
-- Check Vercel function logs for errors
-- Test webhooks with [ngrok](https://ngrok.com) locally
-- Twilio has great debugging tools in their console
+These features help you:
+
+- **Capture 30-40% more leads** (missed calls → texts)
+- **Save 1-2 hours/day** (no manual spreadsheets)
+- **Collect late fees** you were missing
+- **Get more Google reviews** (auto-request)
+- **Reduce no-shows** (day-before reminders)
+- **Scale to 20+ dumpsters** (capacity calendar)
 
 ---
 
-**You're all set!** 🎉
-
-These features will:
-- Capture leads you'd otherwise miss (missed calls)
-- Reduce support calls (self-service SMS)
-- Improve customer experience (reminders)
-- Get more Google reviews (auto-requests)
-- Speed up payments (Stripe links)
-- Keep you organized (container board)
+You're all set! 🎉
