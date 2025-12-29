@@ -2,108 +2,100 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { config } from '../config'
-import { Loader2 } from 'lucide-react'
+import { Loader2, MapPin, AlertCircle } from 'lucide-react'
 
 const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
 
 export default function BookingDetailMap({ lat, lng, address, placementNotes }) {
-  const wrapperRef = useRef(null)
-  const mapRef = useRef(null)
-  const markerRef = useRef(null)
   const mapContainerRef = useRef(null)
-  const initialized = useRef(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const mapInstanceRef = useRef(null)
+  const markerRef = useRef(null)
+  const [status, setStatus] = useState('loading') // 'loading' | 'ready' | 'error'
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    console.log('[BookingDetailMap] Component mounted')
-    console.log('[BookingDetailMap] Props:', { lat, lng, address, placementNotes })
-    console.log('[BookingDetailMap] API Key from config:', config.googleMaps?.apiKey ? 'EXISTS' : 'MISSING')
-    console.log('[BookingDetailMap] Using API Key:', GOOGLE_MAPS_KEY ? `${GOOGLE_MAPS_KEY.slice(0, 10)}...` : 'NONE')
+    let isMounted = true
+    let checkInterval = null
 
-    // Prevent double-initialization
-    if (initialized.current) {
-      console.log('[BookingDetailMap] Already initialized, skipping')
-      return
+    console.log('[Map] Starting with props:', { lat, lng, address })
+
+    // Helper to geocode address
+    const geocodeAddress = (addr) => {
+      return new Promise((resolve, reject) => {
+        if (!window.google?.maps?.Geocoder) {
+          reject(new Error('Geocoder not available'))
+          return
+        }
+        const geocoder = new window.google.maps.Geocoder()
+        geocoder.geocode({ address: addr }, (results, geoStatus) => {
+          console.log('[Map] Geocode result:', geoStatus, results?.length)
+          if (geoStatus === 'OK' && results[0]) {
+            resolve({
+              lat: results[0].geometry.location.lat(),
+              lng: results[0].geometry.location.lng()
+            })
+          } else {
+            reject(new Error(`Geocode failed: ${geoStatus}`))
+          }
+        })
+      })
     }
 
-    if (!wrapperRef.current) {
-      console.log('[BookingDetailMap] ERROR: wrapperRef is null')
-      return
-    }
-
-    initialized.current = true
-    console.log('[BookingDetailMap] Initializing...')
-
-    // Create map container completely outside React
-    const mapContainer = document.createElement('div')
-    mapContainer.style.width = '100%'
-    mapContainer.style.height = '100%'
-    mapContainer.style.position = 'absolute'
-    mapContainer.style.top = '0'
-    mapContainer.style.left = '0'
-    wrapperRef.current.appendChild(mapContainer)
-    mapContainerRef.current = mapContainer
-
-    console.log('[BookingDetailMap] Map container created, dimensions:', {
-      width: mapContainer.offsetWidth,
-      height: mapContainer.offsetHeight,
-      parentWidth: wrapperRef.current.offsetWidth,
-      parentHeight: wrapperRef.current.offsetHeight
-    })
-
-    const initMap = () => {
-      console.log('[BookingDetailMap] initMap called')
-      if (mapRef.current) {
-        console.log('[BookingDetailMap] Map already exists, skipping')
+    // Create the map
+    const createMap = async () => {
+      if (!isMounted || !mapContainerRef.current) {
+        console.log('[Map] Not mounted or no container')
         return
       }
 
-      if (lat && lng) {
-        console.log('[BookingDetailMap] Using provided coordinates:', { lat, lng })
-        createMap(parseFloat(lat), parseFloat(lng), true)
+      // Already have a map?
+      if (mapInstanceRef.current) {
+        console.log('[Map] Map already exists')
+        return
+      }
+
+      let mapLat, mapLng
+      let hasPlacementCoords = false
+
+      // Check if we have valid coordinates
+      const hasValidCoords = lat !== null && lat !== undefined && lng !== null && lng !== undefined &&
+                             !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))
+
+      if (hasValidCoords) {
+        console.log('[Map] Using provided coordinates:', lat, lng)
+        mapLat = parseFloat(lat)
+        mapLng = parseFloat(lng)
+        hasPlacementCoords = true
       } else if (address) {
-        console.log('[BookingDetailMap] Geocoding address:', address)
+        console.log('[Map] No coordinates, geocoding address:', address)
         try {
-          const geocoder = new window.google.maps.Geocoder()
-          geocoder.geocode({ address }, (results, status) => {
-            console.log('[BookingDetailMap] Geocode result:', { status, resultsCount: results?.length })
-            if (status === 'OK' && results[0]) {
-              const location = results[0].geometry.location
-              createMap(location.lat(), location.lng(), false)
-            } else {
-              console.log('[BookingDetailMap] Geocode failed:', status)
-              setError(`Geocode failed: ${status}`)
-              setLoading(false)
-            }
-          })
+          const coords = await geocodeAddress(address)
+          mapLat = coords.lat
+          mapLng = coords.lng
+          console.log('[Map] Geocoded to:', mapLat, mapLng)
         } catch (err) {
-          console.error('[BookingDetailMap] Geocoder error:', err)
-          setError(`Geocoder error: ${err.message}`)
-          setLoading(false)
+          console.error('[Map] Geocoding failed:', err)
+          if (isMounted) {
+            setErrorMessage(`Could not locate address on map: ${err.message}`)
+            setStatus('error')
+          }
+          return
         }
       } else {
-        console.log('[BookingDetailMap] No lat/lng or address provided')
-        setError('No location provided')
-        setLoading(false)
-      }
-    }
-
-    const createMap = (mapLat, mapLng, hasPlacement) => {
-      console.log('[BookingDetailMap] createMap called:', { mapLat, mapLng, hasPlacement })
-
-      if (mapRef.current || !mapContainerRef.current) {
-        console.log('[BookingDetailMap] Cannot create map - already exists or no container')
+        console.log('[Map] No address or coordinates provided')
+        if (isMounted) {
+          setErrorMessage('No address provided')
+          setStatus('error')
+        }
         return
       }
 
-      const center = { lat: mapLat, lng: mapLng }
-
+      // Create the map
       try {
-        console.log('[BookingDetailMap] Creating Google Map...')
+        console.log('[Map] Creating map at:', mapLat, mapLng)
         const map = new window.google.maps.Map(mapContainerRef.current, {
-          center,
-          zoom: 20,
+          center: { lat: mapLat, lng: mapLng },
+          zoom: 19,
           mapTypeId: 'satellite',
           tilt: 0,
           disableDefaultUI: true,
@@ -111,151 +103,136 @@ export default function BookingDetailMap({ lat, lng, address, placementNotes }) 
           fullscreenControl: true,
         })
 
-        mapRef.current = map
-        console.log('[BookingDetailMap] Map created successfully')
+        mapInstanceRef.current = map
 
-        if (hasPlacement) {
-          const marker = new window.google.maps.Marker({
-            position: center,
-            map,
-            icon: {
-              path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-              scale: 8,
-              fillColor: '#22c55e',
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 3,
-              rotation: 0,
-            },
-            title: 'Dumpster Placement',
-          })
-          markerRef.current = marker
-          console.log('[BookingDetailMap] Marker added')
+        // Add marker
+        const marker = new window.google.maps.Marker({
+          position: { lat: mapLat, lng: mapLng },
+          map,
+          icon: hasPlacementCoords ? {
+            path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+            scale: 8,
+            fillColor: '#22c55e',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 3,
+          } : undefined,
+          title: hasPlacementCoords ? 'Dumpster Placement' : address,
+        })
+        markerRef.current = marker
 
+        // Add info window for placement
+        if (hasPlacementCoords || placementNotes) {
           const infoWindow = new window.google.maps.InfoWindow({
             content: `
-              <div style="padding: 8px; color: #000;">
-                <strong>Dumpster Placement</strong><br/>
-                <span style="color: #666;">${placementNotes || 'No notes'}</span>
+              <div style="padding: 8px; color: #000; max-width: 200px;">
+                <strong>${hasPlacementCoords ? 'Dumpster Placement' : 'Delivery Location'}</strong>
+                ${placementNotes ? `<br/><span style="color: #666; font-size: 12px;">${placementNotes}</span>` : ''}
               </div>
             `,
           })
-
           marker.addListener('click', () => infoWindow.open(map, marker))
           infoWindow.open(map, marker)
-        } else {
-          new window.google.maps.Marker({
-            position: center,
-            map,
-            title: address,
-          })
         }
 
-        setLoading(false)
-        console.log('[BookingDetailMap] Map setup complete')
+        if (isMounted) {
+          setStatus('ready')
+        }
+        console.log('[Map] Map created successfully')
       } catch (err) {
-        console.error('[BookingDetailMap] Error creating map:', err)
-        setError(`Map creation failed: ${err.message}`)
-        setLoading(false)
+        console.error('[Map] Error creating map:', err)
+        if (isMounted) {
+          setErrorMessage(`Map error: ${err.message}`)
+          setStatus('error')
+        }
       }
     }
 
-    // Load Google Maps
-    console.log('[BookingDetailMap] Checking for Google Maps API...')
-    console.log('[BookingDetailMap] window.google exists:', !!window.google)
-    console.log('[BookingDetailMap] window.google.maps exists:', !!window.google?.maps)
-    console.log('[BookingDetailMap] window.google.maps.Geocoder exists:', !!window.google?.maps?.Geocoder)
+    // Load Google Maps API if needed
+    const loadMapsAndCreate = () => {
+      if (window.google?.maps?.Map) {
+        console.log('[Map] Google Maps already available')
+        createMap()
+      } else {
+        console.log('[Map] Waiting for Google Maps...')
+        // Check if script exists
+        let script = document.querySelector('script[src*="maps.googleapis.com"]')
+        if (!script) {
+          console.log('[Map] Adding Google Maps script')
+          script = document.createElement('script')
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places,geocoding`
+          script.async = true
+          document.head.appendChild(script)
+        }
 
-    if (window.google?.maps?.Geocoder) {
-      console.log('[BookingDetailMap] Google Maps already loaded, initializing map')
-      initMap()
-    } else {
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
-      console.log('[BookingDetailMap] Existing Google Maps script found:', !!existingScript)
-
-      const waitForMaps = () => {
-        console.log('[BookingDetailMap] Waiting for Google Maps to load...')
+        // Wait for it to load
         let attempts = 0
-        const checkInterval = setInterval(() => {
+        checkInterval = setInterval(() => {
           attempts++
-          if (window.google?.maps?.Geocoder) {
-            console.log('[BookingDetailMap] Google Maps loaded after', attempts, 'attempts')
+          if (window.google?.maps?.Map) {
+            console.log('[Map] Google Maps loaded after', attempts * 100, 'ms')
             clearInterval(checkInterval)
-            initMap()
+            createMap()
           } else if (attempts > 100) {
-            console.log('[BookingDetailMap] Timeout waiting for Google Maps')
+            console.log('[Map] Timeout waiting for Google Maps')
             clearInterval(checkInterval)
-            setError('Google Maps failed to load')
-            setLoading(false)
+            if (isMounted) {
+              setErrorMessage('Google Maps failed to load. Please refresh the page.')
+              setStatus('error')
+            }
           }
         }, 100)
       }
-
-      if (existingScript) {
-        console.log('[BookingDetailMap] Using existing script, waiting for load...')
-        waitForMaps()
-      } else {
-        console.log('[BookingDetailMap] Loading Google Maps script...')
-        const script = document.createElement('script')
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places,geocoding`
-        script.async = true
-        script.defer = true
-        script.onload = () => {
-          console.log('[BookingDetailMap] Script onload fired')
-          waitForMaps()
-        }
-        script.onerror = (err) => {
-          console.error('[BookingDetailMap] Script load error:', err)
-          setError('Failed to load Google Maps script')
-          setLoading(false)
-        }
-        document.head.appendChild(script)
-        console.log('[BookingDetailMap] Script added to head')
-      }
     }
 
-    // Cleanup - manually remove everything we created
+    loadMapsAndCreate()
+
+    // Cleanup
     return () => {
-      console.log('[BookingDetailMap] Cleanup running')
+      isMounted = false
+      if (checkInterval) clearInterval(checkInterval)
       if (markerRef.current) {
         markerRef.current.setMap(null)
         markerRef.current = null
       }
-      mapRef.current = null
-      if (mapContainerRef.current && wrapperRef.current) {
-        try {
-          wrapperRef.current.removeChild(mapContainerRef.current)
-        } catch (e) {
-          // Already removed
-        }
-        mapContainerRef.current = null
-      }
-      initialized.current = false
+      mapInstanceRef.current = null
     }
   }, [lat, lng, address, placementNotes])
 
   return (
-    <div className="w-full h-[300px] md:h-[400px] bg-dark-700 relative">
-      {/*
-        This wrapper uses dangerouslySetInnerHTML with empty string to tell React
-        "don't touch anything inside here". We then use vanilla JS to add the map.
-      */}
+    <div className="w-full h-[300px] md:h-[400px] bg-dark-700 relative overflow-hidden">
+      {/* Map container - React won't touch children after initial render */}
       <div
-        ref={wrapperRef}
+        ref={mapContainerRef}
         className="absolute inset-0"
-        dangerouslySetInnerHTML={{ __html: '' }}
+        style={{ minHeight: '300px' }}
       />
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-dark-700 z-10 pointer-events-none">
-          <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+
+      {/* Loading overlay */}
+      {status === 'loading' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-700 z-10">
+          <Loader2 className="w-8 h-8 text-primary-400 animate-spin mb-3" />
+          <p className="text-dark-400 text-sm">Loading map...</p>
         </div>
       )}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-dark-700 z-10">
-          <div className="text-center p-4">
-            <p className="text-red-400 text-sm mb-2">Map Error</p>
-            <p className="text-dark-400 text-xs">{error}</p>
-          </div>
+
+      {/* Error overlay */}
+      {status === 'error' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-700 z-10 p-4">
+          <AlertCircle className="w-10 h-10 text-red-400 mb-3" />
+          <p className="text-white font-medium mb-1">Could not load map</p>
+          <p className="text-dark-400 text-sm text-center">{errorMessage}</p>
+          {address && (
+            <a
+              href={`https://www.google.com/maps/search/${encodeURIComponent(address)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 text-primary-400 hover:text-primary-300 text-sm flex items-center gap-1"
+            >
+              <MapPin className="w-4 h-4" />
+              View on Google Maps
+            </a>
+          )}
         </div>
       )}
     </div>
