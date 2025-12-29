@@ -74,7 +74,8 @@ export default function ChatbotWidget() {
   const messagesEndRef = useRef(null)
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
-  const markerRef = useRef(null)
+  const polygonRef = useRef(null)
+  const dumpsterCenterRef = useRef({ lat: 0, lng: 0 })
   const centerLatRef = useRef(null)
   const centerLngRef = useRef(null)
 
@@ -108,9 +109,9 @@ export default function ChatbotWidget() {
         setMapLoaded(false)
         setDumpsterPlaced(false)
         setRotation(0)
-        if (markerRef.current) {
-          markerRef.current.setMap(null)
-          markerRef.current = null
+        if (polygonRef.current) {
+          polygonRef.current.setMap(null)
+          polygonRef.current = null
         }
         mapRef.current = null
       }
@@ -180,60 +181,110 @@ export default function ChatbotWidget() {
     })
   }
 
+  // Calculate polygon corners based on center, dimensions, and rotation
+  const calculatePolygonCoords = (centerLat, centerLng, rotationDeg) => {
+    // Dumpster dimensions: 22ft x 8ft
+    const lengthFt = 22
+    const widthFt = 8
+    const lengthM = lengthFt * 0.3048
+    const widthM = widthFt * 0.3048
+
+    // Convert to degrees
+    const metersPerDegreeLat = 111320
+    const metersPerDegreeLng = 111320 * Math.cos(centerLat * Math.PI / 180)
+    const halfLengthDeg = (lengthM / 2) / metersPerDegreeLng
+    const halfWidthDeg = (widthM / 2) / metersPerDegreeLat
+
+    // Corner offsets (before rotation)
+    const corners = [
+      { dx: -halfLengthDeg, dy: -halfWidthDeg },
+      { dx: halfLengthDeg, dy: -halfWidthDeg },
+      { dx: halfLengthDeg, dy: halfWidthDeg },
+      { dx: -halfLengthDeg, dy: halfWidthDeg },
+    ]
+
+    // Apply rotation
+    const radians = (rotationDeg * Math.PI) / 180
+    const cosR = Math.cos(radians)
+    const sinR = Math.sin(radians)
+
+    return corners.map(corner => {
+      const rotatedDx = corner.dx * cosR - corner.dy * sinR
+      const rotatedDy = corner.dx * sinR + corner.dy * cosR
+      return {
+        lat: centerLat + rotatedDy,
+        lng: centerLng + rotatedDx
+      }
+    })
+  }
+
   const placeDumpster = () => {
     if (!mapRef.current || !window.google?.maps) return
 
     const map = mapRef.current
     const center = map.getCenter()
+    const centerLat = center.lat()
+    const centerLng = center.lng()
 
-    // Create a draggable marker for the dumpster
-    const dumpsterMarker = new window.google.maps.Marker({
-      position: center,
+    // Store center position
+    dumpsterCenterRef.current = { lat: centerLat, lng: centerLng }
+
+    // Calculate initial polygon coordinates
+    const coords = calculatePolygonCoords(centerLat, centerLng, 0)
+
+    // Create draggable polygon for the dumpster
+    const polygon = new window.google.maps.Polygon({
+      paths: coords,
       map: map,
       draggable: true,
-      icon: {
-        path: 'M -15,-8 L 15,-8 L 15,8 L -15,8 Z',
-        fillColor: '#22c55e',
-        fillOpacity: 0.7,
-        strokeColor: '#22c55e',
-        strokeWeight: 3,
-        scale: 1.5,
-        rotation: rotation,
-      },
-      title: 'Drag to position dumpster'
+      geodesic: true,
+      fillColor: '#22c55e',
+      fillOpacity: 0.5,
+      strokeColor: '#22c55e',
+      strokeWeight: 3,
+      strokeOpacity: 1,
     })
 
-    markerRef.current = dumpsterMarker
+    polygonRef.current = polygon
 
     // Set initial position
     setBookingData(prev => ({
       ...prev,
-      placementLat: center.lat(),
-      placementLng: center.lng()
+      placementLat: centerLat,
+      placementLng: centerLng
     }))
 
     // Update position when dragged
-    dumpsterMarker.addListener('dragend', () => {
-      const pos = dumpsterMarker.getPosition()
+    polygon.addListener('dragend', () => {
+      // Calculate new center from polygon bounds
+      const path = polygon.getPath()
+      let sumLat = 0, sumLng = 0
+      path.forEach(point => {
+        sumLat += point.lat()
+        sumLng += point.lng()
+      })
+      const newCenterLat = sumLat / 4
+      const newCenterLng = sumLng / 4
+
+      dumpsterCenterRef.current = { lat: newCenterLat, lng: newCenterLng }
+
       setBookingData(prev => ({
         ...prev,
-        placementLat: pos.lat(),
-        placementLng: pos.lng()
+        placementLat: newCenterLat,
+        placementLng: newCenterLng
       }))
     })
 
     setDumpsterPlaced(true)
-    setRotation(0) // Reset rotation when placing new dumpster
+    setRotation(0)
   }
 
-  // Update marker icon when rotation changes
+  // Update polygon when rotation changes
   useEffect(() => {
-    if (markerRef.current && dumpsterPlaced) {
-      const currentIcon = markerRef.current.getIcon()
-      markerRef.current.setIcon({
-        ...currentIcon,
-        rotation: rotation
-      })
+    if (polygonRef.current && dumpsterPlaced) {
+      const { lat, lng } = dumpsterCenterRef.current
+      const newCoords = calculatePolygonCoords(lat, lng, rotation)
+      polygonRef.current.setPath(newCoords)
     }
   }, [rotation, dumpsterPlaced])
 
