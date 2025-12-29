@@ -50,7 +50,7 @@ function PlacementMap({ address, dumpsterSize, onPositionChange }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const rectangleRef = useRef(null)
-  const markerRef = useRef(null)
+  const circleRef = useRef(null)
   const initializedRef = useRef(false)
 
   useEffect(() => {
@@ -61,35 +61,41 @@ function PlacementMap({ address, dumpsterSize, onPositionChange }) {
     let isActive = true
 
     const initMap = async () => {
-      // Wait for Google Maps to load
+      // Wait for Google Maps to load using callback method
       const waitForGoogle = () => {
         return new Promise((resolve) => {
-          if (window.google?.maps) {
+          // Already loaded
+          if (window.google?.maps?.Geocoder) {
             resolve(window.google.maps)
             return
           }
-          
-          // Check if script exists
-          if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
-            const script = document.createElement('script')
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=geometry&loading=async`
-            script.async = true
-            script.defer = true
-            document.head.appendChild(script)
+
+          // Check if script already exists
+          if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+            // Wait for it to fully load
+            const interval = setInterval(() => {
+              if (window.google?.maps?.Geocoder) {
+                clearInterval(interval)
+                resolve(window.google.maps)
+              }
+            }, 100)
+            setTimeout(() => { clearInterval(interval); resolve(null) }, 10000)
+            return
           }
-          
-          const interval = setInterval(() => {
-            if (window.google?.maps) {
-              clearInterval(interval)
-              resolve(window.google.maps)
-            }
-          }, 100)
-          
-          // Timeout after 10 seconds
-          setTimeout(() => {
-            clearInterval(interval)
-            resolve(null)
-          }, 10000)
+
+          // Create callback for when script loads
+          const callbackName = `gmapsCallback_${Date.now()}`
+          window[callbackName] = () => {
+            delete window[callbackName]
+            resolve(window.google.maps)
+          }
+
+          const script = document.createElement('script')
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=geometry&callback=${callbackName}`
+          script.async = true
+          script.defer = true
+          script.onerror = () => { delete window[callbackName]; resolve(null) }
+          document.head.appendChild(script)
         })
       }
 
@@ -99,10 +105,13 @@ function PlacementMap({ address, dumpsterSize, onPositionChange }) {
       initializedRef.current = true
 
       const geocoder = new maps.Geocoder()
-      
+
       geocoder.geocode({ address }, (results, status) => {
         if (!isActive || !containerRef.current) return
-        if (status !== 'OK' || !results?.[0]) return
+        if (status !== 'OK' || !results?.[0]) {
+          console.error('Geocoding failed:', status)
+          return
+        }
 
         const location = results[0].geometry.location
         const lat = location.lat()
@@ -119,62 +128,76 @@ function PlacementMap({ address, dumpsterSize, onPositionChange }) {
         })
         mapRef.current = map
 
-        // Add address marker (simple circle)
-        const marker = new maps.Marker({
-          position: location,
-          map: map,
-          icon: {
-            path: maps.SymbolPath.CIRCLE,
-            scale: 8,
+        // Wait for map to be ready before adding overlays
+        map.addListener('idle', () => {
+          // Only add once
+          if (rectangleRef.current) return
+
+          // Add address marker as a Circle (not deprecated Marker)
+          const circle = new maps.Circle({
+            center: location,
+            radius: 2,
+            map: map,
             fillColor: '#ffffff',
             fillOpacity: 1,
             strokeColor: '#22c55e',
             strokeWeight: 3,
-          },
-        })
-        markerRef.current = marker
+            clickable: false,
+            zIndex: 1,
+          })
+          circleRef.current = circle
 
-        // Calculate dumpster rectangle
-        const dumpster = config.dumpsters.find(d => d.id === dumpsterSize)
-        const lengthFt = dumpster?.dimensions?.length || 22
-        const widthFt = dumpster?.dimensions?.width || 8
-        const lengthM = lengthFt * 0.3048
-        const widthM = widthFt * 0.3048
+          // Calculate dumpster rectangle (22ft x 8ft = ~6.7m x 2.4m)
+          const dumpster = config.dumpsters.find(d => d.id === dumpsterSize)
+          const lengthFt = dumpster?.dimensions?.length || 22
+          const widthFt = dumpster?.dimensions?.width || 8
+          const lengthM = lengthFt * 0.3048
+          const widthM = widthFt * 0.3048
 
-        const offsetLat = lat + 0.00006
-        const offsetLng = lng + 0.0001
+          // Offset rectangle 12 meters to the right of address marker
+          const metersPerDegreeLat = 111320
+          const metersPerDegreeLng = 111320 * Math.cos(lat * Math.PI / 180)
 
-        const metersPerDegreeLat = 111320
-        const metersPerDegreeLng = 111320 * Math.cos(lat * Math.PI / 180)
-        const halfLengthDeg = (lengthM / 2) / metersPerDegreeLng
-        const halfWidthDeg = (widthM / 2) / metersPerDegreeLat
+          const offsetMeters = 12
+          const offsetLat = lat
+          const offsetLng = lng + (offsetMeters / metersPerDegreeLng)
 
-        // Create draggable rectangle
-        const rectangle = new maps.Rectangle({
-          bounds: {
-            north: offsetLat + halfWidthDeg,
-            south: offsetLat - halfWidthDeg,
-            east: offsetLng + halfLengthDeg,
-            west: offsetLng - halfLengthDeg,
-          },
-          draggable: true,
-          editable: false,
-          fillColor: '#22c55e',
-          fillOpacity: 0.4,
-          strokeColor: '#22c55e',
-          strokeWeight: 3,
-          map: map,
-        })
-        rectangleRef.current = rectangle
+          const halfLengthDeg = (lengthM / 2) / metersPerDegreeLng
+          const halfWidthDeg = (widthM / 2) / metersPerDegreeLat
 
-        // Set initial position
-        onPositionChange?.(offsetLat, offsetLng)
+          // Create draggable rectangle
+          const rectangle = new maps.Rectangle({
+            bounds: {
+              north: offsetLat + halfWidthDeg,
+              south: offsetLat - halfWidthDeg,
+              east: offsetLng + halfLengthDeg,
+              west: offsetLng - halfLengthDeg,
+            },
+            draggable: true,
+            editable: true,
+            fillColor: '#22c55e',
+            fillOpacity: 0.45,
+            strokeColor: '#22c55e',
+            strokeWeight: 4,
+            strokeOpacity: 1,
+            map: map,
+            zIndex: 2,
+          })
+          rectangleRef.current = rectangle
 
-        // Update on drag
-        rectangle.addListener('dragend', () => {
-          const bounds = rectangle.getBounds()
-          const center = bounds.getCenter()
-          onPositionChange?.(center.lat(), center.lng())
+          // Set initial position
+          onPositionChange?.(offsetLat, offsetLng)
+
+          // Update on drag or resize
+          const updatePosition = () => {
+            const bounds = rectangle.getBounds()
+            if (bounds) {
+              const center = bounds.getCenter()
+              onPositionChange?.(center.lat(), center.lng())
+            }
+          }
+          rectangle.addListener('dragend', updatePosition)
+          rectangle.addListener('bounds_changed', updatePosition)
         })
       })
     }
@@ -184,17 +207,17 @@ function PlacementMap({ address, dumpsterSize, onPositionChange }) {
     // Cleanup function
     return () => {
       isActive = false
-      
+
       // Clear all listeners and references
       if (rectangleRef.current) {
         window.google?.maps?.event?.clearInstanceListeners(rectangleRef.current)
         rectangleRef.current.setMap(null)
         rectangleRef.current = null
       }
-      if (markerRef.current) {
-        window.google?.maps?.event?.clearInstanceListeners(markerRef.current)
-        markerRef.current.setMap(null)
-        markerRef.current = null
+      if (circleRef.current) {
+        window.google?.maps?.event?.clearInstanceListeners(circleRef.current)
+        circleRef.current.setMap(null)
+        circleRef.current = null
       }
       if (mapRef.current) {
         window.google?.maps?.event?.clearInstanceListeners(mapRef.current)
