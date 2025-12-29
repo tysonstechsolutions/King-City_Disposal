@@ -91,6 +91,7 @@ export default function ChatbotWidget() {
   const mapRef = useRef(null)
   const polygonRef = useRef(null)
   const dumpsterCenterRef = useRef({ lat: 0, lng: 0 })
+  const rotationRef = useRef(0)
   const recognitionRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -290,7 +291,7 @@ export default function ChatbotWidget() {
 
       dumpsterCenterRef.current = { lat: newLat, lng: newLng }
 
-      const newCoords = calculatePolygonCoords(newLat, newLng, rotation)
+      const newCoords = calculatePolygonCoords(newLat, newLng, rotationRef.current)
       polygonRef.current.setPath(newCoords)
 
       setBookingData(prev => ({
@@ -302,6 +303,7 @@ export default function ChatbotWidget() {
 
     setDumpsterPlaced(true)
     setRotation(0)
+    rotationRef.current = 0
   }
 
   useEffect(() => {
@@ -309,11 +311,20 @@ export default function ChatbotWidget() {
       const { lat, lng } = dumpsterCenterRef.current
       const newCoords = calculatePolygonCoords(lat, lng, rotation)
       polygonRef.current.setPath(newCoords)
+      rotationRef.current = rotation
     }
   }, [rotation, dumpsterPlaced])
 
-  const rotateLeft = () => setRotation(prev => (prev - 20 + 360) % 360)
-  const rotateRight = () => setRotation(prev => (prev + 20) % 360)
+  const rotateLeft = () => setRotation(prev => {
+    const newRotation = (prev - 20 + 360) % 360
+    rotationRef.current = newRotation
+    return newRotation
+  })
+  const rotateRight = () => setRotation(prev => {
+    const newRotation = (prev + 20) % 360
+    rotationRef.current = newRotation
+    return newRotation
+  })
 
   const addBotMessage = async (text, delay = 500) => {
     setIsTyping(true)

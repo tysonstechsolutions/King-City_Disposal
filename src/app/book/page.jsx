@@ -117,6 +117,7 @@ function BookingPageContent() {
   const mapRef = useRef(null)
   const polygonRef = useRef(null)
   const dumpsterCenterRef = useRef({ lat: 0, lng: 0 })
+  const rotationRef = useRef(0)
   const autocompleteRef = useRef(null)
   const addressInputRef = useRef(null)
 
@@ -412,7 +413,7 @@ function BookingPageContent() {
 
       dumpsterCenterRef.current = { lat: newLat, lng: newLng }
 
-      const newCoords = calculatePolygonCoords(newLat, newLng, rotation)
+      const newCoords = calculatePolygonCoords(newLat, newLng, rotationRef.current)
       polygonRef.current.setPath(newCoords)
 
       setFormData(prev => ({
@@ -424,6 +425,7 @@ function BookingPageContent() {
 
     setDumpsterPlaced(true)
     setRotation(0)
+    rotationRef.current = 0
   }
 
   // Update polygon when rotation changes
@@ -432,11 +434,20 @@ function BookingPageContent() {
       const { lat, lng } = dumpsterCenterRef.current
       const newCoords = calculatePolygonCoords(lat, lng, rotation)
       polygonRef.current.setPath(newCoords)
+      rotationRef.current = rotation
     }
   }, [rotation, dumpsterPlaced])
 
-  const rotateLeft = () => setRotation(prev => (prev - 15 + 360) % 360)
-  const rotateRight = () => setRotation(prev => (prev + 15) % 360)
+  const rotateLeft = () => setRotation(prev => {
+    const newRotation = (prev - 15 + 360) % 360
+    rotationRef.current = newRotation
+    return newRotation
+  })
+  const rotateRight = () => setRotation(prev => {
+    const newRotation = (prev + 15) % 360
+    rotationRef.current = newRotation
+    return newRotation
+  })
 
   // Validate current step
   const canProceed = () => {
