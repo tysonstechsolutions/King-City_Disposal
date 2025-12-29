@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { config } from '../../../config'
-import { 
-  Truck, 
-  MapPin, 
+import { useRouter } from 'next/navigation'
+import { config } from '../../config'
+import {
+  Truck,
+  MapPin,
   Phone,
   Check,
   Clock,
@@ -13,13 +14,28 @@ import {
   Camera,
   User,
   Package,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react'
 
 export default function DriverChecklistPage() {
+  const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [stops, setStops] = useState([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
+
+  // Check authentication on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (sessionStorage.getItem('adminAuth') === 'true') {
+        setIsAuthenticated(true)
+      } else {
+        // Redirect to admin login
+        router.push('/admin')
+      }
+    }
+  }, [router])
 
   const fetchStops = useCallback(async () => {
     setLoading(true)
@@ -80,8 +96,10 @@ export default function DriverChecklistPage() {
   }, [])
 
   useEffect(() => {
-    fetchStops()
-  }, [fetchStops])
+    if (isAuthenticated) {
+      fetchStops()
+    }
+  }, [fetchStops, isAuthenticated])
 
   const updateStatus = async (id, newStatus) => {
     setUpdating(id)
@@ -137,6 +155,18 @@ export default function DriverChecklistPage() {
 
   const getDumpster = (sizeId) => {
     return config.dumpsters.find(d => d.id === sizeId) || { name: sizeId, shortName: sizeId }
+  }
+
+  // Show loading state while checking authentication
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <div className="text-center">
+          <Lock className="w-12 h-12 text-dark-400 mx-auto mb-4" />
+          <p className="text-dark-400">Checking authentication...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

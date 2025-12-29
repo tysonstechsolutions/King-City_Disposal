@@ -8,7 +8,7 @@
 // ============================================
 
 export const config = {
-  
+
   // ============================================
   // 📋 BUSINESS INFO — Change these anytime
   // ============================================
@@ -17,6 +17,7 @@ export const config = {
   phone: "(618) 214-7656",
   phoneRaw: "6182147656",
   email: "tysonstechsolutions@gmail.com", // ← CHANGE TO THEIR EMAIL LATER
+  websiteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://kingcitydisposal.com",
   
   address: {
     street: "", // Add street address when ready
@@ -66,11 +67,13 @@ export const config = {
   },
   
   // ============================================
-  // 🗄️ DATABASE — Supabase (ALREADY CONFIGURED!)
+  // 🗄️ DATABASE — Supabase
   // ============================================
+  // These use environment variables with fallbacks
+  // Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel
   supabase: {
-    url: "https://qtlhjxejgzjrrfmthutw.supabase.co",
-    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0bGhqeGVqZ3pqcnJmbXRodXR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5Njc5MTgsImV4cCI6MjA4MjU0MzkxOH0.AllL3A553URTYkSGr0jEoCaV87weo5uoh0fG9fAIlNc",
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://qtlhjxejgzjrrfmthutw.supabase.co",
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0bGhqeGVqZ3pqcnJmbXRodXR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5Njc5MTgsImV4cCI6MjA4MjU0MzkxOH0.AllL3A553URTYkSGr0jEoCaV87weo5uoh0fG9fAIlNc",
     // Secret key goes in environment variables for security
   },
   
@@ -137,6 +140,8 @@ export const config = {
         "7-day": 485,
       },
       weightIncluded: "3 tons",
+      weightLimit: 6000,      // 3 tons in lbs (for weight overage calc)
+      overage: 70,            // $70/ton overage rate
       weightOverage: 70,
       dailyExtension: 20,
       image: "/images/20-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
@@ -167,6 +172,8 @@ export const config = {
         "7-day": 625,
       },
       weightIncluded: "4 tons",
+      weightLimit: 8000,      // 4 tons in lbs (for weight overage calc)
+      overage: 70,            // $70/ton overage rate
       weightOverage: 70,
       dailyExtension: 25,
       image: "/images/30-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
@@ -244,13 +251,17 @@ export const config = {
   },
   
   // ============================================
-  // 🌐 SOCIAL MEDIA (Add when ready)
+  // 🌐 SOCIAL MEDIA & REVIEWS (Add when ready)
   // ============================================
   social: {
     facebook: "", // ← ADD FACEBOOK PAGE URL
     instagram: "", // ← ADD INSTAGRAM URL
     google: "", // ← ADD GOOGLE BUSINESS PROFILE URL
   },
+
+  // Google Place ID for review links
+  // Find yours: https://developers.google.com/maps/documentation/places/web-service/place-id
+  googlePlaceId: "", // ← ADD YOUR GOOGLE PLACE ID FOR REVIEW LINKS
   
   // ============================================
   // 📍 ROUTE OPTIMIZATION
@@ -269,9 +280,9 @@ export const config = {
   // 🔐 ADMIN SETTINGS
   // ============================================
   admin: {
-    // Simple password protection for /admin page
-    // Change this to something secure!
-    password: "kingcity2024", // ← CHANGE THIS
+    // Password for /admin page
+    // Set ADMIN_PASSWORD in Vercel for production!
+    password: process.env.ADMIN_PASSWORD || "kingcity2024",
   },
 };
 
