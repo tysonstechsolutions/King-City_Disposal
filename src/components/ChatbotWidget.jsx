@@ -47,11 +47,12 @@ const projectIcons = {
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [hasAutoOpened, setHasAutoOpened] = useState(false)
-  const [showNudge, setShowNudge] = useState(false)
   const [step, setStep] = useState(STEPS.WELCOME)
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [mapLoaded, setMapLoaded] = useState(false)
+  const [dumpsterPosition, setDumpsterPosition] = useState({ lat: 0, lng: 0 })
   const [bookingData, setBookingData] = useState({
     projectType: '',
     address: '',
@@ -65,7 +66,8 @@ export default function ChatbotWidget() {
   })
   
   const messagesEndRef = useRef(null)
-  const inputRef = useRef(null)
+  const mapContainerRef = useRef(null)
+  const mapRef = useRef(null)
 
   // Auto-scroll to bottom of messages
   const scrollToBottom = () => {
@@ -76,25 +78,146 @@ export default function ChatbotWidget() {
     scrollToBottom()
   }, [messages])
 
-  // Show nudge after 2 seconds, auto-open after 4 seconds
+  // Auto-open after 2 seconds
   useEffect(() => {
     if (!hasAutoOpened && !isOpen) {
-      const nudgeTimer = setTimeout(() => {
-        setShowNudge(true)
-      }, 2000)
-      
       const openTimer = setTimeout(() => {
         setIsOpen(true)
         setHasAutoOpened(true)
-        setShowNudge(false)
-      }, 4000)
+      }, 2000)
       
-      return () => {
-        clearTimeout(nudgeTimer)
-        clearTimeout(openTimer)
-      }
+      return () => clearTimeout(openTimer)
     }
   }, [hasAutoOpened, isOpen])
+
+  // Initialize map when step is MAP_PLACEMENT
+  useEffect(() => {
+    if (step === STEPS.MAP_PLACEMENT && bookingData.address && !mapLoaded) {
+      initializeMap()
+    }
+  }, [step, bookingData.address, mapLoaded])
+
+  // Geocode address and initialize map
+  const initializeMap = async () => {
+    try {
+      // Geocode the address using Mapbox
+      const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(bookingData.address)}.json?access_token=${config.mapbox.token}&limit=1`
+      const response = await fetch(geocodeUrl)
+      const data = await response.json()
+      
+      if (data.features && data.features.length > 0) {
+        const [lng, lat] = data.features[0].center
+        setDumpsterPosition({ lat, lng })
+        
+        // Load Mapbox GL JS
+        if (!window.mapboxgl) {
+          const script = document.createElement('script')
+          script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'
+          script.onload = () => createMap(lat, lng)
+          document.head.appendChild(script)
+          
+          const link = document.createElement('link')
+          link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css'
+          link.rel = 'stylesheet'
+          document.head.appendChild(link)
+        } else {
+          createMap(lat, lng)
+        }
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error)
+    }
+  }
+
+  // Create the map
+  const createMap = (lat, lng) => {
+    if (!mapContainerRef.current || mapRef.current) return
+    
+    window.mapboxgl.accessToken = config.mapbox.token
+    
+    const map = new window.mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/satellite-v9',
+      center: [lng, lat],
+      zoom: 19,
+      pitch: 0,
+    })
+    
+    mapRef.current = map
+    
+    map.on('load', () => {
+      // Add a marker for the address
+      new window.mapboxgl.Marker({ color: '#22c55e' })
+        .setLngLat([lng, lat])
+        .addTo(map)
+      
+      // Get dumpster dimensions
+      const dumpster = config.dumpsters.find(d => d.id === bookingData.size)
+      const lengthFt = dumpster?.dimensions.length || 22
+      const widthFt = dumpster?.dimensions.width || 8
+      
+      // Convert feet to approximate degrees (1 ft ≈ 0.0000027 degrees at this latitude)
+      const ftToDeg = 0.0000027
+      const lengthDeg = lengthFt * ftToDeg
+      const widthDeg = widthFt * ftToDeg
+      
+      // Create rectangle coordinates (offset slightly from center)
+      const offsetLng = lng + 0.0001
+      const offsetLat = lat + 0.00005
+      
+      const rectangleCoords = [
+        [offsetLng - lengthDeg/2, offsetLat - widthDeg/2],
+        [offsetLng + lengthDeg/2, offsetLat - widthDeg/2],
+        [offsetLng + lengthDeg/2, offsetLat + widthDeg/2],
+        [offsetLng - lengthDeg/2, offsetLat + widthDeg/2],
+        [offsetLng - lengthDeg/2, offsetLat - widthDeg/2],
+      ]
+      
+      // Add dumpster rectangle
+      map.addSource('dumpster', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [rectangleCoords]
+          }
+        }
+      })
+      
+      map.addLayer({
+        id: 'dumpster-fill',
+        type: 'fill',
+        source: 'dumpster',
+        paint: {
+          'fill-color': '#22c55e',
+          'fill-opacity': 0.4
+        }
+      })
+      
+      map.addLayer({
+        id: 'dumpster-outline',
+        type: 'line',
+        source: 'dumpster',
+        paint: {
+          'line-color': '#22c55e',
+          'line-width': 3
+        }
+      })
+      
+      // Add dumpster icon in center
+      const el = document.createElement('div')
+      el.innerHTML = '🚛'
+      el.style.fontSize = '24px'
+      el.style.cursor = 'move'
+      
+      new window.mapboxgl.Marker({ element: el, draggable: true })
+        .setLngLat([offsetLng, offsetLat])
+        .addTo(map)
+      
+      setMapLoaded(true)
+    })
+  }
 
   // Add bot message with typing effect
   const addBotMessage = async (text, delay = 500) => {
@@ -150,9 +273,17 @@ export default function ChatbotWidget() {
         break
         
       case STEPS.CONTACT:
-        const parts = value.split(/[,\n]/).map(p => p.trim())
-        const name = parts[0] || value
-        const phone = parts[1] || ''
+        // Parse name and phone - be smarter about it
+        let name = value
+        let phone = ''
+        
+        // Check if there's a phone number pattern
+        const phoneMatch = value.match(/[\d\-\(\)\s]{10,}/)
+        if (phoneMatch) {
+          phone = phoneMatch[0].replace(/\D/g, '')
+          name = value.replace(phoneMatch[0], '').replace(/[,\n]/g, '').trim()
+        }
+        
         setBookingData(prev => ({ ...prev, name, phone }))
         addUserMessage(value)
         await addBotMessage(`Perfect, ${name}! Let me confirm your order...`, 600)
@@ -167,13 +298,16 @@ export default function ChatbotWidget() {
     setBookingData(prev => ({ ...prev, size: sizeId }))
     addUserMessage(dumpster.name)
     
-    await addBotMessage(`Great choice! The ${dumpster.name} is ${dumpster.dimensions.display}.\n\n📍 Where should we put it?`, 800)
+    setMapLoaded(false) // Reset map
+    mapRef.current = null
+    
+    await addBotMessage(`Great choice! The ${dumpster.name} is ${dumpster.dimensions.display}.\n\n📍 Where should we put it? Drag the green rectangle on the map to show our driver exactly where you want it.`, 800)
     setStep(STEPS.MAP_PLACEMENT)
   }
 
   // Handle placement confirmation
   const handlePlacementConfirm = async (notes) => {
-    setBookingData(prev => ({ ...prev, placementNotes: notes || 'Driveway' }))
+    setBookingData(prev => ({ ...prev, placementNotes: notes || 'Driveway', placement: dumpsterPosition }))
     addUserMessage(`📍 ${notes || 'Driveway'}`)
     
     await addBotMessage(`Got it — ${notes}! 👍\n\nHow long do you need it?`, 600)
@@ -203,7 +337,7 @@ export default function ChatbotWidget() {
   // Handle prohibited acknowledgment
   const handleProhibitedAck = async () => {
     addUserMessage('Got it!')
-    await addBotMessage(`Last step — what's your name and phone number?\n\nWe'll text you to confirm delivery.`, 600)
+    await addBotMessage(`Last step — what's your name and phone number?\n\nExample: John Smith, 618-555-1234`, 600)
     setStep(STEPS.CONTACT)
   }
 
@@ -274,294 +408,311 @@ export default function ChatbotWidget() {
 
   return (
     <div className="chatbot-container">
-      {/* Chat Window - Full screen on mobile */}
+      {/* Chat Window - FULL SCREEN */}
       {isOpen && (
-        <div className="fixed inset-0 md:inset-auto md:bottom-24 md:right-6 md:w-[400px] md:h-[600px] md:max-h-[80vh] bg-dark-900 md:rounded-2xl shadow-2xl flex flex-col z-50 md:border md:border-dark-700">
+        <div className="fixed inset-0 bg-dark-900 flex flex-col z-50">
           
           {/* Header */}
-          <div className="bg-primary-500 p-4 flex items-center justify-between md:rounded-t-2xl flex-shrink-0">
+          <div className="bg-primary-500 p-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Truck className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <Truck className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">{config.businessName}</h3>
-                <p className="text-primary-100 text-sm">Online now</p>
+                <h3 className="font-bold text-white text-lg">{config.businessName}</h3>
+                <p className="text-primary-100 text-sm">Online now • Usually replies instantly</p>
               </div>
             </div>
             <button 
               onClick={() => setIsOpen(false)}
-              className="text-white/80 hover:text-white p-2 -mr-2"
+              className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <X className="w-6 h-6" />
+              <X className="w-7 h-7" />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                  msg.type === 'user' 
-                    ? 'bg-primary-500 text-white rounded-br-md' 
-                    : 'bg-dark-700 text-white rounded-bl-md'
-                }`}>
-                  <p className="whitespace-pre-line text-sm leading-relaxed">{msg.text}</p>
-                </div>
-              </div>
-            ))}
-
-            {/* Typing indicator */}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-dark-700 rounded-2xl rounded-bl-md px-4 py-3">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-dark-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}} />
-                    <span className="w-2 h-2 bg-dark-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}} />
-                    <span className="w-2 h-2 bg-dark-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}} />
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+            <div className="max-w-2xl mx-auto">
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`flex mb-4 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-5 py-4 ${
+                    msg.type === 'user' 
+                      ? 'bg-primary-500 text-white rounded-br-md' 
+                      : 'bg-dark-700 text-white rounded-bl-md'
+                  }`}>
+                    <p className="whitespace-pre-line text-base leading-relaxed">{msg.text}</p>
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
 
-            {/* Project Type Selection */}
-            {!isTyping && step === STEPS.PROJECT_TYPE && messages.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-dark-400 text-sm mb-3">What kind of project?</p>
-                {config.projectTypes.map((project) => {
-                  const Icon = projectIcons[project.id]
-                  return (
-                    <button
-                      key={project.id}
-                      onClick={() => handleProjectType(project.id)}
-                      className="w-full bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-4 flex items-center gap-4 transition-colors text-left"
-                    >
-                      <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-6 h-6 text-primary-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-white">{project.emoji} {project.label}</p>
-                        <p className="text-xs text-dark-400">{project.description}</p>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+              {/* Typing indicator */}
+              {isTyping && (
+                <div className="flex justify-start mb-4">
+                  <div className="bg-dark-700 rounded-2xl rounded-bl-md px-5 py-4">
+                    <div className="flex gap-1.5">
+                      <span className="w-2.5 h-2.5 bg-dark-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}} />
+                      <span className="w-2.5 h-2.5 bg-dark-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}} />
+                      <span className="w-2.5 h-2.5 bg-dark-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}} />
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            {/* Size Selection */}
-            {!isTyping && step === STEPS.SIZE && (
-              <div className="space-y-2">
-                {config.dumpsters.map((dumpster) => {
-                  const project = config.projectTypes.find(p => p.id === bookingData.projectType)
-                  const isRecommended = project?.recommendedSize === dumpster.id
-                  return (
-                    <button
-                      key={dumpster.id}
-                      onClick={() => handleSizeSelect(dumpster.id)}
-                      className={`w-full rounded-xl p-4 flex items-center justify-between transition-colors text-left ${
-                        isRecommended 
-                          ? 'bg-primary-500/20 border-2 border-primary-500 hover:bg-primary-500/30' 
-                          : 'bg-dark-700 hover:bg-dark-600'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Truck className={`w-8 h-8 flex-shrink-0 ${isRecommended ? 'text-primary-400' : 'text-dark-400'}`} />
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-white">{dumpster.name}</p>
-                            {isRecommended && (
-                              <span className="text-xs bg-primary-500 text-white px-2 py-0.5 rounded-full">
-                                Best fit
-                              </span>
-                            )}
+              {/* Project Type Selection */}
+              {!isTyping && step === STEPS.PROJECT_TYPE && messages.length > 0 && (
+                <div className="space-y-3 mt-4">
+                  <p className="text-dark-400 text-base mb-4">What kind of project are you working on?</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {config.projectTypes.map((project) => {
+                      const Icon = projectIcons[project.id]
+                      return (
+                        <button
+                          key={project.id}
+                          onClick={() => handleProjectType(project.id)}
+                          className="w-full bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-5 flex items-center gap-4 transition-colors text-left"
+                        >
+                          <div className="w-14 h-14 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Icon className="w-7 h-7 text-primary-400" />
                           </div>
-                          <p className="text-xs text-dark-400">
-                            {dumpster.dimensions.display} • {dumpster.weightIncluded} included
-                          </p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-white text-lg">{project.emoji} {project.label}</p>
+                            <p className="text-sm text-dark-400">{project.description}</p>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Size Selection */}
+              {!isTyping && step === STEPS.SIZE && (
+                <div className="space-y-3 mt-4">
+                  {config.dumpsters.map((dumpster) => {
+                    const project = config.projectTypes.find(p => p.id === bookingData.projectType)
+                    const isRecommended = project?.recommendedSize === dumpster.id
+                    return (
+                      <button
+                        key={dumpster.id}
+                        onClick={() => handleSizeSelect(dumpster.id)}
+                        className={`w-full rounded-xl p-5 flex items-center justify-between transition-colors text-left ${
+                          isRecommended 
+                            ? 'bg-primary-500/20 border-2 border-primary-500 hover:bg-primary-500/30' 
+                            : 'bg-dark-700 hover:bg-dark-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <Truck className={`w-10 h-10 flex-shrink-0 ${isRecommended ? 'text-primary-400' : 'text-dark-400'}`} />
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-white text-lg">{dumpster.name}</p>
+                              {isRecommended && (
+                                <span className="text-xs bg-primary-500 text-white px-3 py-1 rounded-full font-medium">
+                                  ⭐ Best fit
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-dark-400">
+                              {dumpster.dimensions.display} • {dumpster.weightIncluded} included
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-primary-400 font-bold text-xl">${dumpster.pricing['3-day']}+</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Map Placement */}
+              {!isTyping && step === STEPS.MAP_PLACEMENT && (
+                <div className="space-y-4 mt-4">
+                  <div className="bg-dark-700 rounded-xl overflow-hidden">
+                    {/* Satellite Map */}
+                    <div 
+                      ref={mapContainerRef}
+                      className="h-72 md:h-96 bg-dark-600 relative"
+                    >
+                      {!mapLoaded && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                          <div className="w-16 h-16 bg-primary-500/20 rounded-2xl flex items-center justify-center mb-3 animate-pulse">
+                            <MapPin className="w-8 h-8 text-primary-400" />
+                          </div>
+                          <p className="text-white font-medium mb-1">Loading satellite view...</p>
+                          <p className="text-dark-400 text-sm">{bookingData.address}</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Map legend */}
+                    <div className="p-4 bg-dark-800 border-t border-dark-600">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-4 bg-primary-500/40 border-2 border-primary-500 rounded"></div>
+                          <span className="text-sm text-dark-300">
+                            {selectedDumpster?.name} ({selectedDumpster?.dimensions.display})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-dark-400 text-sm">
+                          <Move className="w-4 h-4" />
+                          Drag to move
                         </div>
                       </div>
-                      <span className="text-primary-400 font-bold">${dumpster.pricing['3-day']}+</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Map Placement */}
-            {!isTyping && step === STEPS.MAP_PLACEMENT && (
-              <div className="space-y-3">
-                <div className="bg-dark-700 rounded-xl overflow-hidden">
-                  <div className="h-48 bg-dark-600 relative flex flex-col items-center justify-center text-center p-4">
-                    <div className="w-14 h-14 bg-primary-500/20 rounded-2xl flex items-center justify-center mb-2">
-                      <Move className="w-7 h-7 text-primary-400" />
                     </div>
-                    <p className="text-white font-medium text-sm mb-1">Dumpster Size</p>
-                    <p className="text-primary-400 font-bold">{selectedDumpster?.dimensions.display}</p>
-                    {/* Visual dumpster */}
-                    <div 
-                      className="border-2 border-primary-400 border-dashed rounded bg-primary-500/10 flex items-center justify-center mt-3"
-                      style={{ width: '100px', height: '36px' }}
-                    >
-                      <Truck className="w-5 h-5 text-primary-400" />
-                    </div>
-                    <p className="text-dark-500 text-xs mt-2">
-                      📍 {bookingData.address}
-                    </p>
                   </div>
+                  
+                  <p className="text-dark-400 text-base">Where should we put it?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {['Driveway', 'Street', 'Side of house', 'Backyard'].map((location) => (
+                      <button
+                        key={location}
+                        onClick={() => handlePlacementConfirm(location)}
+                        className="bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-4 text-base text-white transition-colors font-medium"
+                      >
+                        {location}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const custom = prompt('Where should we put the dumpster?')
+                      if (custom) handlePlacementConfirm(custom)
+                    }}
+                    className="w-full text-primary-400 text-base hover:underline py-2"
+                  >
+                    + Describe another location
+                  </button>
                 </div>
-                
-                <p className="text-dark-400 text-sm">Where should we put it?</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Driveway', 'Street', 'Side of house', 'Backyard'].map((location) => (
+              )}
+
+              {/* Duration Selection */}
+              {!isTyping && step === STEPS.DURATION && (
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <button
+                    onClick={() => handleDurationSelect('3-day')}
+                    className="bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-6 text-center transition-colors"
+                  >
+                    <p className="font-bold text-white text-2xl">3 Days</p>
+                    <p className="text-primary-400 font-semibold text-xl mt-1">
+                      ${selectedDumpster?.pricing['3-day']}
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => handleDurationSelect('7-day')}
+                    className="bg-primary-500/20 border-2 border-primary-500 hover:bg-primary-500/30 rounded-xl p-6 text-center transition-colors"
+                  >
+                    <p className="font-bold text-white text-2xl">7 Days</p>
+                    <p className="text-primary-400 font-semibold text-xl mt-1">
+                      ${selectedDumpster?.pricing['7-day']}
+                    </p>
+                    <p className="text-sm text-primary-300 mt-2">⭐ Most popular</p>
+                  </button>
+                </div>
+              )}
+
+              {/* Date Selection */}
+              {!isTyping && step === STEPS.DATE && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                  {getAvailableDates().map((date) => (
                     <button
-                      key={location}
-                      onClick={() => handlePlacementConfirm(location)}
-                      className="bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-lg p-3 text-sm text-white transition-colors"
+                      key={date}
+                      onClick={() => handleDateSelect(date)}
+                      className="bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-4 text-center transition-colors"
                     >
-                      {location}
+                      <Calendar className="w-6 h-6 text-primary-400 mx-auto mb-2" />
+                      <p className="text-base text-white font-medium">{date}</p>
                     </button>
                   ))}
                 </div>
-                <button
-                  onClick={() => {
-                    const custom = prompt('Where should we put the dumpster?')
-                    if (custom) handlePlacementConfirm(custom)
-                  }}
-                  className="w-full text-primary-400 text-sm hover:underline"
-                >
-                  + Other location
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Duration Selection */}
-            {!isTyping && step === STEPS.DURATION && (
-              <div className="grid grid-cols-2 gap-3">
+              {/* Prohibited Items Acknowledgment */}
+              {!isTyping && step === STEPS.PROHIBITED && (
                 <button
-                  onClick={() => handleDurationSelect('3-day')}
-                  className="bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-4 text-center transition-colors"
+                  onClick={handleProhibitedAck}
+                  className="w-full btn-primary flex items-center justify-center gap-2 py-5 text-lg mt-4"
                 >
-                  <p className="font-bold text-white text-lg">3 Days</p>
-                  <p className="text-primary-400 font-semibold">
-                    ${selectedDumpster?.pricing['3-day']}
-                  </p>
+                  <Check className="w-6 h-6" />
+                  I Understand
                 </button>
-                <button
-                  onClick={() => handleDurationSelect('7-day')}
-                  className="bg-primary-500/20 border-2 border-primary-500 hover:bg-primary-500/30 rounded-xl p-4 text-center transition-colors"
-                >
-                  <p className="font-bold text-white text-lg">7 Days</p>
-                  <p className="text-primary-400 font-semibold">
-                    ${selectedDumpster?.pricing['7-day']}
-                  </p>
-                  <p className="text-xs text-primary-300 mt-1">Most popular</p>
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Date Selection */}
-            {!isTyping && step === STEPS.DATE && (
-              <div className="grid grid-cols-2 gap-2">
-                {getAvailableDates().map((date) => (
+              {/* Order Confirmation */}
+              {!isTyping && step === STEPS.CONFIRM && (
+                <div className="bg-dark-700 rounded-xl p-6 mt-4">
+                  <h4 className="font-semibold text-white text-xl mb-4">📋 Order Summary</h4>
+                  <div className="space-y-3 text-base mb-6">
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Address</span>
+                      <span className="text-white text-right max-w-[60%]">{bookingData.address}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Placement</span>
+                      <span className="text-white">{bookingData.placementNotes}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Dumpster</span>
+                      <span className="text-white">{selectedDumpster?.name}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Duration</span>
+                      <span className="text-white">{bookingData.duration === '3-day' ? '3 Days' : '7 Days'}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Delivery Date</span>
+                      <span className="text-white">{bookingData.deliveryDate}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Name</span>
+                      <span className="text-white">{bookingData.name}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Phone</span>
+                      <span className="text-white">{bookingData.phone}</span>
+                    </div>
+                    <div className="flex justify-between pt-4">
+                      <span className="text-white font-bold text-xl">Total</span>
+                      <span className="text-primary-400 font-bold text-2xl">
+                        ${selectedDumpster?.pricing[bookingData.duration]}
+                      </span>
+                    </div>
+                  </div>
                   <button
-                    key={date}
-                    onClick={() => handleDateSelect(date)}
-                    className="bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-3 text-center transition-colors"
+                    onClick={handleConfirm}
+                    className="w-full btn-accent flex items-center justify-center gap-2 py-5 text-lg"
                   >
-                    <Calendar className="w-5 h-5 text-primary-400 mx-auto mb-1" />
-                    <p className="text-sm text-white">{date}</p>
+                    ✅ Confirm Booking
+                    <ArrowRight className="w-6 h-6" />
                   </button>
-                ))}
-              </div>
-            )}
-
-            {/* Prohibited Items Acknowledgment */}
-            {!isTyping && step === STEPS.PROHIBITED && (
-              <button
-                onClick={handleProhibitedAck}
-                className="w-full btn-primary flex items-center justify-center gap-2 py-4"
-              >
-                <Check className="w-5 h-5" />
-                I Understand
-              </button>
-            )}
-
-            {/* Order Confirmation */}
-            {!isTyping && step === STEPS.CONFIRM && (
-              <div className="bg-dark-700 rounded-xl p-4">
-                <h4 className="font-semibold text-white mb-3">Order Summary</h4>
-                <div className="space-y-2 text-sm mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Address</span>
-                    <span className="text-white text-right max-w-[55%] truncate">{bookingData.address}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Placement</span>
-                    <span className="text-white">{bookingData.placementNotes}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Dumpster</span>
-                    <span className="text-white">{selectedDumpster?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Duration</span>
-                    <span className="text-white">{bookingData.duration === '3-day' ? '3 Days' : '7 Days'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Delivery</span>
-                    <span className="text-white">{bookingData.deliveryDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Name</span>
-                    <span className="text-white">{bookingData.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Phone</span>
-                    <span className="text-white">{bookingData.phone}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-dark-600 pt-2 mt-2">
-                    <span className="text-white font-semibold">Total</span>
-                    <span className="text-primary-400 font-bold text-lg">
-                      ${selectedDumpster?.pricing[bookingData.duration]}
-                    </span>
-                  </div>
                 </div>
-                <button
-                  onClick={handleConfirm}
-                  className="w-full btn-accent flex items-center justify-center gap-2 py-4"
-                >
-                  Confirm Booking
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+              )}
 
-            <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Input Area */}
           {(step === STEPS.ADDRESS || step === STEPS.CONTACT) && (
-            <form onSubmit={handleSubmit} className="p-4 border-t border-dark-700 flex-shrink-0">
-              <div className="flex gap-2">
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 border-t border-dark-700 flex-shrink-0 bg-dark-800">
+              <div className="max-w-2xl mx-auto flex gap-3">
                 <input
-                  ref={inputRef}
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={
                     step === STEPS.ADDRESS 
                       ? "Enter delivery address..." 
-                      : "Your name, phone number"
+                      : "Your name, phone number (e.g. John Smith, 618-555-1234)"
                   }
-                  className="input-field flex-1 text-base"
+                  className="input-field flex-1 text-lg py-4"
                   autoFocus
                 />
                 <button 
                   type="submit"
-                  className="bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white p-3 rounded-lg transition-colors"
+                  className="bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white p-4 rounded-xl transition-colors"
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className="w-6 h-6" />
                 </button>
               </div>
             </form>
@@ -569,11 +720,11 @@ export default function ChatbotWidget() {
 
           {/* Footer */}
           {step !== STEPS.COMPLETE && (
-            <div className="px-4 pb-4 pt-2 flex-shrink-0">
-              <p className="text-center text-xs text-dark-500">
+            <div className="px-4 pb-6 pt-3 flex-shrink-0 bg-dark-800">
+              <p className="text-center text-base text-dark-400">
                 Prefer to talk?{' '}
-                <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:underline inline-flex items-center gap-1">
-                  <Phone className="w-3 h-3" />
+                <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:underline inline-flex items-center gap-1 font-medium">
+                  <Phone className="w-4 h-4" />
                   {config.phone}
                 </a>
               </p>
@@ -582,41 +733,18 @@ export default function ChatbotWidget() {
         </div>
       )}
 
-      {/* Nudge bubble */}
-      {!isOpen && showNudge && (
-        <div 
-          className="fixed bottom-24 right-6 bg-white text-dark-900 px-4 py-3 rounded-2xl shadow-lg z-40 max-w-[200px] cursor-pointer animate-fade-in"
+      {/* Floating Button - Only shows when chat is closed */}
+      {!isOpen && (
+        <button
           onClick={() => {
             setIsOpen(true)
-            setHasAutoOpened(true)
-            setShowNudge(false)
+            if (!hasAutoOpened) setHasAutoOpened(true)
           }}
+          className="fixed bottom-6 right-6 w-16 h-16 bg-primary-500 hover:bg-primary-600 rounded-full shadow-lg flex items-center justify-center z-50 transition-all duration-300 animate-pulse"
         >
-          <p className="text-sm font-medium">Need a dumpster? 🚛</p>
-          <p className="text-xs text-dark-500">Get a quote in 60 seconds</p>
-          <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white transform rotate-45"></div>
-        </div>
+          <MessageCircle className="w-8 h-8 text-white" />
+        </button>
       )}
-
-      {/* Floating Button */}
-      <button
-        onClick={() => {
-          setIsOpen(!isOpen)
-          setShowNudge(false)
-          if (!hasAutoOpened) setHasAutoOpened(true)
-        }}
-        className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-50 transition-all duration-300 ${
-          isOpen 
-            ? 'bg-dark-700 hover:bg-dark-600' 
-            : 'bg-primary-500 hover:bg-primary-600 animate-pulse'
-        }`}
-      >
-        {isOpen ? (
-          <X className="w-7 h-7 text-white" />
-        ) : (
-          <MessageCircle className="w-7 h-7 text-white" />
-        )}
-      </button>
     </div>
   )
 }
