@@ -17,8 +17,11 @@ export const config = {
   phone: "(618) 214-7656",
   phoneRaw: "6182147656",
   email: "tysonstechsolutions@gmail.com", // ← CHANGE TO THEIR EMAIL LATER
-  websiteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://kingcitydisposal.com",
-  
+  websiteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.kingcitydisposal.com",
+
+  // Google Search Console verification code
+  googleSiteVerification: "", // ← Add from Google Search Console
+
   address: {
     street: "", // Add street address when ready
     city: "Mount Vernon",
@@ -142,6 +145,7 @@ export const config = {
       weightIncluded: "3 tons",
       weightLimit: 6000,      // 3 tons in lbs (for weight overage calc)
       overage: 70,            // $70/ton overage rate
+      overageRate: 70,        // Alias for FAQ page
       weightOverage: 70,
       dailyExtension: 20,
       image: "/images/20-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
@@ -174,6 +178,7 @@ export const config = {
       weightIncluded: "4 tons",
       weightLimit: 8000,      // 4 tons in lbs (for weight overage calc)
       overage: 70,            // $70/ton overage rate
+      overageRate: 70,        // Alias for FAQ page
       weightOverage: 70,
       dailyExtension: 25,
       image: "/images/30-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
@@ -262,7 +267,15 @@ export const config = {
   // Google Place ID for review links
   // Find yours: https://developers.google.com/maps/documentation/places/web-service/place-id
   googlePlaceId: "", // ← ADD YOUR GOOGLE PLACE ID FOR REVIEW LINKS
-  
+
+  // ============================================
+  // ⭐ REVIEWS (Update as you get Google reviews)
+  // ============================================
+  reviews: {
+    rating: "5.0",
+    count: 0, // ← Update this as you get Google reviews
+  },
+
   // ============================================
   // 📍 ROUTE OPTIMIZATION
   // ============================================
