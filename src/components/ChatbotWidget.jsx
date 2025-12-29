@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { config } from '../config'
-import {
-  Truck,
-  X,
-  MapPin,
+import { 
+  Truck, 
+  X, 
+  MapPin, 
   Calendar,
   Send,
   MessageCircle,
@@ -20,7 +20,6 @@ import {
   Move
 } from 'lucide-react'
 
-// Step definitions
 const STEPS = {
   WELCOME: 'welcome',
   PROJECT_TYPE: 'project_type',
@@ -35,7 +34,6 @@ const STEPS = {
   COMPLETE: 'complete'
 }
 
-// Project type icons
 const projectIcons = {
   cleanout: Home,
   renovation: Hammer,
@@ -43,6 +41,8 @@ const projectIcons = {
   construction: Building2,
   other: Package
 }
+
+const GOOGLE_MAPS_KEY = "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
 
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false)
@@ -52,7 +52,7 @@ export default function ChatbotWidget() {
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
-  const [dumpsterPosition, setDumpsterPosition] = useState({ lat: 0, lng: 0 })
+  const [mapError, setMapError] = useState(false)
   const [bookingData, setBookingData] = useState({
     projectType: '',
     address: '',
@@ -64,13 +64,12 @@ export default function ChatbotWidget() {
     name: '',
     phone: '',
   })
-
+  
   const messagesEndRef = useRef(null)
   const mapContainerRef = useRef(null)
-  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
   const rectangleRef = useRef(null)
 
-  // Auto-scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -79,174 +78,170 @@ export default function ChatbotWidget() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-open after 2 seconds
   useEffect(() => {
     if (!hasAutoOpened && !isOpen) {
       const openTimer = setTimeout(() => {
         setIsOpen(true)
         setHasAutoOpened(true)
       }, 2000)
-
       return () => clearTimeout(openTimer)
     }
   }, [hasAutoOpened, isOpen])
 
-  // Initialize map when step is MAP_PLACEMENT
-  useEffect(() => {
-    if (step === STEPS.MAP_PLACEMENT && bookingData.address && !mapLoaded) {
-      initializeMap()
-    }
-  }, [step, bookingData.address, mapLoaded])
-
-  // Load Google Maps script dynamically
-  const loadGoogleMapsScript = () => {
+  const loadGoogleMaps = useCallback(() => {
     return new Promise((resolve, reject) => {
-      // Check if already fully loaded
-      if (window.google && window.google.maps && window.google.maps.Geocoder) {
-        resolve()
+      if (window.google && window.google.maps) {
+        resolve(window.google.maps)
         return
       }
 
-      // Check if script is already in DOM
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-        // Wait for it to fully load
         const checkLoaded = setInterval(() => {
-          if (window.google && window.google.maps && window.google.maps.Geocoder) {
+          if (window.google && window.google.maps) {
             clearInterval(checkLoaded)
-            resolve()
+            resolve(window.google.maps)
           }
         }, 100)
         return
       }
 
-      // Create unique callback name
-      const callbackName = `googleMapsCallback_${Date.now()}`
-
-      // Set up callback
-      window[callbackName] = () => {
-        delete window[callbackName]
-        resolve()
-      }
-
       const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=geometry&callback=${callbackName}`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=geometry,places`
       script.async = true
       script.defer = true
-      script.onerror = () => {
-        delete window[callbackName]
-        reject(new Error('Failed to load Google Maps'))
+      script.onload = () => {
+        if (window.google && window.google.maps) {
+          resolve(window.google.maps)
+        } else {
+          reject(new Error('Google Maps failed to load'))
+        }
       }
+      script.onerror = () => reject(new Error('Failed to load Google Maps script'))
       document.head.appendChild(script)
     })
-  }
+  }, [])
 
-  // Geocode address and initialize map
-  const initializeMap = async () => {
+  const initMap = useCallback(async (address) => {
+    if (!mapContainerRef.current) return
+
     try {
-      await loadGoogleMapsScript()
-
-      const geocoder = new window.google.maps.Geocoder()
-
-      geocoder.geocode({ address: bookingData.address }, (results, status) => {
+      const maps = await loadGoogleMaps()
+      const geocoder = new maps.Geocoder()
+      
+      geocoder.geocode({ address: address }, (results, status) => {
         if (status === 'OK' && results[0]) {
           const location = results[0].geometry.location
-          const lat = location.lat()
-          const lng = location.lng()
-          setDumpsterPosition({ lat, lng })
-          createMap(lat, lng)
+          
+          const map = new maps.Map(mapContainerRef.current, {
+            center: location,
+            zoom: 20,
+            mapTypeId: 'hybrid',
+            disableDefaultUI: true,
+            zoomControl: true,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          })
+          
+          mapInstanceRef.current = map
+
+          new maps.Marker({
+            position: location,
+            map: map,
+            icon: {
+              path: maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: '#22c55e',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 3,
+            },
+            title: 'Delivery Address'
+          })
+
+          const dumpster = config.dumpsters.find(d => d.id === bookingData.size)
+          const lengthFt = dumpster?.dimensions?.length || 22
+          const widthFt = dumpster?.dimensions?.width || 8
+
+          const lengthM = lengthFt * 0.3048
+          const widthM = widthFt * 0.3048
+
+          const offsetLat = location.lat() + 0.00008
+          const offsetLng = location.lng() + 0.00012
+
+          const metersPerDegreeLat = 111320
+          const metersPerDegreeLng = 111320 * Math.cos(location.lat() * Math.PI / 180)
+          
+          const halfLengthDeg = (lengthM / 2) / metersPerDegreeLng
+          const halfWidthDeg = (widthM / 2) / metersPerDegreeLat
+
+          const bounds = {
+            north: offsetLat + halfWidthDeg,
+            south: offsetLat - halfWidthDeg,
+            east: offsetLng + halfLengthDeg,
+            west: offsetLng - halfLengthDeg,
+          }
+
+          const rectangle = new maps.Rectangle({
+            bounds: bounds,
+            editable: true,
+            draggable: true,
+            fillColor: '#22c55e',
+            fillOpacity: 0.35,
+            strokeColor: '#22c55e',
+            strokeWeight: 3,
+            map: map,
+          })
+
+          rectangleRef.current = rectangle
+
+          rectangle.addListener('bounds_changed', () => {
+            const newBounds = rectangle.getBounds()
+            const center = newBounds.getCenter()
+            setBookingData(prev => ({
+              ...prev,
+              placement: { lat: center.lat(), lng: center.lng() }
+            }))
+          })
+
+          setBookingData(prev => ({
+            ...prev,
+            placement: { lat: offsetLat, lng: offsetLng }
+          }))
+
+          setMapLoaded(true)
+          setMapError(false)
         } else {
           console.error('Geocoding failed:', status)
-          // Fallback to service area center
-          const { lat, lng } = config.serviceAreaCenter
-          setDumpsterPosition({ lat, lng })
-          createMap(lat, lng)
+          setMapError(true)
         }
       })
     } catch (error) {
-      console.error('Error loading Google Maps:', error)
+      console.error('Map initialization error:', error)
+      setMapError(true)
     }
-  }
+  }, [bookingData.size, loadGoogleMaps])
 
-  // Create the Google Map
-  const createMap = (lat, lng) => {
-    if (!mapContainerRef.current || mapRef.current) return
+  useEffect(() => {
+    if (step === STEPS.MAP_PLACEMENT && bookingData.address && !mapLoaded && !mapError) {
+      const timer = setTimeout(() => {
+        initMap(bookingData.address)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [step, bookingData.address, mapLoaded, mapError, initMap])
 
-    const map = new window.google.maps.Map(mapContainerRef.current, {
-      center: { lat, lng },
-      zoom: 20,
-      mapTypeId: window.google.maps.MapTypeId.HYBRID,
-      tilt: 0,
-      disableDefaultUI: false,
-      zoomControl: true,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    })
+  useEffect(() => {
+    if (step !== STEPS.MAP_PLACEMENT) {
+      if (rectangleRef.current) {
+        rectangleRef.current.setMap(null)
+        rectangleRef.current = null
+      }
+      mapInstanceRef.current = null
+      setMapLoaded(false)
+    }
+  }, [step])
 
-    mapRef.current = map
-
-    // Add a circle marker for the address (using Circle instead of deprecated Marker)
-    new window.google.maps.Circle({
-      center: { lat, lng },
-      radius: 2, // meters
-      map: map,
-      fillColor: '#22c55e',
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 3,
-      clickable: false,
-    })
-
-    // Get dumpster dimensions
-    const dumpster = config.dumpsters.find(d => d.id === bookingData.size)
-    const lengthFt = dumpster?.dimensions.length || 22
-    const widthFt = dumpster?.dimensions.width || 8
-
-    // Convert feet to meters (1 foot = 0.3048 meters)
-    const lengthMeters = lengthFt * 0.3048
-    const widthMeters = widthFt * 0.3048
-
-    // Calculate the rectangle bounds offset from center
-    // Using the geometry library to compute offset
-    const offsetDistance = 10 // meters offset from marker
-    const offsetLat = lat + (offsetDistance / 111111) // rough conversion
-    const offsetLng = lng + (offsetDistance / (111111 * Math.cos(lat * Math.PI / 180)))
-
-    // Create bounds for the rectangle
-    const halfLengthDeg = (lengthMeters / 2) / 111111
-    const halfWidthDeg = (widthMeters / 2) / (111111 * Math.cos(lat * Math.PI / 180))
-
-    const bounds = new window.google.maps.LatLngBounds(
-      new window.google.maps.LatLng(offsetLat - halfWidthDeg, offsetLng - halfLengthDeg),
-      new window.google.maps.LatLng(offsetLat + halfWidthDeg, offsetLng + halfLengthDeg)
-    )
-
-    // Create draggable rectangle for dumpster placement
-    const rectangle = new window.google.maps.Rectangle({
-      bounds: bounds,
-      editable: true,
-      draggable: true,
-      map: map,
-      strokeColor: '#22c55e',
-      strokeOpacity: 1,
-      strokeWeight: 3,
-      fillColor: '#22c55e',
-      fillOpacity: 0.35,
-    })
-
-    rectangleRef.current = rectangle
-
-    // Update position when rectangle is dragged
-    rectangle.addListener('bounds_changed', () => {
-      const newBounds = rectangle.getBounds()
-      const center = newBounds.getCenter()
-      setDumpsterPosition({ lat: center.lat(), lng: center.lng() })
-    })
-
-    setMapLoaded(true)
-  }
-
-  // Add bot message with typing effect
   const addBotMessage = async (text, delay = 500) => {
     setIsTyping(true)
     await new Promise(resolve => setTimeout(resolve, delay))
@@ -254,25 +249,22 @@ export default function ChatbotWidget() {
     setMessages(prev => [...prev, { type: 'bot', text }])
   }
 
-  // Add user message
   const addUserMessage = (text) => {
     setMessages(prev => [...prev, { type: 'user', text }])
   }
 
-  // Initialize conversation when opened
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       addBotMessage("Hey! 👋 Need a dumpster?\n\nI'll help you find the right size and get scheduled in about 60 seconds.", 300)
       setStep(STEPS.PROJECT_TYPE)
     }
-  }, [isOpen])
+  }, [isOpen, messages.length])
 
-  // Handle project type selection
   const handleProjectType = async (projectType) => {
     const project = config.projectTypes.find(p => p.id === projectType)
     setBookingData(prev => ({ ...prev, projectType }))
     addUserMessage(`${project.emoji} ${project.label}`)
-
+    
     const recommendedSize = project.recommendedSize
     if (recommendedSize) {
       const dumpster = config.dumpsters.find(d => d.id === recommendedSize)
@@ -283,7 +275,6 @@ export default function ChatbotWidget() {
     setStep(STEPS.ADDRESS)
   }
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!inputValue.trim()) return
@@ -298,19 +289,17 @@ export default function ChatbotWidget() {
         await addBotMessage(`📍 ${value}\n\nNow pick your dumpster size:`, 600)
         setStep(STEPS.SIZE)
         break
-
+        
       case STEPS.CONTACT:
-        // Parse name and phone - be smarter about it
         let name = value
         let phone = ''
-
-        // Check if there's a phone number pattern
+        
         const phoneMatch = value.match(/[\d\-\(\)\s]{10,}/)
         if (phoneMatch) {
           phone = phoneMatch[0].replace(/\D/g, '')
           name = value.replace(phoneMatch[0], '').replace(/[,\n]/g, '').trim()
         }
-
+        
         setBookingData(prev => ({ ...prev, name, phone }))
         addUserMessage(value)
         await addBotMessage(`Perfect, ${name}! Let me confirm your order...`, 600)
@@ -319,64 +308,57 @@ export default function ChatbotWidget() {
     }
   }
 
-  // Handle dumpster size selection
   const handleSizeSelect = async (sizeId) => {
     const dumpster = config.dumpsters.find(d => d.id === sizeId)
     setBookingData(prev => ({ ...prev, size: sizeId }))
     addUserMessage(dumpster.name)
-
-    setMapLoaded(false) // Reset map
-    mapRef.current = null
-    rectangleRef.current = null
-
-    await addBotMessage(`Great choice! The ${dumpster.name} is ${dumpster.dimensions.display}.\n\n📍 Where should we put it? Drag the green rectangle on the map to show our driver exactly where you want it.`, 800)
+    
+    setMapLoaded(false)
+    setMapError(false)
+    
+    await addBotMessage(`Great choice! The ${dumpster.name} is ${dumpster.dimensions.display}.\n\n📍 Where should we put it? Drag the green rectangle to show exactly where you want the dumpster.`, 800)
     setStep(STEPS.MAP_PLACEMENT)
   }
 
-  // Handle placement confirmation
   const handlePlacementConfirm = async (notes) => {
-    setBookingData(prev => ({ ...prev, placementNotes: notes || 'Driveway', placement: dumpsterPosition }))
+    setBookingData(prev => ({ ...prev, placementNotes: notes || 'Driveway' }))
     addUserMessage(`📍 ${notes || 'Driveway'}`)
-
+    
     await addBotMessage(`Got it — ${notes}! 👍\n\nHow long do you need it?`, 600)
     setStep(STEPS.DURATION)
   }
 
-  // Handle duration selection
   const handleDurationSelect = async (duration) => {
     const dumpster = config.dumpsters.find(d => d.id === bookingData.size)
     const price = dumpster.pricing[duration]
     setBookingData(prev => ({ ...prev, duration }))
     addUserMessage(duration === '3-day' ? '3 Days' : '7 Days')
-
+    
     await addBotMessage(`That'll be $${price} for the ${duration === '3-day' ? '3' : '7'}-day rental.\n\nWhen do you want it delivered?`, 600)
     setStep(STEPS.DATE)
   }
 
-  // Handle date selection
   const handleDateSelect = async (date) => {
     setBookingData(prev => ({ ...prev, deliveryDate: date }))
     addUserMessage(date)
-
+    
     await addBotMessage(`🚫 Quick heads up — these items CANNOT go in:\n\n• Tires, batteries, appliances with Freon\n• Electronics (TVs, computers)\n• Paint, chemicals, oil\n• Yard waste\n\nPutting prohibited items in = extra fees.`, 700)
     setStep(STEPS.PROHIBITED)
   }
 
-  // Handle prohibited acknowledgment
   const handleProhibitedAck = async () => {
     addUserMessage('Got it!')
     await addBotMessage(`Last step — what's your name and phone number?\n\nExample: John Smith, 618-555-1234`, 600)
     setStep(STEPS.CONTACT)
   }
 
-  // Handle booking confirmation
   const handleConfirm = async () => {
     addUserMessage('Confirm booking')
     setIsTyping(true)
-
+    
     const dumpster = config.dumpsters.find(d => d.id === bookingData.size)
     const price = dumpster?.pricing[bookingData.duration] || 0
-
+    
     try {
       const response = await fetch('/api/book', {
         method: 'POST',
@@ -396,10 +378,10 @@ export default function ChatbotWidget() {
           projectType: bookingData.projectType,
         }),
       })
-
+      
       const result = await response.json()
       setIsTyping(false)
-
+      
       if (result.success) {
         await addBotMessage(`✅ Booking confirmed!\n\n${config.businessName} will call or text you at ${bookingData.phone} to confirm your ${dumpster.name} delivery on ${bookingData.deliveryDate}.\n\nTotal: $${price}\n\nQuestions? Call ${config.phone}`)
       } else {
@@ -410,11 +392,10 @@ export default function ChatbotWidget() {
       setIsTyping(false)
       await addBotMessage(`⚠️ Couldn't submit online.\n\nCall us at ${config.phone} — we'll book it for you!\n\nReference: ${bookingData.address}`)
     }
-
+    
     setStep(STEPS.COMPLETE)
   }
 
-  // Generate available dates
   const getAvailableDates = () => {
     const dates = []
     const today = new Date()
@@ -422,10 +403,10 @@ export default function ChatbotWidget() {
       const date = new Date(today)
       date.setDate(today.getDate() + i)
       if (date.getDay() !== 0) {
-        dates.push(date.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric'
+        dates.push(date.toLocaleDateString('en-US', { 
+          weekday: 'short', 
+          month: 'short', 
+          day: 'numeric' 
         }))
       }
     }
@@ -436,11 +417,9 @@ export default function ChatbotWidget() {
 
   return (
     <div className="chatbot-container">
-      {/* Chat Window - FULL SCREEN */}
       {isOpen && (
         <div className="fixed inset-0 bg-dark-900 flex flex-col z-50">
-
-          {/* Header */}
+          
           <div className="bg-primary-500 p-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
@@ -451,7 +430,7 @@ export default function ChatbotWidget() {
                 <p className="text-primary-100 text-sm">Online now • Usually replies instantly</p>
               </div>
             </div>
-            <button
+            <button 
               onClick={() => setIsOpen(false)}
               className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
@@ -459,14 +438,13 @@ export default function ChatbotWidget() {
             </button>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
             <div className="max-w-2xl mx-auto">
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex mb-4 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-5 py-4 ${
-                    msg.type === 'user'
-                      ? 'bg-primary-500 text-white rounded-br-md'
+                    msg.type === 'user' 
+                      ? 'bg-primary-500 text-white rounded-br-md' 
                       : 'bg-dark-700 text-white rounded-bl-md'
                   }`}>
                     <p className="whitespace-pre-line text-base leading-relaxed">{msg.text}</p>
@@ -474,7 +452,6 @@ export default function ChatbotWidget() {
                 </div>
               ))}
 
-              {/* Typing indicator */}
               {isTyping && (
                 <div className="flex justify-start mb-4">
                   <div className="bg-dark-700 rounded-2xl rounded-bl-md px-5 py-4">
@@ -487,7 +464,6 @@ export default function ChatbotWidget() {
                 </div>
               )}
 
-              {/* Project Type Selection */}
               {!isTyping && step === STEPS.PROJECT_TYPE && messages.length > 0 && (
                 <div className="space-y-3 mt-4">
                   <p className="text-dark-400 text-base mb-4">What kind of project are you working on?</p>
@@ -514,7 +490,6 @@ export default function ChatbotWidget() {
                 </div>
               )}
 
-              {/* Size Selection */}
               {!isTyping && step === STEPS.SIZE && (
                 <div className="space-y-3 mt-4">
                   {config.dumpsters.map((dumpster) => {
@@ -525,8 +500,8 @@ export default function ChatbotWidget() {
                         key={dumpster.id}
                         onClick={() => handleSizeSelect(dumpster.id)}
                         className={`w-full rounded-xl p-5 flex items-center justify-between transition-colors text-left ${
-                          isRecommended
-                            ? 'bg-primary-500/20 border-2 border-primary-500 hover:bg-primary-500/30'
+                          isRecommended 
+                            ? 'bg-primary-500/20 border-2 border-primary-500 hover:bg-primary-500/30' 
                             : 'bg-dark-700 hover:bg-dark-600'
                         }`}
                       >
@@ -553,17 +528,16 @@ export default function ChatbotWidget() {
                 </div>
               )}
 
-              {/* Map Placement */}
               {!isTyping && step === STEPS.MAP_PLACEMENT && (
                 <div className="space-y-4 mt-4">
                   <div className="bg-dark-700 rounded-xl overflow-hidden">
-                    {/* Satellite Map */}
-                    <div
+                    <div 
                       ref={mapContainerRef}
                       className="h-72 md:h-96 bg-dark-600 relative"
+                      style={{ minHeight: '300px' }}
                     >
-                      {!mapLoaded && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                      {!mapLoaded && !mapError && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-10">
                           <div className="w-16 h-16 bg-primary-500/20 rounded-2xl flex items-center justify-center mb-3 animate-pulse">
                             <MapPin className="w-8 h-8 text-primary-400" />
                           </div>
@@ -571,25 +545,35 @@ export default function ChatbotWidget() {
                           <p className="text-dark-400 text-sm">{bookingData.address}</p>
                         </div>
                       )}
-                    </div>
-
-                    {/* Map legend */}
-                    <div className="p-4 bg-dark-800 border-t border-dark-600">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 h-4 bg-primary-500/40 border-2 border-primary-500 rounded"></div>
-                          <span className="text-sm text-dark-300">
-                            {selectedDumpster?.name} ({selectedDumpster?.dimensions.display})
-                          </span>
+                      {mapError && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                          <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mb-3">
+                            <MapPin className="w-8 h-8 text-red-400" />
+                          </div>
+                          <p className="text-white font-medium mb-1">Couldn&apos;t load map</p>
+                          <p className="text-dark-400 text-sm">Just select a placement option below</p>
                         </div>
-                        <div className="flex items-center gap-2 text-dark-400 text-sm">
-                          <Move className="w-4 h-4" />
-                          Drag to move
+                      )}
+                    </div>
+                    
+                    {mapLoaded && (
+                      <div className="p-4 bg-dark-800 border-t border-dark-600">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-6 h-4 bg-primary-500/40 border-2 border-primary-500 rounded"></div>
+                            <span className="text-sm text-dark-300">
+                              {selectedDumpster?.name} ({selectedDumpster?.dimensions.display})
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-dark-400 text-sm">
+                            <Move className="w-4 h-4" />
+                            Drag to move
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-
+                  
                   <p className="text-dark-400 text-base">Where should we put it?</p>
                   <div className="grid grid-cols-2 gap-3">
                     {['Driveway', 'Street', 'Side of house', 'Backyard'].map((location) => (
@@ -614,7 +598,6 @@ export default function ChatbotWidget() {
                 </div>
               )}
 
-              {/* Duration Selection */}
               {!isTyping && step === STEPS.DURATION && (
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <button
@@ -639,7 +622,6 @@ export default function ChatbotWidget() {
                 </div>
               )}
 
-              {/* Date Selection */}
               {!isTyping && step === STEPS.DATE && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
                   {getAvailableDates().map((date) => (
@@ -655,7 +637,6 @@ export default function ChatbotWidget() {
                 </div>
               )}
 
-              {/* Prohibited Items Acknowledgment */}
               {!isTyping && step === STEPS.PROHIBITED && (
                 <button
                   onClick={handleProhibitedAck}
@@ -666,7 +647,6 @@ export default function ChatbotWidget() {
                 </button>
               )}
 
-              {/* Order Confirmation */}
               {!isTyping && step === STEPS.CONFIRM && (
                 <div className="bg-dark-700 rounded-xl p-6 mt-4">
                   <h4 className="font-semibold text-white text-xl mb-4">📋 Order Summary</h4>
@@ -720,7 +700,6 @@ export default function ChatbotWidget() {
             </div>
           </div>
 
-          {/* Input Area */}
           {(step === STEPS.ADDRESS || step === STEPS.CONTACT) && (
             <form onSubmit={handleSubmit} className="p-4 md:p-6 border-t border-dark-700 flex-shrink-0 bg-dark-800">
               <div className="max-w-2xl mx-auto flex gap-3">
@@ -729,14 +708,14 @@ export default function ChatbotWidget() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={
-                    step === STEPS.ADDRESS
-                      ? "Enter delivery address..."
+                    step === STEPS.ADDRESS 
+                      ? "Enter delivery address..." 
                       : "Your name, phone number (e.g. John Smith, 618-555-1234)"
                   }
                   className="input-field flex-1 text-lg py-4"
                   autoFocus
                 />
-                <button
+                <button 
                   type="submit"
                   className="bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white p-4 rounded-xl transition-colors"
                 >
@@ -746,7 +725,6 @@ export default function ChatbotWidget() {
             </form>
           )}
 
-          {/* Footer */}
           {step !== STEPS.COMPLETE && (
             <div className="px-4 pb-6 pt-3 flex-shrink-0 bg-dark-800">
               <p className="text-center text-base text-dark-400">
@@ -761,7 +739,6 @@ export default function ChatbotWidget() {
         </div>
       )}
 
-      {/* Floating Button - Only shows when chat is closed */}
       {!isOpen && (
         <button
           onClick={() => {
