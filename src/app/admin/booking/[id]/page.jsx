@@ -79,13 +79,23 @@ export default function BookingDetailPage() {
 
   // Initialize map when booking loads
   useEffect(() => {
-    if (!booking || !mapRef.current || mapInstanceRef.current) return
-    
+    if (!booking || !mapRef.current) return
+
+    // Prevent re-initialization if map already exists
+    if (mapInstanceRef.current) return
+
+    // Track intervals for cleanup
+    let checkInterval = null
+    let timeoutId = null
+
     // Load Google Maps
     const initMap = () => {
+      // Double-check map doesn't already exist
+      if (mapInstanceRef.current) return
+
       const lat = booking.placement_lat || null
       const lng = booking.placement_lng || null
-      
+
       // Geocode the address if no placement coordinates
       if (!lat || !lng) {
         const geocoder = new window.google.maps.Geocoder()
@@ -101,8 +111,11 @@ export default function BookingDetailPage() {
     }
 
     const createMap = (lat, lng, hasPlacement) => {
+      // Final check before creating map
+      if (mapInstanceRef.current || !mapRef.current) return
+
       const center = { lat: parseFloat(lat), lng: parseFloat(lng) }
-      
+
       const map = new window.google.maps.Map(mapRef.current, {
         center,
         zoom: 20,
@@ -112,7 +125,7 @@ export default function BookingDetailPage() {
         zoomControl: true,
         fullscreenControl: true,
       })
-      
+
       mapInstanceRef.current = map
 
       if (hasPlacement) {
@@ -142,11 +155,11 @@ export default function BookingDetailPage() {
             </div>
           `,
         })
-        
+
         marker.addListener('click', () => {
           infoWindow.open(map, marker)
         })
-        
+
         // Open by default
         infoWindow.open(map, marker)
       } else {
@@ -157,7 +170,7 @@ export default function BookingDetailPage() {
           title: booking.address,
         })
       }
-      
+
       setMapLoaded(true)
     }
 
@@ -169,13 +182,13 @@ export default function BookingDetailPage() {
       const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
       if (existingScript) {
         // Wait for existing script to fully load Geocoder
-        const check = setInterval(() => {
+        checkInterval = setInterval(() => {
           if (window.google?.maps?.Geocoder) {
-            clearInterval(check)
+            clearInterval(checkInterval)
             initMap()
           }
         }, 100)
-        setTimeout(() => clearInterval(check), 10000)
+        timeoutId = setTimeout(() => clearInterval(checkInterval), 10000)
       } else {
         const script = document.createElement('script')
         script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=places,geocoding`
@@ -183,16 +196,40 @@ export default function BookingDetailPage() {
         script.defer = true
         script.onload = () => {
           // Wait briefly for Geocoder to be available
-          const check = setInterval(() => {
+          checkInterval = setInterval(() => {
             if (window.google?.maps?.Geocoder) {
-              clearInterval(check)
+              clearInterval(checkInterval)
               initMap()
             }
           }, 50)
-          setTimeout(() => clearInterval(check), 5000)
+          timeoutId = setTimeout(() => clearInterval(checkInterval), 5000)
         }
         document.head.appendChild(script)
       }
+    }
+
+    // Cleanup function to properly remove map on unmount
+    return () => {
+      // Clear any pending intervals/timeouts
+      if (checkInterval) clearInterval(checkInterval)
+      if (timeoutId) clearTimeout(timeoutId)
+
+      // Remove marker
+      if (markerRef.current) {
+        markerRef.current.setMap(null)
+        markerRef.current = null
+      }
+
+      // Remove map - this is crucial to prevent DOM conflicts
+      if (mapInstanceRef.current) {
+        // Google Maps doesn't have a destroy method, but we can clear the div
+        if (mapRef.current) {
+          mapRef.current.innerHTML = ''
+        }
+        mapInstanceRef.current = null
+      }
+
+      setMapLoaded(false)
     }
   }, [booking])
 
