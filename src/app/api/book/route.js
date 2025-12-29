@@ -1,6 +1,25 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
 
+// Parse "Mon, Jan 6" format to "2025-01-06" for database
+function parseDeliveryDate(dateStr) {
+  try {
+    const currentYear = new Date().getFullYear();
+    const parsed = new Date(`${dateStr} ${currentYear}`);
+    if (isNaN(parsed.getTime())) {
+      // Fallback: return tomorrow's date
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow.toISOString().split('T')[0];
+    }
+    return parsed.toISOString().split('T')[0]; // Returns "2025-01-06" format
+  } catch {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  }
+}
+
 // ============================================
 // BOOKING API ENDPOINT
 // ============================================
@@ -59,7 +78,7 @@ export async function POST(request) {
       placement_notes: placementNotes || null,
       dumpster_size: dumpsterSize,
       rental_duration: rentalDuration,
-      delivery_date: deliveryDate,
+      delivery_date: parseDeliveryDate(deliveryDate),
       price_cents: priceCents || 0,
       project_type: projectType || null,
       status: 'pending',
