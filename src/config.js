@@ -51,7 +51,7 @@ export const config = {
   // 🗺️ MAPBOX (for satellite maps)
   // ============================================
   mapbox: {
-    token: "pk.eyJ1IjoidH1zb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcW1qM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
+    token: "pk.eyJ1IjoidHlzb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcWlqM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
   },
 
   // ============================================
@@ -110,7 +110,7 @@ export const config = {
   // 🗺️ MAPBOX (for satellite maps)
   // ============================================
   mapbox: {
-    token: "pk.eyJ1IjoidH1zb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcW1qM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
+    token: "pk.eyJ1IjoidHlzb25zdGVjaHNvbHV0aW9ucyIsImEiOiJjbWpxbjJ3cWszcWlqM2hwdzJuODFobXkzIn0.ZnemBU7v_R23DNaU6NRQaw",
   },
   
   // ============================================
