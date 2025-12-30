@@ -1,0 +1,196 @@
+// ============================================
+// DOCUMENT UPLOAD API
+// ============================================
+// Uploads documents to Supabase Storage
+
+import { NextResponse } from 'next/server';
+import { config } from '../../../../config';
+
+const supabaseUrl = config.supabase.url;
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+export async function POST(request) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file');
+    const category = formData.get('category') || 'other';
+    const title = formData.get('title') || file?.name;
+    const bookingId = formData.get('booking_id');
+    const customerId = formData.get('customer_id');
+    const invoiceId = formData.get('invoice_id');
+    const weightLbs = formData.get('weight_lbs');
+    const amountCents = formData.get('amount_cents');
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    // Generate unique file path
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `${category}/${timestamp}_${sanitizedName}`;
+
+    // Upload to Supabase Storage
+    const fileBuffer = await file.arrayBuffer();
+    const uploadResponse = await fetch(
+      `${supabaseUrl}/storage/v1/object/documents/${storagePath}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'Content-Type': file.type,
+          'x-upsert': 'true',
+        },
+        body: fileBuffer,
+      }
+    );
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('Storage upload error:', errorText);
+      
+      // Check if bucket doesn't exist
+      if (errorText.includes('Bucket not found')) {
+        return NextResponse.json(
+          { error: 'Storage not configured. Please create a "documents" bucket in Supabase.' },
+          { status: 500 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: 'Failed to upload file' },
+        { status: 500 }
+      );
+    }
+
+    // Create document record
+    const documentData = {
+      booking_id: bookingId ? parseInt(bookingId) : null,
+      customer_id: customerId ? parseInt(customerId) : null,
+      invoice_id: invoiceId ? parseInt(invoiceId) : null,
+      category,
+      file_name: file.name,
+      file_type: file.type,
+      file_size: file.size,
+      storage_path: storagePath,
+      title,
+      weight_lbs: weightLbs ? parseInt(weightLbs) : null,
+      amount_cents: amountCents ? parseInt(amountCents) : null,
+      document_date: new Date().toISOString().split('T')[0],
+    };
+
+    const dbResponse = await fetch(
+      `${supabaseUrl}/rest/v1/documents`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(documentData),
+      }
+    );
+
+    if (!dbResponse.ok) {
+      const errorText = await dbResponse.text();
+      console.error('Document record error:', errorText);
+      return NextResponse.json(
+        { error: 'Failed to save document record' },
+        { status: 500 }
+      );
+    }
+
+    const [document] = await dbResponse.json();
+
+    // If this is a weight ticket attached to a booking, update the booking
+    if (category === 'weight_ticket' && bookingId && weightLbs) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/bookings?id=eq.${bookingId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+          body: JSON.stringify({
+            actual_weight_lbs: parseInt(weightLbs),
+            weight_recorded_at: new Date().toISOString(),
+          }),
+        }
+      );
+    }
+
+    console.log(`📄 Document uploaded: ${storagePath}`);
+
+    return NextResponse.json({
+      success: true,
+      document,
+      storage_path: storagePath,
+    });
+
+  } catch (error) {
+    console.error('Document upload error:', error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================
+// GET DOCUMENTS
+// ============================================
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const bookingId = searchParams.get('booking_id');
+  const customerId = searchParams.get('customer_id');
+  const category = searchParams.get('category');
+
+  try {
+    let query = 'order=created_at.desc';
+    
+    if (bookingId) {
+      query += `&booking_id=eq.${bookingId}`;
+    }
+    if (customerId) {
+      query += `&customer_id=eq.${customerId}`;
+    }
+    if (category) {
+      query += `&category=eq.${category}`;
+    }
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/documents?${query}`,
+      {
+        headers: {
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const documents = await response.json();
+      
+      // Add public URLs for each document
+      const docsWithUrls = documents.map(doc => ({
+        ...doc,
+        url: `${supabaseUrl}/storage/v1/object/public/documents/${doc.storage_path}`,
+      }));
+      
+      return NextResponse.json(docsWithUrls);
+    }
+
+    return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 });
+
+  } catch (error) {
+    console.error('Get documents error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

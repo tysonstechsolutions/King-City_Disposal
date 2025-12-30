@@ -1,0 +1,234 @@
+// ============================================
+// INVOICE API ROUTES
+// ============================================
+
+import { NextResponse } from 'next/server';
+import { config } from '../../../config';
+
+const supabaseUrl = config.supabase.url;
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+// ============================================
+// GENERATE INVOICE NUMBER
+// ============================================
+async function generateInvoiceNumber() {
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/generate_invoice_number`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+        body: JSON.stringify({}),
+      }
+    );
+
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (e) {
+    console.error('Error generating invoice number:', e);
+  }
+
+  // Fallback
+  const now = new Date();
+  const year = now.getFullYear();
+  const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+  return `INV-${year}-${random}`;
+}
+
+// ============================================
+// CREATE INVOICE
+// ============================================
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    
+    const {
+      customer_id,
+      booking_id,
+      customer_name,
+      customer_phone,
+      customer_email,
+      customer_address,
+      service_address,
+      service_description,
+      dumpster_size,
+      rental_duration,
+      delivery_date,
+      pickup_date,
+      weight_lbs,
+      weight_included_lbs,
+      line_items,
+      subtotal_cents,
+      tax_cents = 0,
+      discount_cents = 0,
+      total_cents,
+      due_date,
+      notes,
+      status = 'draft',
+      sent_at,
+    } = body;
+
+    if (!customer_name || !line_items || line_items.length === 0) {
+      return NextResponse.json(
+        { error: 'Customer name and line items are required' },
+        { status: 400 }
+      );
+    }
+
+    // Generate invoice number
+    const invoice_number = await generateInvoiceNumber();
+
+    // Calculate overage if weight provided
+    let overage_lbs = null;
+    if (weight_lbs && weight_included_lbs) {
+      overage_lbs = Math.max(0, weight_lbs - weight_included_lbs);
+    }
+
+    const invoiceData = {
+      invoice_number,
+      customer_id,
+      booking_id,
+      customer_name,
+      customer_phone,
+      customer_email,
+      customer_address,
+      service_address,
+      service_description,
+      dumpster_size,
+      rental_duration,
+      delivery_date,
+      pickup_date,
+      weight_lbs,
+      weight_included_lbs,
+      overage_lbs,
+      line_items: JSON.stringify(line_items),
+      subtotal_cents,
+      tax_cents,
+      discount_cents,
+      total_cents: total_cents || subtotal_cents,
+      amount_paid_cents: 0,
+      due_date,
+      notes,
+      status,
+      sent_at,
+    };
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/invoices`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(invoiceData),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Invoice creation error:', errorText);
+      return NextResponse.json(
+        { error: 'Failed to create invoice' },
+        { status: 500 }
+      );
+    }
+
+    const [invoice] = await response.json();
+
+    // If linked to a booking, update the booking
+    if (booking_id) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/bookings?id=eq.${booking_id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+          body: JSON.stringify({
+            invoice_id: invoice.id,
+            invoiced_at: new Date().toISOString(),
+          }),
+        }
+      );
+    }
+
+    console.log(`✅ Invoice created: ${invoice_number}`);
+
+    return NextResponse.json({
+      success: true,
+      invoice,
+      invoice_number,
+    });
+
+  } catch (error) {
+    console.error('Invoice error:', error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================
+// GET INVOICES
+// ============================================
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  const invoiceNumber = searchParams.get('invoice_number');
+  const customerId = searchParams.get('customer_id');
+  const status = searchParams.get('status');
+
+  try {
+    let query = 'order=created_at.desc';
+    
+    if (id) {
+      query = `id=eq.${id}`;
+    } else if (invoiceNumber) {
+      query = `invoice_number=eq.${invoiceNumber}`;
+    } else {
+      if (customerId) {
+        query += `&customer_id=eq.${customerId}`;
+      }
+      if (status) {
+        query += `&status=eq.${status}`;
+      }
+    }
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/invoices?${query}`,
+      {
+        headers: {
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      // Parse line_items JSON
+      const invoices = data.map(inv => ({
+        ...inv,
+        line_items: typeof inv.line_items === 'string' ? JSON.parse(inv.line_items) : inv.line_items
+      }));
+      return NextResponse.json(invoices);
+    }
+
+    return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 });
+
+  } catch (error) {
+    console.error('Get invoices error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
