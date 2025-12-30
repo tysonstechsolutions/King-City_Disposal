@@ -2,43 +2,36 @@
 // COMBINED DAILY CRON JOB
 // ============================================
 //
-// Runs at 6am CST (12:00 UTC), handles:
-// 1. Daily route text to owner with optimized stops
-// 2. Day-before delivery reminders to customers
-// 3. Day-before pickup reminders to customers
-// 4. Post-rental review requests (2 days after completion)
+// Runs once daily at 9am CST (15:00 UTC)
+// Handles ALL scheduled tasks:
+// - Daily route text to owner
+// - Delivery/pickup reminders
+// - Late fee notifications
+// - Invoice payment reminders
 //
-// SETUP:
-// Add to vercel.json:
-// { "path": "/api/cron/daily", "schedule": "0 12 * * *" }
+// This combines 4 jobs into 1 to stay within Vercel free tier limits
 //
 // ============================================
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
+const supabaseUrl = config.supabase.url;
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
-// Verify cron secret (optional security)
-function verifyCronSecret(request) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
-  return authHeader === `Bearer ${cronSecret}`;
-}
-
-// Send SMS via Twilio
+// ============================================
+// SEND SMS HELPER
+// ============================================
 async function sendSMS(to, message) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_PHONE_NUMBER;
 
-  if (!accountSid || !authToken || !from) {
-    console.log('Twilio not configured, skipping SMS');
-    return null;
-  }
+  if (!accountSid || !authToken || !from || !to) return false;
+
+  let cleanPhone = to.replace(/\D/g, '');
+  if (cleanPhone.length === 10) cleanPhone = '1' + cleanPhone;
+  if (!cleanPhone.startsWith('+')) cleanPhone = '+' + cleanPhone;
 
   try {
     const response = await fetch(
@@ -49,368 +42,372 @@ async function sendSMS(to, message) {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
         },
-        body: new URLSearchParams({ To: to, From: from, Body: message }),
+        body: new URLSearchParams({ To: cleanPhone, From: from, Body: message }),
       }
     );
-
-    const data = await response.json();
-    if (data.error_code) {
-      console.error(`SMS error to ${to}:`, data.error_message);
-      return null;
-    }
-    return data;
+    return response.ok;
   } catch (e) {
-    console.error('SMS send error:', e);
-    return null;
+    console.error('SMS error:', e);
+    return false;
   }
 }
 
-// Query Supabase
-async function queryBookings(filter) {
-  const response = await fetch(
-    `${config.supabase.url}/rest/v1/bookings?${filter}`,
+// ============================================
+// 1. DAILY ROUTE
+// ============================================
+async function runDailyRoute() {
+  console.log('📋 Running daily route...');
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get today's deliveries
+  const deliveriesRes = await fetch(
+    `${supabaseUrl}/rest/v1/bookings?delivery_date=eq.${today}&status=in.(pending,confirmed)&order=address.asc`,
     {
       headers: {
-        'apikey': config.supabase.anonKey,
-        'Authorization': `Bearer ${config.supabase.anonKey}`,
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
       },
     }
   );
-  return response.ok ? response.json() : [];
-}
 
-// Update booking
-async function updateBooking(id, updates) {
-  await fetch(`${config.supabase.url}/rest/v1/bookings?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': config.supabase.anonKey,
-      'Authorization': `Bearer ${config.supabase.anonKey}`,
-    },
-    body: JSON.stringify(updates),
-  });
-}
-
-// Format phone for Twilio (+1XXXXXXXXXX)
-function formatPhoneForTwilio(phone) {
-  const cleaned = phone.replace(/\D/g, '');
-  if (cleaned.length === 10) return `+1${cleaned}`;
-  if (cleaned.length === 11 && cleaned.startsWith('1')) return `+${cleaned}`;
-  return `+${cleaned}`;
-}
-
-// Simple distance calculation for route optimization
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 3959;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-// Nearest neighbor algorithm for route optimization
-function optimizeRoute(stops, startLat, startLng) {
-  if (stops.length <= 1) return stops;
-
-  const optimized = [];
-  const remaining = [...stops];
-  let currentLat = startLat;
-  let currentLng = startLng;
-
-  while (remaining.length > 0) {
-    let nearestIdx = 0;
-    let nearestDist = Infinity;
-
-    for (let i = 0; i < remaining.length; i++) {
-      const stop = remaining[i];
-      if (stop.placement_lat && stop.placement_lng) {
-        const dist = getDistance(currentLat, currentLng, stop.placement_lat, stop.placement_lng);
-        if (dist < nearestDist) {
-          nearestDist = dist;
-          nearestIdx = i;
-        }
-      }
+  // Get today's pickups
+  const pickupsRes = await fetch(
+    `${supabaseUrl}/rest/v1/bookings?status=eq.pickup_requested&order=address.asc`,
+    {
+      headers: {
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+      },
     }
-
-    const nearest = remaining.splice(nearestIdx, 1)[0];
-    optimized.push(nearest);
-
-    if (nearest.placement_lat && nearest.placement_lng) {
-      currentLat = nearest.placement_lat;
-      currentLng = nearest.placement_lng;
-    }
-  }
-
-  return optimized;
-}
-
-// ============================================
-// PART 1: DAILY ROUTE TO OWNER
-// ============================================
-async function sendDailyRoute(today, results) {
-  const todayStr = today.toISOString().split('T')[0];
-
-  // Get today's deliveries
-  const deliveries = await queryBookings(
-    `delivery_date=eq.${todayStr}&status=eq.confirmed&order=created_at.asc`
   );
 
-  // Get pickups due today
-  const allDelivered = await queryBookings(`status=eq.delivered`);
-  const pickups = allDelivered.filter(b => {
-    const deliveryDate = new Date(b.delivery_date);
-    const days = b.rental_duration === '3-day' ? 3 : 7;
-    const pickupDate = new Date(deliveryDate);
-    pickupDate.setDate(pickupDate.getDate() + days);
-    return pickupDate.toISOString().split('T')[0] === todayStr;
-  });
+  const deliveries = deliveriesRes.ok ? await deliveriesRes.json() : [];
+  const pickups = pickupsRes.ok ? await pickupsRes.json() : [];
 
-  // Get overdue pickups
-  const overdue = allDelivered.filter(b => {
-    const deliveryDate = new Date(b.delivery_date);
-    const days = b.rental_duration === '3-day' ? 3 : 7;
-    const pickupDate = new Date(deliveryDate);
-    pickupDate.setDate(pickupDate.getDate() + days);
-    return pickupDate.toISOString().split('T')[0] < todayStr;
-  });
-
-  const totalStops = deliveries.length + pickups.length;
-  results.routeStops = totalStops;
-  results.overdueCount = overdue.length;
-
-  if (totalStops === 0 && overdue.length === 0) {
-    await sendSMS(process.env.OWNER_PHONE,
-      `☀️ Good morning!\n\n📅 No stops scheduled for today.\n\nEnjoy your day!`
-    );
-    return;
+  if (deliveries.length === 0 && pickups.length === 0) {
+    console.log('No deliveries or pickups today');
+    return { deliveries: 0, pickups: 0 };
   }
 
-  // Combine and mark stop types
-  const allStops = [
-    ...deliveries.map(d => ({ ...d, stopType: 'DELIVERY' })),
-    ...pickups.map(p => ({ ...p, stopType: 'PICKUP' })),
-  ];
+  const ownerPhone = process.env.OWNER_PHONE;
+  if (!ownerPhone) return { deliveries: deliveries.length, pickups: pickups.length };
 
-  // Optimize route
-  const optimizedStops = optimizeRoute(
-    allStops,
-    config.serviceAreaCenter.lat,
-    config.serviceAreaCenter.lng
-  );
+  let message = `📋 TODAY'S ROUTE\n${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}\n`;
 
-  // Build message
-  let message = `☀️ GOOD MORNING!\n\n🚛 TODAY'S ROUTE (${totalStops} stops)\n\n`;
-
-  optimizedStops.forEach((stop, idx) => {
-    const dumpster = config.dumpsters.find(d => d.id === stop.dumpster_size);
-    const icon = stop.stopType === 'DELIVERY' ? '📦' : '🚛';
-
-    message += `${idx + 1}. ${icon} ${stop.stopType}\n`;
-    message += `   ${dumpster?.shortName || stop.dumpster_size}\n`;
-    message += `   ${stop.address}\n`;
-
-    if (stop.customer_name && stop.customer_name !== 'Manual Entry') {
-      message += `   👤 ${stop.customer_name}\n`;
-    }
-    if (stop.customer_phone) {
-      message += `   📞 ${stop.customer_phone}\n`;
-    }
-    if (stop.placement_notes) {
-      message += `   📌 ${stop.placement_notes}\n`;
-    }
-    message += '\n';
-  });
-
-  if (overdue.length > 0) {
-    message += `⚠️ ${overdue.length} OVERDUE:\n`;
-    for (const o of overdue.slice(0, 3)) {
-      message += `• ${o.address.substring(0, 25)}...\n`;
-    }
-    message += '\n';
+  if (deliveries.length > 0) {
+    message += `\n🚛 DELIVERIES (${deliveries.length}):\n`;
+    deliveries.forEach((b, i) => {
+      message += `${i + 1}. ${b.customer_name}\n   📍 ${b.address}\n   📦 ${b.dumpster_size}\n`;
+    });
   }
 
-  if (optimizedStops.length > 0) {
-    const addresses = optimizedStops.map(s => encodeURIComponent(s.address)).join('/');
-    message += `🗺️ Open route:\ngoogle.com/maps/dir/${addresses}`;
+  if (pickups.length > 0) {
+    message += `\n📤 PICKUPS (${pickups.length}):\n`;
+    pickups.forEach((b, i) => {
+      message += `${i + 1}. ${b.customer_name}\n   📍 ${b.address}\n`;
+    });
   }
 
-  await sendSMS(process.env.OWNER_PHONE, message);
-  console.log(`📨 Daily route sent: ${totalStops} stops`);
+  await sendSMS(ownerPhone, message);
+  return { deliveries: deliveries.length, pickups: pickups.length };
 }
 
 // ============================================
-// PART 2: CUSTOMER REMINDERS
+// 2. DELIVERY/PICKUP REMINDERS
 // ============================================
-async function sendReminders(today, results) {
-  const tomorrow = new Date(today);
+async function runReminders() {
+  console.log('🔔 Running delivery/pickup reminders...');
+
+  const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-  // ========================================
-  // DELIVERY REMINDERS (day before)
-  // ========================================
-  const deliveryBookings = await queryBookings(
-    `delivery_date=eq.${tomorrowStr}&status=eq.confirmed&delivery_reminder_sent=is.null`
+  // Tomorrow's deliveries (not yet reminded)
+  const deliveriesRes = await fetch(
+    `${supabaseUrl}/rest/v1/bookings?delivery_date=eq.${tomorrowStr}&status=in.(pending,confirmed)&delivery_reminder_sent=is.null`,
+    {
+      headers: {
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+      },
+    }
   );
 
-  for (const booking of deliveryBookings) {
-    try {
-      const phone = formatPhoneForTwilio(booking.customer_phone);
-      const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
+  const deliveries = deliveriesRes.ok ? await deliveriesRes.json() : [];
+  let sent = 0;
 
-      const message = `Hi ${booking.customer_name.split(' ')[0]}! 🚛
+  for (const booking of deliveries) {
+    if (!booking.customer_phone) continue;
 
-Your ${dumpster?.name || 'dumpster'} arrives TOMORROW between 8am-12pm.
+    const message = `🚛 DELIVERY REMINDER
+
+Hi ${booking.customer_name?.split(' ')[0] || 'there'}!
+
+Your ${booking.dumpster_size || 'dumpster'} is scheduled for delivery TOMORROW.
 
 📍 ${booking.address}
-${booking.placement_notes ? `📌 Placement: ${booking.placement_notes}` : ''}
-
-Please make sure the area is clear and accessible.
+${booking.placement_notes ? `📌 Placement: ${booking.placement_notes}\n` : ''}
+Please ensure the area is clear and accessible.
 
 Questions? Reply to this text or call ${config.phone}
 
 - ${config.businessName}`;
 
-      const sent = await sendSMS(phone, message);
-      if (sent) {
-        await updateBooking(booking.id, { delivery_reminder_sent: new Date().toISOString() });
-        results.deliveryReminders++;
-        console.log(`✅ Delivery reminder sent to ${booking.customer_name}`);
-      }
-    } catch (e) {
-      results.errors.push(`Delivery reminder failed for ${booking.id}: ${e.message}`);
+    const success = await sendSMS(booking.customer_phone, message);
+    if (success) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/bookings?id=eq.${booking.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+          body: JSON.stringify({ delivery_reminder_sent: new Date().toISOString() }),
+        }
+      );
+      sent++;
     }
   }
 
-  // ========================================
-  // PICKUP REMINDERS (day before rental ends)
-  // ========================================
-  const pickupBookings = await queryBookings(
-    `status=eq.delivered&pickup_reminder_sent=is.null`
+  return { reminders_sent: sent };
+}
+
+// ============================================
+// 3. LATE FEE NOTIFICATIONS
+// ============================================
+async function runLateFees() {
+  console.log('⏰ Running late fee check...');
+
+  // Get delivered bookings past their pickup date
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/bookings?status=eq.delivered&select=*`,
+    {
+      headers: {
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+      },
+    }
   );
 
-  for (const booking of pickupBookings) {
-    try {
-      const deliveryDate = new Date(booking.delivery_date);
-      const rentalDays = booking.rental_duration === '3-day' ? 3 : 7;
-      const pickupDate = new Date(deliveryDate);
-      pickupDate.setDate(pickupDate.getDate() + rentalDays);
+  if (!response.ok) return { overdue: 0 };
 
-      const pickupDateStr = pickupDate.toISOString().split('T')[0];
-      if (pickupDateStr !== tomorrowStr) continue;
+  const bookings = await response.json();
+  const today = new Date();
+  let notified = 0;
 
-      const phone = formatPhoneForTwilio(booking.customer_phone);
-      const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
-      const dailyRate = dumpster?.dailyExtension || 20;
+  for (const booking of bookings) {
+    if (!booking.delivery_date || !booking.rental_duration) continue;
 
-      const message = `Hi ${booking.customer_name.split(' ')[0]}! ⏰
+    const deliveryDate = new Date(booking.delivery_date);
+    const days = parseInt(booking.rental_duration) || 7;
+    const dueDate = new Date(deliveryDate);
+    dueDate.setDate(dueDate.getDate() + days);
 
-Your rental ends TOMORROW. We'll pick up your ${dumpster?.name || 'dumpster'} between 8am-5pm.
+    const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
 
-📍 ${booking.address}
+    if (daysOverdue > 0 && booking.customer_phone) {
+      // Only notify once per 3 days
+      const lastNotified = booking.late_fee_notified_at ? new Date(booking.late_fee_notified_at) : null;
+      const daysSinceNotified = lastNotified ? Math.floor((today - lastNotified) / (1000 * 60 * 60 * 24)) : 999;
 
-Need more time? Reply EXTEND for $${dailyRate}/day
-All done? Make sure nothing is blocking the dumpster!
+      if (daysSinceNotified >= 3) {
+        const lateFee = daysOverdue * (config.pricing?.lateFeePerDay || 25);
+
+        const message = `⏰ RENTAL OVERDUE
+
+Your dumpster at ${booking.address} is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} past the pickup date.
+
+Daily late fee: $${config.pricing?.lateFeePerDay || 25}/day
+Current charges: $${lateFee}
+
+To schedule pickup, reply PICKUP or call ${config.phone}
 
 - ${config.businessName}`;
 
-      const sent = await sendSMS(phone, message);
-      if (sent) {
-        await updateBooking(booking.id, { pickup_reminder_sent: new Date().toISOString() });
-        results.pickupReminders++;
-        console.log(`✅ Pickup reminder sent to ${booking.customer_name}`);
+        const success = await sendSMS(booking.customer_phone, message);
+        if (success) {
+          await fetch(
+            `${supabaseUrl}/rest/v1/bookings?id=eq.${booking.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
+              },
+              body: JSON.stringify({
+                late_fee_notified_at: new Date().toISOString(),
+                days_overdue: daysOverdue,
+                pending_late_fee: lateFee * 100,
+              }),
+            }
+          );
+          notified++;
+        }
       }
-    } catch (e) {
-      results.errors.push(`Pickup reminder failed for ${booking.id}: ${e.message}`);
     }
   }
 
-  // ========================================
-  // REVIEW REQUESTS (2 days after completion)
-  // ========================================
-  const completedBookings = await queryBookings(
-    `status=eq.completed&review_request_sent=is.null`
+  return { overdue_notified: notified };
+}
+
+// ============================================
+// 4. INVOICE REMINDERS
+// ============================================
+async function runInvoiceReminders() {
+  console.log('📋 Running invoice reminders...');
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Get unpaid invoices
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/invoices?status=neq.paid&status=neq.void&status=neq.draft&order=due_date.asc`,
+    {
+      headers: {
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+      },
+    }
   );
 
-  for (const booking of completedBookings) {
-    try {
-      const completedDate = new Date(booking.completed_at || booking.updated_at);
-      const daysSinceCompletion = Math.floor((today - completedDate) / (1000 * 60 * 60 * 24));
+  if (!response.ok) return { invoice_reminders: 0 };
 
-      if (daysSinceCompletion < 2) continue;
+  const invoices = await response.json();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kingcitydisposal.com';
+  let sent = 0;
 
-      const phone = formatPhoneForTwilio(booking.customer_phone);
-      const firstName = booking.customer_name.split(' ')[0];
-      const reviewLink = config.social?.google ||
-        `https://search.google.com/local/writereview?placeid=${config.googlePlaceId || ''}`;
+  for (const invoice of invoices) {
+    if (!invoice.customer_phone || !invoice.due_date) continue;
 
-      const message = `Hi ${firstName}! Thanks for choosing ${config.businessName}! 🙏
+    const dueDate = new Date(invoice.due_date);
+    dueDate.setHours(0, 0, 0, 0);
 
-How did we do? We'd really appreciate a quick Google review - it helps other folks find us!
+    const daysUntilDue = Math.floor((dueDate - today) / (1000 * 60 * 60 * 24));
+    const daysSinceLastReminder = invoice.last_reminder_sent_at
+      ? Math.floor((today - new Date(invoice.last_reminder_sent_at)) / (1000 * 60 * 60 * 24))
+      : 999;
 
-⭐ Leave a review: ${reviewLink}
+    let shouldRemind = false;
 
-Thanks again!
-- The ${config.businessName} Team`;
+    // Remind at: 3 days before, day of, 1 day after, 3 days after, 7 days after
+    if (daysUntilDue === 3 && invoice.reminder_count === 0) shouldRemind = true;
+    else if (daysUntilDue === 0 && daysSinceLastReminder >= 1) shouldRemind = true;
+    else if (daysUntilDue < 0 && daysSinceLastReminder >= 3) shouldRemind = true;
 
-      const sent = await sendSMS(phone, message);
-      if (sent) {
-        await updateBooking(booking.id, { review_request_sent: new Date().toISOString() });
-        results.reviewRequests++;
-        console.log(`✅ Review request sent to ${booking.customer_name}`);
+    if (shouldRemind) {
+      const amount = `$${((invoice.balance_due_cents || invoice.total_cents) / 100).toFixed(2)}`;
+      const invoiceUrl = `${siteUrl}/invoice/${invoice.invoice_number}`;
+
+      let message;
+      if (daysUntilDue < 0) {
+        const daysOverdue = Math.abs(daysUntilDue);
+        message = `⚠️ PAYMENT OVERDUE
+
+Invoice ${invoice.invoice_number}
+Amount: ${amount}
+${daysOverdue} day${daysOverdue > 1 ? 's' : ''} past due
+
+💳 Pay now: ${invoiceUrl}
+
+- ${config.businessName}`;
+      } else {
+        message = `📋 PAYMENT ${daysUntilDue === 0 ? 'DUE TODAY' : 'REMINDER'}
+
+Invoice ${invoice.invoice_number}
+Amount: ${amount}
+
+💳 Pay now: ${invoiceUrl}
+
+- ${config.businessName}`;
       }
-    } catch (e) {
-      results.errors.push(`Review request failed for ${booking.id}: ${e.message}`);
+
+      const success = await sendSMS(invoice.customer_phone, message);
+      if (success) {
+        await fetch(
+          `${supabaseUrl}/rest/v1/invoices?id=eq.${invoice.id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': getSupabaseKey(),
+              'Authorization': `Bearer ${getSupabaseKey()}`,
+            },
+            body: JSON.stringify({
+              reminder_count: (invoice.reminder_count || 0) + 1,
+              last_reminder_sent_at: new Date().toISOString(),
+              status: daysUntilDue < 0 ? 'overdue' : invoice.status,
+            }),
+          }
+        );
+        sent++;
+      }
     }
   }
+
+  return { invoice_reminders: sent };
 }
 
 // ============================================
 // MAIN CRON HANDLER
 // ============================================
 export async function GET(request) {
-  if (!verifyCronSecret(request)) {
+  // Verify cron secret if configured
+  const authHeader = request.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  console.log('🚀 Starting daily cron job...');
+  const startTime = Date.now();
+
   const results = {
-    routeStops: 0,
-    overdueCount: 0,
-    deliveryReminders: 0,
-    pickupReminders: 0,
-    reviewRequests: 0,
+    timestamp: new Date().toISOString(),
+    daily_route: null,
+    reminders: null,
+    late_fees: null,
+    invoice_reminders: null,
     errors: [],
   };
 
+  // Run all tasks, catching errors individually
   try {
-    const today = new Date();
-
-    // Part 1: Send daily route to owner
-    await sendDailyRoute(today, results);
-
-    // Part 2: Send customer reminders
-    await sendReminders(today, results);
-
-    console.log('📊 Daily cron complete:', results);
-
-    return NextResponse.json({
-      success: true,
-      ...results,
-      timestamp: new Date().toISOString(),
-    });
-
-  } catch (error) {
-    console.error('Daily cron error:', error);
-    return NextResponse.json({
-      error: error.message,
-      ...results,
-    }, { status: 500 });
+    results.daily_route = await runDailyRoute();
+  } catch (e) {
+    console.error('Daily route error:', e);
+    results.errors.push({ task: 'daily_route', error: e.message });
   }
-}
 
-export async function POST(request) {
-  return GET(request);
+  try {
+    results.reminders = await runReminders();
+  } catch (e) {
+    console.error('Reminders error:', e);
+    results.errors.push({ task: 'reminders', error: e.message });
+  }
+
+  try {
+    results.late_fees = await runLateFees();
+  } catch (e) {
+    console.error('Late fees error:', e);
+    results.errors.push({ task: 'late_fees', error: e.message });
+  }
+
+  try {
+    results.invoice_reminders = await runInvoiceReminders();
+  } catch (e) {
+    console.error('Invoice reminders error:', e);
+    results.errors.push({ task: 'invoice_reminders', error: e.message });
+  }
+
+  const duration = Date.now() - startTime;
+  console.log(`✅ Daily cron complete in ${duration}ms`);
+
+  return NextResponse.json({
+    success: true,
+    duration_ms: duration,
+    ...results,
+  });
 }
