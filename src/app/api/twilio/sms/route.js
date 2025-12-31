@@ -1,7 +1,7 @@
 // ============================================
 // TWILIO INBOUND SMS WEBHOOK
 // ============================================
-// 
+//
 // CUSTOMER COMMANDS:
 // - EXTEND → Extend rental, send payment link
 // - PICKUP → Schedule pickup
@@ -15,11 +15,127 @@
 // - DELIVERED #[id] → Mark as delivered
 // - PICKEDUP #[id] → Mark as completed
 // - SEND → Send pending overage invoice
+// - [PHOTO] → AI reads weight ticket, extracts data
 //
 // ============================================
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import Anthropic from '@anthropic-ai/sdk';
+
+// ============================================
+// AI VISION - Extract data from weight tickets
+// ============================================
+
+async function extractFromImage(imageUrl) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.log('No ANTHROPIC_API_KEY set');
+    return null;
+  }
+
+  try {
+    // Download image from Twilio (requires auth)
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+    const imageResponse = await fetch(imageUrl, {
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+      },
+    });
+
+    if (!imageResponse.ok) {
+      console.error('Failed to fetch image from Twilio');
+      return null;
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+
+    // Call Claude Vision API
+    const client = new Anthropic({ apiKey });
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: contentType,
+                data: base64Image,
+              },
+            },
+            {
+              type: 'text',
+              text: `Analyze this image. If it's a weight ticket or landfill receipt, extract:
+- weight_lbs: The net weight in pounds (number only)
+- ticket_number: Any ticket or transaction number
+- landfill_name: Name of the landfill/facility
+- date: Date on the ticket (YYYY-MM-DD format)
+- gross_weight: Gross weight if shown
+- tare_weight: Tare weight if shown
+
+If it's a fuel receipt, extract:
+- amount: Total amount in dollars (number only)
+- gallons: Gallons purchased
+- station: Gas station name
+- date: Date (YYYY-MM-DD)
+
+If it's neither, describe what you see briefly.
+
+Respond in JSON format only:
+{
+  "type": "weight_ticket" | "fuel_receipt" | "other",
+  "data": { ... extracted fields ... },
+  "confidence": "high" | "medium" | "low",
+  "raw_text": "any key text you can read"
+}`
+            }
+          ],
+        }
+      ],
+    });
+
+    const text = response.content[0]?.text || '';
+
+    // Parse JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    return { type: 'other', raw_text: text };
+
+  } catch (error) {
+    console.error('AI extraction error:', error);
+    return null;
+  }
+}
+
+async function saveDocument(data) {
+  const response = await fetch(`${config.supabase.url}/rest/v1/documents`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': config.supabase.anonKey,
+      'Authorization': `Bearer ${config.supabase.anonKey}`,
+      'Prefer': 'return=representation',
+    },
+    body: JSON.stringify(data),
+  });
+  if (response.ok) {
+    const result = await response.json();
+    return result[0];
+  }
+  return null;
+}
 
 // ============================================
 // HELPER FUNCTIONS
@@ -198,7 +314,7 @@ async function handleAdd(body) {
     customer_phone: '',
     address,
     dumpster_size: size,
-    rental_duration: '7-day',
+    rental_duration: '10-day',
     delivery_date: deliveryDate,
     status: 'confirmed',
     source: 'sms',
@@ -264,7 +380,10 @@ async function handleRoute() {
   
   const pickups = allDelivered.filter(b => {
     const d = new Date(b.delivery_date);
-    d.setDate(d.getDate() + (b.rental_duration === '3-day' ? 3 : 7));
+    let days = 10;
+    if (b.rental_duration === '3-day') days = 3;
+    else if (b.rental_duration === '7-day') days = 7;
+    d.setDate(d.getDate() + days);
     return d.toISOString().split('T')[0] === today;
   });
 
@@ -386,24 +505,127 @@ export async function POST(request) {
       if (upper.match(/^PICKED?\s*UP/)) return twiml(await handlePickedUp(body));
       if (upper === 'SEND') return twiml(await handleSend());
       if (upper === 'HELP' || upper === '?') {
-        return twiml(`OWNER COMMANDS:\n\nADD [addr], [size], [date]\nWEIGHT [lbs] #[id]\nROUTE\nLIST\nDELIVERED #[id]\nPICKEDUP #[id]\nSEND`);
+        return twiml(`OWNER COMMANDS:\n\n📸 Send weight ticket photo → AI reads it!\n\nADD [addr], [size], [date]\nWEIGHT [lbs] #[id]\nROUTE\nLIST\nDELIVERED #[id]\nPICKEDUP #[id]\nSEND`);
       }
     }
 
-    // PHOTO HANDLING
+    // PHOTO HANDLING WITH AI EXTRACTION
     if (numMedia > 0) {
       const mediaUrl = formData.get('MediaUrl0');
-      if (mediaUrl) {
-        if (isOwner(from)) {
+      if (mediaUrl && isOwner(from)) {
+        // Try AI extraction
+        const extraction = await extractFromImage(mediaUrl);
+
+        if (extraction?.type === 'weight_ticket' && extraction.data?.weight_lbs) {
+          const weightLbs = parseInt(extraction.data.weight_lbs);
+          const ticketNum = extraction.data.ticket_number || '';
+
+          // Find most recent delivered booking (or use one mentioned in text)
+          const idMatch = body.match(/#?(\d+)/);
+          let booking;
+
+          if (idMatch) {
+            const bookings = await queryBookings(`id=eq.${idMatch[1]}`);
+            booking = bookings[0];
+          } else {
+            const bookings = await queryBookings(`status=eq.delivered&order=delivered_at.desc&limit=1`);
+            booking = bookings[0];
+          }
+
+          if (!booking) {
+            return twiml(`⚖️ AI Read: ${weightLbs.toLocaleString()} lbs\n${ticketNum ? `Ticket: ${ticketNum}\n` : ''}\n⚠️ No delivered job found.\nReply with job # to attach.`);
+          }
+
+          // Calculate overage
+          const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
+          const includedLbs = dumpster?.weightLimit || 6000;
+          const overageRate = dumpster?.overage || 105;
+          const weightTons = weightLbs / 2000;
+
+          // Update booking with weight
+          await updateBooking(booking.id, {
+            actual_weight_lbs: weightLbs,
+            weight_recorded_at: new Date().toISOString(),
+          });
+
+          // Save document record
+          await saveDocument({
+            booking_id: booking.id,
+            category: 'weight_ticket',
+            file_name: `weight_ticket_${booking.id}.jpg`,
+            title: ticketNum || `Weight Ticket #${booking.id}`,
+            weight_lbs: weightLbs,
+            storage_path: mediaUrl, // Store Twilio URL for now
+            document_date: extraction.data.date || new Date().toISOString().split('T')[0],
+          });
+
+          // Build response
+          let response = `✅ AI READ WEIGHT TICKET\n\n`;
+          response += `📋 Job #${booking.id}\n`;
+          response += `📍 ${booking.address.substring(0, 25)}...\n`;
+          response += `⚖️ ${weightLbs.toLocaleString()} lbs (${weightTons.toFixed(2)} tons)\n`;
+          if (ticketNum) response += `🎫 Ticket: ${ticketNum}\n`;
+
+          if (weightLbs <= includedLbs) {
+            response += `\n✅ Under ${dumpster?.weightIncluded || '3 tons'} limit - NO OVERAGE`;
+          } else {
+            const overageLbs = weightLbs - includedLbs;
+            const overageTons = overageLbs / 2000;
+            const overageAmount = overageTons * overageRate;
+
+            response += `\n⚠️ OVER by ${overageTons.toFixed(2)} tons`;
+            response += `\n💰 Overage: $${overageAmount.toFixed(2)}`;
+
+            // Create payment link
+            const paymentLink = await createPaymentLink(
+              `Weight Overage - ${overageTons.toFixed(2)} tons`,
+              overageAmount,
+              { booking_id: booking.id, type: 'overage' }
+            );
+
+            if (paymentLink) {
+              await updateBooking(booking.id, {
+                pending_overage_amount: overageAmount,
+                pending_overage_link: paymentLink,
+              });
+              response += `\n\nReply SEND to invoice customer`;
+            }
+          }
+
+          console.log(`📸 Weight ticket processed: ${weightLbs} lbs for #${booking.id}`);
+          return twiml(response);
+
+        } else if (extraction?.type === 'fuel_receipt' && extraction.data?.amount) {
+          const amount = parseFloat(extraction.data.amount);
+          const station = extraction.data.station || 'Unknown';
+          const gallons = extraction.data.gallons || '';
+
+          // Save fuel receipt
+          await saveDocument({
+            category: 'fuel_receipt',
+            file_name: `fuel_receipt_${Date.now()}.jpg`,
+            title: `Fuel - ${station}`,
+            amount_cents: Math.round(amount * 100),
+            storage_path: mediaUrl,
+            document_date: extraction.data.date || new Date().toISOString().split('T')[0],
+          });
+
+          return twiml(`⛽ FUEL RECEIPT SAVED\n\n💰 $${amount.toFixed(2)}\n🏪 ${station}${gallons ? `\n⛽ ${gallons} gal` : ''}`);
+
+        } else {
+          // Not a receipt - just save as photo
           const bookings = await queryBookings(`status=eq.delivered&order=delivered_at.desc&limit=1`);
           if (bookings[0]) {
             const photos = bookings[0].photos || [];
             await updateBooking(bookings[0].id, { photos: [...photos, mediaUrl] });
-            return twiml(`📸 Photo saved to #${bookings[0].id}`);
+            return twiml(`📸 Photo saved to #${bookings[0].id}\n\n${extraction?.raw_text ? `AI: "${extraction.raw_text.substring(0, 50)}..."` : ''}`);
           }
+          return twiml(`📸 Photo received!\n\n${extraction?.raw_text ? `AI: "${extraction.raw_text.substring(0, 80)}..."` : 'Could not read as receipt.'}`);
         }
+      } else if (mediaUrl) {
+        // Non-owner sent photo
         await sendSMS(process.env.OWNER_PHONE, `📸 Photo from ${from}:\n${mediaUrl}`);
-        return twiml('Photo received!');
+        return twiml('Photo received! We\'ll review it shortly.');
       }
     }
 
@@ -441,7 +663,10 @@ export async function POST(request) {
 
       const dumpster = config.dumpsters.find(d => d.id === rental.dumpster_size);
       const endDate = new Date(rental.delivery_date);
-      endDate.setDate(endDate.getDate() + (rental.rental_duration === '3-day' ? 3 : 7));
+      let rentalDays = 10;
+      if (rental.rental_duration === '3-day') rentalDays = 3;
+      else if (rental.rental_duration === '7-day') rentalDays = 7;
+      endDate.setDate(endDate.getDate() + rentalDays);
 
       return twiml(`📦 YOUR RENTAL\n\n${rental.status.toUpperCase()}\n📍 ${rental.address}\n🚛 ${dumpster?.name}\n📅 Pickup: ${formatDate(endDate)}\n\nEXTEND for more time\nPICKUP when ready`);
     }

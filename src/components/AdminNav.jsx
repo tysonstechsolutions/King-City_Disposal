@@ -10,6 +10,7 @@ import {
   Users,
   FileText,
   CreditCard,
+  Camera,
 } from 'lucide-react'
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/invoices', label: 'Invoices', icon: FileText },
   { href: '/admin/payments', label: 'Payments', icon: CreditCard },
+  { href: '/admin/documents', label: 'Docs', icon: Camera },
 ]
 
 export default function AdminNav() {

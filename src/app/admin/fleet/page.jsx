@@ -6,9 +6,7 @@ import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
 import {
   Truck,
-  Package,
-  AlertCircle,
-  Info
+  Package
 } from 'lucide-react'
 
 export default function FleetPage() {
@@ -79,58 +77,6 @@ export default function FleetPage() {
                 </div>
               )
             })}
-          </div>
-        </div>
-
-        {/* Info Card */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-800">How Fleet Inventory Works</p>
-              <p className="text-sm text-blue-700 mt-1">
-                Fleet sizes are configured in <code className="bg-blue-100 px-1 rounded">src/config.js</code> under
-                the <code className="bg-blue-100 px-1 rounded">fleet</code> property. When a customer books
-                a dumpster, the system checks availability based on delivery date, rental duration, and
-                existing bookings to prevent overbooking.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Instructions */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h2 className="font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-neutral-400" />
-            To Update Fleet Size
-          </h2>
-          <ol className="space-y-3 text-neutral-700">
-            <li className="flex gap-3">
-              <span className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">1</span>
-              <span>Open <code className="bg-neutral-100 px-2 py-0.5 rounded text-sm">src/config.js</code> in your code editor</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">2</span>
-              <span>Find the <code className="bg-neutral-100 px-2 py-0.5 rounded text-sm">fleet</code> object</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">3</span>
-              <span>Update the count for each dumpster size</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">4</span>
-              <span>Save and redeploy your site</span>
-            </li>
-          </ol>
-
-          <div className="mt-6 bg-neutral-50 rounded-lg p-4">
-            <p className="text-sm text-neutral-500 mb-2">Example configuration:</p>
-            <pre className="text-sm text-neutral-700 font-mono bg-neutral-100 p-3 rounded overflow-x-auto">
-{`fleet: {
-  '20yd': 3,  // 3 twenty-yard dumpsters
-  '30yd': 2,  // 2 thirty-yard dumpsters
-}`}
-            </pre>
           </div>
         </div>
 
