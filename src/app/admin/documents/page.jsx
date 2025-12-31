@@ -277,9 +277,9 @@ export default function DocumentsPage() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-6 bg-primary text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-3 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-lg"
+              className="w-full py-6 bg-amber-400 rounded-xl font-bold text-xl flex items-center justify-center gap-3 hover:bg-amber-500 active:scale-[0.98] transition-all shadow-lg text-black"
             >
-              <Camera className="w-7 h-7" />
+              <Camera className="w-8 h-8" />
               Upload Photo or Document
             </button>
             <p className="text-center text-sm text-neutral-500 mt-2">
