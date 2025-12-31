@@ -43,7 +43,7 @@ export default function AdminPaymentsPage() {
   const perPage = 25
 
   useEffect(() => {
-    if (sessionStorage.getItem('adminAuth') !== 'true') {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') !== 'true') {
       window.location.href = '/admin'
       return
     }

@@ -51,7 +51,7 @@ export default function CapacityCalendarPage() {
   }, [currentDate])
 
   useEffect(() => {
-    if (sessionStorage.getItem('adminAuth') !== 'true') {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') !== 'true') {
       window.location.href = '/admin'
       return
     }

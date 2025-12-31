@@ -12,15 +12,14 @@ import {
 } from 'lucide-react'
 
 export default function FleetPage() {
-  const [fleet, setFleet] = useState({})
+  const [fleet, setFleet] = useState(config.fleet || {})
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
-    if (sessionStorage.getItem('adminAuth') !== 'true') {
+    setIsClient(true)
+    if (typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') !== 'true') {
       window.location.href = '/admin'
-      return
     }
-    // Load fleet from config
-    setFleet(config.fleet || {})
   }, [])
 
   const totalDumpsters = Object.values(fleet).reduce((a, b) => a + b, 0)

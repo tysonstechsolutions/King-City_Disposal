@@ -92,7 +92,7 @@ export default function ContainerBoardPage() {
 
   useEffect(() => {
     // Check auth
-    if (sessionStorage.getItem('adminAuth') !== 'true') {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') !== 'true') {
       window.location.href = '/admin'
       return
     }
@@ -179,15 +179,15 @@ export default function ContainerBoardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-neutral-900">
       {/* Header */}
-      <div className="bg-dark-800 border-b border-dark-700 sticky top-0 z-10">
+      <div className="bg-neutral-800 border-b border-neutral-700 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link 
                 href="/admin"
-                className="flex items-center gap-2 text-dark-300 hover:text-white transition-colors"
+                className="flex items-center gap-2 text-neutral-300 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
                 <span className="hidden sm:inline">Back</span>
@@ -197,7 +197,7 @@ export default function ContainerBoardPage() {
                   <Package className="w-6 h-6 text-primary-400" />
                   Container Board
                 </h1>
-                <p className="text-sm text-dark-400">
+                <p className="text-sm text-neutral-400">
                   {containers.length} active containers
                 </p>
               </div>
@@ -223,11 +223,11 @@ export default function ContainerBoardPage() {
             className={`p-4 rounded-xl border transition-colors ${
               filter === 'all' 
                 ? 'bg-primary-500/20 border-primary-500' 
-                : 'bg-dark-800 border-dark-700 hover:border-dark-600'
+                : 'bg-neutral-800 border-neutral-700 hover:border-neutral-600'
             }`}
           >
             <p className="text-2xl font-bold text-white">{counts.all}</p>
-            <p className="text-sm text-dark-400">Total Out</p>
+            <p className="text-sm text-neutral-400">Total Out</p>
           </button>
           
           <button
@@ -235,13 +235,13 @@ export default function ContainerBoardPage() {
             className={`p-4 rounded-xl border transition-colors ${
               filter === 'overdue' 
                 ? 'bg-red-500/20 border-red-500' 
-                : 'bg-dark-800 border-dark-700 hover:border-dark-600'
+                : 'bg-neutral-800 border-neutral-700 hover:border-neutral-600'
             }`}
           >
             <p className={`text-2xl font-bold ${counts.overdue > 0 ? 'text-red-400' : 'text-white'}`}>
               {counts.overdue}
             </p>
-            <p className="text-sm text-dark-400">Overdue</p>
+            <p className="text-sm text-neutral-400">Overdue</p>
           </button>
           
           <button
@@ -249,13 +249,13 @@ export default function ContainerBoardPage() {
             className={`p-4 rounded-xl border transition-colors ${
               filter === 'ending-soon' 
                 ? 'bg-yellow-500/20 border-yellow-500' 
-                : 'bg-dark-800 border-dark-700 hover:border-dark-600'
+                : 'bg-neutral-800 border-neutral-700 hover:border-neutral-600'
             }`}
           >
             <p className={`text-2xl font-bold ${counts.endingSoon > 0 ? 'text-yellow-400' : 'text-white'}`}>
               {counts.endingSoon}
             </p>
-            <p className="text-sm text-dark-400">Ending Soon</p>
+            <p className="text-sm text-neutral-400">Ending Soon</p>
           </button>
           
           <button
@@ -263,11 +263,11 @@ export default function ContainerBoardPage() {
             className={`p-4 rounded-xl border transition-colors ${
               filter === 'active' 
                 ? 'bg-green-500/20 border-green-500' 
-                : 'bg-dark-800 border-dark-700 hover:border-dark-600'
+                : 'bg-neutral-800 border-neutral-700 hover:border-neutral-600'
             }`}
           >
             <p className="text-2xl font-bold text-green-400">{counts.active}</p>
-            <p className="text-sm text-dark-400">Active</p>
+            <p className="text-sm text-neutral-400">Active</p>
           </button>
         </div>
 
@@ -277,9 +277,9 @@ export default function ContainerBoardPage() {
             <RefreshCw className="w-8 h-8 text-primary-400 animate-spin" />
           </div>
         ) : filteredContainers.length === 0 ? (
-          <div className="text-center py-12 bg-dark-800 rounded-xl border border-dark-700">
-            <Package className="w-12 h-12 text-dark-500 mx-auto mb-4" />
-            <p className="text-dark-400">No containers found</p>
+          <div className="text-center py-12 bg-neutral-800 rounded-xl border border-neutral-700">
+            <Package className="w-12 h-12 text-neutral-500 mx-auto mb-4" />
+            <p className="text-neutral-400">No containers found</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -304,10 +304,10 @@ export default function ContainerBoardPage() {
                       {/* Location */}
                       <div>
                         <p className="text-white font-medium flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-dark-400" />
+                          <MapPin className="w-4 h-4 text-neutral-400" />
                           {container.address}
                         </p>
-                        <p className="text-dark-400 text-sm mt-1 flex items-center gap-2">
+                        <p className="text-neutral-400 text-sm mt-1 flex items-center gap-2">
                           <User className="w-3 h-3" />
                           {container.customer_name}
                         </p>
@@ -316,10 +316,10 @@ export default function ContainerBoardPage() {
                       {/* Dumpster Size */}
                       <div>
                         <p className="text-white font-medium flex items-center gap-2">
-                          <Truck className="w-4 h-4 text-dark-400" />
+                          <Truck className="w-4 h-4 text-neutral-400" />
                           {dumpster?.name || container.dumpster_size}
                         </p>
-                        <p className="text-dark-400 text-sm mt-1">
+                        <p className="text-neutral-400 text-sm mt-1">
                           {container.rental_duration === '3-day' ? '3-Day' : '7-Day'} Rental
                         </p>
                       </div>
@@ -327,10 +327,10 @@ export default function ContainerBoardPage() {
                       {/* Dates */}
                       <div>
                         <p className="text-white font-medium flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-dark-400" />
+                          <Calendar className="w-4 h-4 text-neutral-400" />
                           Pickup: {formatDate(container.pickupDate)}
                         </p>
-                        <p className="text-dark-400 text-sm mt-1">
+                        <p className="text-neutral-400 text-sm mt-1">
                           {container.daysUntilPickup < 0 
                             ? `${Math.abs(container.daysUntilPickup)} days overdue`
                             : container.daysUntilPickup === 0 
@@ -345,17 +345,17 @@ export default function ContainerBoardPage() {
                     <div className="flex items-center gap-2">
                       <a
                         href={`tel:${container.customer_phone}`}
-                        className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
+                        className="p-2 bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors"
                         title="Call customer"
                       >
-                        <Phone className="w-5 h-5 text-dark-300" />
+                        <Phone className="w-5 h-5 text-neutral-300" />
                       </a>
                       <button
                         onClick={() => openInMaps(container)}
-                        className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
+                        className="p-2 bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors"
                         title="Open in Maps"
                       >
-                        <Navigation className="w-5 h-5 text-dark-300" />
+                        <Navigation className="w-5 h-5 text-neutral-300" />
                       </button>
                       <Link
                         href={`/admin/booking/${container.id}`}
@@ -373,7 +373,7 @@ export default function ContainerBoardPage() {
         )}
         
         {/* Last refresh time */}
-        <p className="text-center text-dark-500 text-sm mt-6">
+        <p className="text-center text-neutral-500 text-sm mt-6">
           Last updated: {lastRefresh.toLocaleTimeString()}
         </p>
       </div>
