@@ -11,7 +11,7 @@ import {
 
 export const metadata = {
   title: `Dumpster Rental Pricing | ${config.businessName}`,
-  description: `Transparent dumpster rental pricing in ${config.address.city}, IL. 20 and 30 yard dumpsters starting at $425. No hidden fees.`,
+  description: `Transparent dumpster rental pricing in ${config.address.city}, IL. 20 and 30 yard dumpsters starting at $475 for 10 days. No hidden fees.`,
 }
 
 export default function PricingPage() {
@@ -55,24 +55,16 @@ export default function PricingPage() {
                     {dumpster.description}
                   </p>
 
-                  {/* Pricing table */}
-                  <div className="space-y-3 mb-6">
-                    <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                  {/* Pricing */}
+                  <div className="mb-6">
+                    <div className="bg-primary-50 rounded-lg p-4 border border-primary-200">
                       <div className="flex justify-between items-center">
-                        <span className="text-neutral-600">3-Day Rental</span>
-                        <span className="text-2xl font-bold text-neutral-900">
-                          ${dumpster.pricing['3-day']}
+                        <span className="text-neutral-700 font-medium">10-Day Rental</span>
+                        <span className="text-2xl font-bold text-primary-600">
+                          ${dumpster.pricing['10-day']}
                         </span>
                       </div>
-                    </div>
-
-                    <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-neutral-600">7-Day Rental</span>
-                        <span className="text-2xl font-bold text-neutral-900">
-                          ${dumpster.pricing['7-day']}
-                        </span>
-                      </div>
+                      <p className="text-sm text-neutral-500 mt-2">Standard rental period • Extensions available</p>
                     </div>
                   </div>
 
@@ -105,8 +97,8 @@ export default function PricingPage() {
                       <span className="text-neutral-700">${dumpster.weightOverage}/ton</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Extra days</span>
-                      <span className="text-neutral-700">${dumpster.dailyExtension}/day</span>
+                      <span className="text-neutral-500">Extension rate</span>
+                      <span className="text-neutral-700">${dumpster.extensionRate}/week</span>
                     </div>
                   </div>
 

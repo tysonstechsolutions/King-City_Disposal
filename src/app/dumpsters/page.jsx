@@ -99,16 +99,11 @@ export default function DumpstersPage() {
                     </div>
 
                     {/* Pricing */}
-                    <div className="bg-neutral-50 rounded-xl p-6 mb-6 border border-neutral-200">
-                      <div className="flex justify-between items-center mb-4">
-                        <div>
-                          <p className="text-neutral-500 text-sm">3-Day Rental</p>
-                          <p className="text-3xl font-bold text-neutral-900">${dumpster.pricing['3-day']}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-neutral-500 text-sm">7-Day Rental</p>
-                          <p className="text-3xl font-bold text-neutral-900">${dumpster.pricing['7-day']}</p>
-                        </div>
+                    <div className="bg-primary-50 rounded-xl p-6 mb-6 border border-primary-200">
+                      <div className="text-center mb-4">
+                        <p className="text-neutral-600 text-sm">10-Day Rental</p>
+                        <p className="text-4xl font-bold text-primary-600">${dumpster.pricing['10-day']}</p>
+                        <p className="text-sm text-neutral-500 mt-1">Standard rental period</p>
                       </div>
                       <div className="border-t border-neutral-200 pt-4 grid grid-cols-2 gap-4 text-sm">
                         <div>
@@ -116,8 +111,8 @@ export default function DumpstersPage() {
                           <span className="text-neutral-700">${dumpster.weightOverage}/ton</span>
                         </div>
                         <div>
-                          <span className="text-neutral-500">Extra days:</span>{' '}
-                          <span className="text-neutral-700">${dumpster.dailyExtension}/day</span>
+                          <span className="text-neutral-500">Extension:</span>{' '}
+                          <span className="text-neutral-700">${dumpster.extensionRate}/week</span>
                         </div>
                       </div>
                     </div>
@@ -182,18 +177,10 @@ export default function DumpstersPage() {
                   ))}
                 </tr>
                 <tr className="bg-neutral-50">
-                  <td className="py-4 px-6 text-neutral-600">3-Day Price</td>
+                  <td className="py-4 px-6 text-neutral-600">10-Day Rental</td>
                   {config.dumpsters.map((d) => (
                     <td key={d.id} className="py-4 px-6 text-center text-primary-600 font-bold">
-                      ${d.pricing['3-day']}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="py-4 px-6 text-neutral-600">7-Day Price</td>
-                  {config.dumpsters.map((d) => (
-                    <td key={d.id} className="py-4 px-6 text-center text-primary-600 font-bold">
-                      ${d.pricing['7-day']}
+                      ${d.pricing['10-day']}
                     </td>
                   ))}
                 </tr>

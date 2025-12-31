@@ -77,7 +77,7 @@ function BookingPageContent() {
   const [formData, setFormData] = useState({
     projectType: '',
     dumpsterSize: '',
-    rentalDuration: '3-day',
+    rentalDuration: '10-day',
     address: '',
     placementLat: null,
     placementLng: null,
@@ -149,7 +149,7 @@ function BookingPageContent() {
   const getPickupDate = () => {
     if (!formData.deliveryDate) return null
     const delivery = new Date(formData.deliveryDate + 'T12:00:00')
-    const days = formData.rentalDuration === '3-day' ? 3 : 7
+    const days = 10 // Standard 10-day rental
     const pickup = new Date(delivery)
     pickup.setDate(pickup.getDate() + days)
     return pickup.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
@@ -684,7 +684,7 @@ function BookingPageContent() {
                           </div>
                           <div className="text-right">
                             <p className={`text-2xl font-bold ${soldOut ? 'text-neutral-400' : 'text-primary-600'}`}>${price}</p>
-                            <p className="text-xs text-neutral-500">{formData.rentalDuration === '3-day' ? '3-day' : '7-day'}</p>
+                            <p className="text-xs text-neutral-500">10-day rental</p>
                           </div>
                         </div>
                       </button>
@@ -695,30 +695,12 @@ function BookingPageContent() {
 
               <div>
                 <h3 className="text-lg font-medium text-neutral-900 mb-3">Rental period</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {['3-day', '7-day'].map((duration) => {
-                    const isSelected = formData.rentalDuration === duration
-                    const label = duration === '3-day' ? '3 Days' : '7 Days'
-                    return (
-                      <button
-                        key={duration}
-                        onClick={() => setFormData(prev => ({ ...prev, rentalDuration: duration }))}
-                        className={`p-4 rounded-xl border-2 transition-all text-center ${
-                          isSelected
-                            ? 'border-primary-600 bg-primary-50'
-                            : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
-                        }`}
-                      >
-                        <p className="font-bold text-neutral-900 text-lg">{label}</p>
-                        {selectedDumpster && (
-                          <p className="text-primary-600 font-semibold">${selectedDumpster.pricing[duration]}</p>
-                        )}
-                        {duration === '7-day' && (
-                          <p className="text-xs text-green-600 mt-1">Most popular</p>
-                        )}
-                      </button>
-                    )
-                  })}
+                <div className="bg-primary-50 border-2 border-primary-600 rounded-xl p-4 text-center">
+                  <p className="font-bold text-neutral-900 text-lg">10 Days</p>
+                  {selectedDumpster && (
+                    <p className="text-primary-600 font-semibold">${selectedDumpster.pricing['10-day']}</p>
+                  )}
+                  <p className="text-xs text-neutral-500 mt-1">Standard rental period • Extensions available</p>
                 </div>
               </div>
             </div>
@@ -878,7 +860,7 @@ function BookingPageContent() {
                       </div>
                     </div>
                     <p className="text-xs text-neutral-500 mt-2 text-center">
-                      {formData.rentalDuration === '3-day' ? '3' : '7'}-day rental period
+                      10-day rental period
                     </p>
                   </div>
 
@@ -1005,7 +987,7 @@ function BookingPageContent() {
                 </div>
                 <div className="flex justify-between py-2 border-b border-neutral-200">
                   <span className="text-neutral-500">Rental Period</span>
-                  <span className="text-neutral-900">{formData.rentalDuration === '3-day' ? '3 Days' : '7 Days'}</span>
+                  <span className="text-neutral-900">10 Days</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-neutral-200">
                   <span className="text-neutral-500">Delivery</span>

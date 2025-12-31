@@ -165,10 +165,10 @@ export default function HomePage() {
                     <div>
                       <span className="text-sm text-neutral-500">Starting at</span>
                       <div className="text-3xl font-bold text-primary-600">
-                        ${dumpster.pricing['3-day']}
+                        ${dumpster.pricing['10-day']}
                       </div>
                     </div>
-                    <span className="text-sm text-neutral-500">3-day rental</span>
+                    <span className="text-sm text-neutral-500">10-day rental</span>
                   </div>
 
                   <Link

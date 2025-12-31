@@ -45,7 +45,10 @@ export default function ContainerBoardPage() {
         // Calculate status for each container
         const enrichedData = data.map(booking => {
           const deliveryDate = new Date(booking.delivery_date)
-          const rentalDays = booking.rental_duration === '3-day' ? 3 : 7
+          // Default to 10 days for standard rentals, support legacy 3/7-day
+          let rentalDays = 10
+          if (booking.rental_duration === '3-day') rentalDays = 3
+          else if (booking.rental_duration === '7-day') rentalDays = 7
           const pickupDate = new Date(deliveryDate)
           pickupDate.setDate(pickupDate.getDate() + rentalDays)
           

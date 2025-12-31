@@ -64,7 +64,10 @@ export async function getAvailability(date, size) {
       const deliveryDate = new Date(booking.delivery_date + 'T00:00:00')
 
       // Calculate pickup date based on rental duration
-      const durationDays = booking.rental_duration === '7-day' ? 7 : 3
+      // Default to 10 days for standard rentals, support legacy 3/7 day
+      let durationDays = 10
+      if (booking.rental_duration === '3-day') durationDays = 3
+      else if (booking.rental_duration === '7-day') durationDays = 7
       const pickupDate = new Date(deliveryDate)
       pickupDate.setDate(pickupDate.getDate() + durationDays)
 

@@ -74,7 +74,7 @@ export default function ChatbotWidget() {
     placementLng: null,
     placementNotes: '',
     size: '',
-    duration: '3-day',
+    duration: '10-day',
     deliveryDate: '',
     deliveryDateRaw: '', // YYYY-MM-DD format for API
     name: '',
@@ -355,7 +355,7 @@ export default function ChatbotWidget() {
     if (recommendedSize) {
       const dumpster = config.dumpsters.find(d => d.id === recommendedSize)
       setBookingData(prev => ({ ...prev, size: recommendedSize }))
-      await addBotMessage(`For a ${project.label.toLowerCase()} project, I recommend the ${dumpster.name}.\n\n${dumpster.dimensions?.display || ''} - ${dumpster.weightIncluded} included\n\nStarting at $${dumpster.pricing['3-day']} for 3 days.\n\nDoes that work, or want a different size?`, 700)
+      await addBotMessage(`For a ${project.label.toLowerCase()} project, I recommend the ${dumpster.name}.\n\n${dumpster.dimensions?.display || ''} - ${dumpster.weightIncluded} included\n\nStarting at $${dumpster.pricing['10-day']} for 10 days.\n\nDoes that work, or want a different size?`, 700)
     } else {
       await addBotMessage(`Got it! Which dumpster size do you need?`, 500)
     }
@@ -396,9 +396,9 @@ export default function ChatbotWidget() {
     const dumpster = config.dumpsters.find(d => d.id === bookingData.size)
     const price = dumpster.pricing[duration]
 
-    addUserMessage(`${date}, ${duration === '3-day' ? '3' : '7'} days`)
+    addUserMessage(`${date}, 10 days`)
 
-    await addBotMessage(`That'll be $${price} for the ${duration === '3-day' ? '3' : '7'}-day rental.\n\nLast step - what's your name and phone number?`, 600)
+    await addBotMessage(`That'll be $${price} for the 10-day rental.\n\nLast step - what's your name and phone number?`, 600)
     setStep(STEPS.CONTACT)
   }
 
@@ -711,7 +711,7 @@ export default function ChatbotWidget() {
                             <p className="text-sm text-dark-400">{dumpster.weightIncluded} included</p>
                           </div>
                         </div>
-                        <span className="text-primary-400 font-bold">${dumpster.pricing['3-day']}+</span>
+                        <span className="text-primary-400 font-bold">${dumpster.pricing['10-day']}</span>
                       </button>
                     )
                   })}
@@ -869,31 +869,11 @@ export default function ChatbotWidget() {
                 )}
 
                 <div>
-                  <p className="text-dark-400 text-sm mb-2">How long do you need it?</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setBookingData(prev => ({ ...prev, duration: '3-day' }))}
-                      className={`rounded-xl p-4 text-center transition-colors ${
-                        bookingData.duration === '3-day'
-                          ? 'bg-primary-500/20 border-2 border-primary-500'
-                          : 'bg-dark-700 hover:bg-dark-600 border-2 border-transparent'
-                      }`}
-                    >
-                      <p className="font-bold text-white text-lg">3 Days</p>
-                      <p className="text-primary-400 font-semibold">${selectedDumpster?.pricing['3-day']}</p>
-                    </button>
-                    <button
-                      onClick={() => setBookingData(prev => ({ ...prev, duration: '7-day' }))}
-                      className={`rounded-xl p-4 text-center transition-colors relative ${
-                        bookingData.duration === '7-day'
-                          ? 'bg-primary-500/20 border-2 border-primary-500'
-                          : 'bg-dark-700 hover:bg-dark-600 border-2 border-transparent'
-                      }`}
-                    >
-                      <span className="absolute -top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Popular</span>
-                      <p className="font-bold text-white text-lg">7 Days</p>
-                      <p className="text-primary-400 font-semibold">${selectedDumpster?.pricing['7-day']}</p>
-                    </button>
+                  <p className="text-dark-400 text-sm mb-2">Rental period</p>
+                  <div className="bg-primary-500/20 border-2 border-primary-500 rounded-xl p-4 text-center">
+                    <p className="font-bold text-white text-lg">10 Days</p>
+                    <p className="text-primary-400 font-semibold">${selectedDumpster?.pricing['10-day']}</p>
+                    <p className="text-dark-400 text-xs mt-1">Standard rental • Extensions available</p>
                   </div>
                 </div>
 
@@ -944,7 +924,7 @@ export default function ChatbotWidget() {
                     </div>
                     <div className="flex justify-between py-2 border-b border-dark-600">
                       <span className="text-dark-400">Duration</span>
-                      <span className="text-white">{bookingData.duration === '3-day' ? '3 Days' : '7 Days'}</span>
+                      <span className="text-white">10 Days</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-dark-600">
                       <span className="text-dark-400">Delivery</span>

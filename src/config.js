@@ -14,19 +14,23 @@ export const config = {
   // ============================================
   businessName: "King City Disposal",
   tagline: "Fast, Reliable Dumpster Rentals in Southern Illinois",
-  phone: "(618) 214-7656",
-  phoneRaw: "6182147656",
-  email: "tysonstechsolutions@gmail.com", // ← CHANGE TO THEIR EMAIL LATER
+  phone: "(618) 231-8481",           // Scheduling line
+  phoneRaw: "6182318481",
+  billingPhone: "(618) 231-8430",    // Billing line
+  billingPhoneRaw: "6182318430",
+  email: "Kingcitydisposal@gmail.com",
   websiteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.kingcitydisposal.com",
+  ein: "46-2094412",
 
   // Google Search Console verification code
   googleSiteVerification: "", // ← Add from Google Search Console
 
   address: {
-    street: "", // Add street address when ready
+    street: "16544 East Knox Road", // Internal use only - not displayed publicly
     city: "Mount Vernon",
     state: "IL",
-    zip: "", // Add zip when ready
+    zip: "62864",
+    hideFromPublic: true, // Don't show street address on website
   },
   
   // ============================================
@@ -34,7 +38,7 @@ export const config = {
   // ============================================
   notifications: {
     // Email to receive booking notifications
-    bookingAlertEmail: "tysonstechsolutions@gmail.com", // ← CHANGE TO THEIR EMAIL
+    bookingAlertEmail: "Kingcitydisposal@gmail.com",
     
     // ┌─────────────────────────────────────────┐
     // │  🔌 PLUG IN LATER: Twilio SMS           │
@@ -64,9 +68,21 @@ export const config = {
     // ADD THESE IN VERCEL → Settings → Environment Variables:
     // STRIPE_PUBLISHABLE_KEY
     // STRIPE_SECRET_KEY
-    
+
     // If false, customers can book without paying (invoice later)
     requirePaymentUpfront: false,
+
+    // Accepted payment methods
+    methods: ["cash", "check", "venmo", "square", "card"],
+
+    // Payment policy
+    collectAt: "booking",     // Collect at time of booking
+    requireDeposit: false,    // No deposits required
+    paymentPlans: false,      // No payment plans
+
+    // Late fees
+    lateFeePercent: 5,        // 5% per month on overdue invoices
+    lateFeeGraceDays: 30,     // Apply after 30 days overdue
   },
   
   // ============================================
@@ -83,26 +99,38 @@ export const config = {
   // ============================================
   // 🗺️ SERVICE AREA
   // ============================================
-  serviceRadius: 30, // miles
+  // Service boundaries:
+  //   North: East Salem | South: Benton | East: McLeansboro | West: Nashville, IL
+  //   Core: Fairfield
+  serviceRadius: 35, // approximate miles to cover boundary towns
   serviceAreaCenter: {
-    lat: 38.3173,  // Mount Vernon, IL
-    lng: -88.9031,
+    lat: 38.3789,  // Fairfield, IL (core service area)
+    lng: -88.3597,
   },
-  
-  // Towns list for SEO — add more anytime!
+
+  // Boundary towns (anything outside = extra charge or no service)
+  serviceBoundary: {
+    north: "East Salem",
+    south: "Benton",
+    east: "McLeansboro",
+    west: "Nashville",
+    core: "Fairfield",
+  },
+
+  // Towns within service area
   serviceTowns: [
-    "Mount Vernon", "Woodlawn", "Bluford", "Bonnie", "Dix", "Opdyke",
-    "Waltonville", "Ina", "Nason", "Texico", "Belle Rive",
-    "Centralia", "Sandoval", "Odin", "Patoka", "Vernon", "Irvington",
-    "Salem", "Kinmundy", "Farina", "Alma", "Kell",
-    "Benton", "West Frankfort", "Sesser", "Christopher", "Zeigler",
-    "Marion", "Johnston City", "Herrin", "Carterville", "Energy",
-    "Harrisburg", "Eldorado", "Galatia", "Carrier Mills", "Raleigh",
-    "McLeansboro", "Enfield", "Norris City", "Carmi",
-    "Fairfield", "Albion", "Grayville", "Crossville",
+    // Core area
+    "Fairfield", "Mount Vernon",
+    // Within boundaries
+    "Wayne City", "Cisne", "Albion", "Crossville", "Carmi",
+    "McLeansboro", "Enfield", "Norris City",
+    "Benton", "West Frankfort", "Sesser", "Christopher",
+    "Nashville", "Centralia", "Sandoval", "Odin",
+    "Salem", "East Salem", "Kinmundy",
     "Flora", "Louisville", "Clay City", "Xenia",
-    "Olney", "Newton", "Ste. Marie", "Dieterich",
-    "Effingham", "Altamont", "St. Elmo"
+    "Woodlawn", "Bluford", "Bonnie", "Dix", "Opdyke",
+    "Waltonville", "Ina", "Nason", "Texico", "Belle Rive",
+    "Kell", "Iuka", "Farina"
   ],
   
   // ============================================
@@ -118,8 +146,8 @@ export const config = {
   // How many dumpsters of each size you own
   // This is used to prevent overbooking
   fleet: {
-    '20yd': 3,  // Number of 20-yard dumpsters
-    '30yd': 2,  // Number of 30-yard dumpsters
+    '20yd': 10,  // Number of 20-yard dumpsters
+    '30yd': 15,  // Number of 30-yard dumpsters
   },
 
   // ============================================
@@ -149,15 +177,15 @@ export const config = {
       // Which project types recommend this size
       recommendedFor: ["cleanout", "renovation", "roofing"],
       pricing: {
-        "3-day": 425,
-        "7-day": 485,
+        "10-day": 475,
       },
       weightIncluded: "3 tons",
       weightLimit: 6000,      // 3 tons in lbs (for weight overage calc)
-      overage: 70,            // $70/ton overage rate
-      overageRate: 70,        // Alias for FAQ page
-      weightOverage: 70,
-      dailyExtension: 20,
+      overage: 105,           // $105/ton overage rate
+      overageRate: 105,       // Alias for FAQ page
+      weightOverage: 105,
+      extensionRate: 100,     // $100 per week extension
+      extensionNotDumped: 50, // $50/week if container not dumped
       image: "/images/20-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
     },
     {
@@ -182,15 +210,15 @@ export const config = {
       // Which project types recommend this size
       recommendedFor: ["construction", "major-renovation", "commercial"],
       pricing: {
-        "3-day": 549,
-        "7-day": 625,
+        "10-day": 525,
       },
-      weightIncluded: "4 tons",
-      weightLimit: 8000,      // 4 tons in lbs (for weight overage calc)
-      overage: 70,            // $70/ton overage rate
-      overageRate: 70,        // Alias for FAQ page
-      weightOverage: 70,
-      dailyExtension: 25,
+      weightIncluded: "3 tons",
+      weightLimit: 6000,      // 3 tons in lbs (for weight overage calc)
+      overage: 105,           // $105/ton overage rate
+      overageRate: 105,       // Alias for FAQ page
+      weightOverage: 105,
+      extensionRate: 100,     // $100 per week extension
+      extensionNotDumped: 50, // $50/week if container not dumped
       image: "/images/30-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
     }
   ],

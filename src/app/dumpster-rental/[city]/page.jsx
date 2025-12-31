@@ -131,7 +131,7 @@ function CitySchema({ townName }) {
           "name": `${dumpster.name} Dumpster Rental`,
           "description": `${dumpster.name} roll-off dumpster delivered to ${townName}, IL. ${dumpster.description}`,
         },
-        "price": dumpster.pricing['3-day'],
+        "price": dumpster.pricing['10-day'],
         "priceCurrency": "USD"
       }))
     }
@@ -233,13 +233,13 @@ export default function CityPage({ params }) {
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-center">
                 <DollarSign className="w-6 h-6 text-primary-400 mx-auto mb-2" />
-                <p className="text-white font-bold">${config.dumpsters[0]?.pricing['3-day']}</p>
+                <p className="text-white font-bold">${config.dumpsters[0]?.pricing['10-day']}</p>
                 <p className="text-neutral-400 text-sm">Starting Price</p>
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-center">
                 <Clock className="w-6 h-6 text-primary-400 mx-auto mb-2" />
-                <p className="text-white font-bold">3-7 Days</p>
-                <p className="text-neutral-400 text-sm">Rental Periods</p>
+                <p className="text-white font-bold">10 Days</p>
+                <p className="text-neutral-400 text-sm">Standard Rental</p>
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-center">
                 <Star className="w-6 h-6 text-primary-400 mx-auto mb-2" />
@@ -300,12 +300,8 @@ export default function CityPage({ params }) {
 
                 <div className="space-y-2 mb-6">
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500">3-Day Rental</span>
-                    <span className="text-neutral-900 font-bold">${dumpster.pricing['3-day']}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500">7-Day Rental</span>
-                    <span className="text-neutral-900 font-bold">${dumpster.pricing['7-day']}</span>
+                    <span className="text-neutral-500">10-Day Rental</span>
+                    <span className="text-neutral-900 font-bold">${dumpster.pricing['10-day']}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-500">Weight Included</span>
