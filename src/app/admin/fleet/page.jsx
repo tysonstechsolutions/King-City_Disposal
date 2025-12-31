@@ -68,7 +68,7 @@ export default function FleetPage() {
                     <div>
                       <p className="font-semibold text-neutral-900">{dumpster?.name || size}</p>
                       <p className="text-sm text-neutral-500">
-                        {dumpster?.dimensions || 'Roll-off container'}
+                        {dumpster?.dimensions?.display || 'Roll-off container'}
                       </p>
                     </div>
                   </div>
