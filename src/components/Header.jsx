@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { config } from '../config'
 import { Menu, X, Phone } from 'lucide-react'
@@ -28,7 +29,15 @@ export default function Header() {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <span className={`text-xl md:text-2xl font-bold ${hasDarkHero ? 'text-white' : 'text-neutral-900'}`}>
+            <Image
+              src="/images/logo.png"
+              alt={config.businessName}
+              width={60}
+              height={60}
+              className="h-12 md:h-14 w-auto"
+              priority
+            />
+            <span className={`text-lg md:text-xl font-bold ${hasDarkHero ? 'text-white' : 'text-neutral-900'} hidden sm:inline`}>
               {config.businessName}
             </span>
           </Link>

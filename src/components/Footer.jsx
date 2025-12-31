@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { config } from '../config'
 import { Phone, Mail, MapPin } from 'lucide-react'
 
@@ -12,7 +13,14 @@ export default function Footer() {
 
           {/* Company Info */}
           <div className="lg:col-span-1">
-            <Link href="/" className="inline-block mb-4">
+            <Link href="/" className="inline-flex items-center gap-3 mb-4">
+              <Image
+                src="/images/logo.png"
+                alt={config.businessName}
+                width={50}
+                height={50}
+                className="h-12 w-auto"
+              />
               <span className="text-xl font-bold text-white">
                 {config.businessName}
               </span>
