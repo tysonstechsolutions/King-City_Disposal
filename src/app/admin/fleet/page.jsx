@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { config } from '../../../config'
+import AdminNav from '../../../components/AdminNav'
 import {
-  ArrowLeft,
   Truck,
   Package,
   AlertCircle,
   Info
 } from 'lucide-react'
-import Link from 'next/link'
 
 export default function FleetPage() {
   const [fleet, setFleet] = useState({})
@@ -27,16 +27,12 @@ export default function FleetPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      <AdminNav />
+
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-neutral-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Link
-              href="/admin/capacity"
-              className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
             <div>
               <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
                 <Truck className="w-6 h-6 text-primary-600" />

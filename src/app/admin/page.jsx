@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { config } from '../../config'
-import { 
-  Truck, 
-  Phone, 
-  MapPin, 
+import AdminNav from '../../components/AdminNav'
+import {
+  Truck,
+  Phone,
+  MapPin,
   Calendar,
   Clock,
   DollarSign,
@@ -247,13 +248,16 @@ export default function AdminPage() {
   // ADMIN DASHBOARD
   // ============================================
   return (
-    <div className="min-h-screen bg-dark-900 p-4 md:p-8">
+    <div className="min-h-screen bg-dark-900">
+      <AdminNav />
+
+      <div className="p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-white">Bookings</h1>
-            <p className="text-dark-400">{config.businessName} Admin</p>
+            <p className="text-dark-400">Manage all dumpster rentals</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -578,6 +582,7 @@ export default function AdminPage() {
         <p className="text-center text-dark-500 text-sm mt-8">
           💡 Click any booking to view details and placement map
         </p>
+      </div>
       </div>
     </div>
   )

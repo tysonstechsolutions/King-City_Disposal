@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { config } from '../../../config'
+import AdminNav from '../../../components/AdminNav'
 import {
   ChevronLeft,
   ChevronRight,
   Truck,
   Package,
   AlertTriangle,
-  ArrowLeft,
   RefreshCw,
   Settings
 } from 'lucide-react'
@@ -148,17 +148,13 @@ export default function CapacityCalendarPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      <AdminNav />
+
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-neutral-200">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
               <div>
                 <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
                   <Package className="w-6 h-6 text-primary-600" />
