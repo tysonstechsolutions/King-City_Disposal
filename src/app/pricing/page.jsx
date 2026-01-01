@@ -221,7 +221,7 @@ export default function PricingPage() {
             {[
               {
                 q: 'How long can I keep the dumpster?',
-                a: 'Our standard rentals are 3 or 7 days. Need more time? No problem — extra days are available at a daily rate.'
+                a: 'Our standard rental is 10 days. Need more time? No problem — extensions are available at a weekly rate.'
               },
               {
                 q: 'What if I go over the weight limit?',

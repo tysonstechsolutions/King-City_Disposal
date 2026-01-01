@@ -194,7 +194,8 @@ Questions? Reply to this text or call ${config.phone}
       try {
         // Calculate when rental ends
         const deliveryDate = new Date(booking.delivery_date);
-        const rentalDays = booking.rental_duration === '3-day' ? 3 : 7;
+        const durationMatch = booking.rental_duration?.match(/(\d+)-day/);
+        const rentalDays = durationMatch ? parseInt(durationMatch[1]) : 10;
         const pickupDate = new Date(deliveryDate);
         pickupDate.setDate(pickupDate.getDate() + rentalDays);
 

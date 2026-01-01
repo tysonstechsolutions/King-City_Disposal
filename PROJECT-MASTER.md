@@ -16,10 +16,10 @@ All of these are stored in ONE config file (`/src/config.js`) so you can change 
 
 ## Pricing Structure
 
-| Size | 3-Day | 7-Day | Weight Included | Overage | Daily Extension |
-|------|-------|-------|-----------------|---------|-----------------|
-| 20-yard | $425 | $485 | 3 tons | $70/ton | $20/day |
-| 30-yard | $549 | $625 | 4 tons | $70/ton | $25/day |
+| Size | 10-Day Rental | Weight Included | Overage | Weekly Extension |
+|------|---------------|-----------------|---------|------------------|
+| 20-yard | $475 | 3 tons | $105/ton | $100/week |
+| 30-yard | $525 | 3 tons | $105/ton | $100/week |
 
 ---
 

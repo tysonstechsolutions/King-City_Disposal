@@ -151,13 +151,13 @@ function LocalBusinessSchema() {
           "name": `${dumpster.name} Rental`,
           "description": dumpster.description,
         },
-        "price": dumpster.pricing['3-day'],
+        "price": dumpster.pricing['10-day'],
         "priceCurrency": "USD",
         "priceSpecification": {
           "@type": "PriceSpecification",
-          "price": dumpster.pricing['3-day'],
+          "price": dumpster.pricing['10-day'],
           "priceCurrency": "USD",
-          "unitText": "3-day rental"
+          "unitText": "10-day rental"
         }
       }))
     },

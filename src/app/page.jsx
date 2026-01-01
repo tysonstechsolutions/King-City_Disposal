@@ -152,7 +152,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex justify-between py-2 border-b border-neutral-100">
                       <span className="text-neutral-500">Rental Period</span>
-                      <span className="font-medium text-neutral-900">Up to 3 Days</span>
+                      <span className="font-medium text-neutral-900">10 Days</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-neutral-100">
                       <span className="text-neutral-500">Weight Included</span>

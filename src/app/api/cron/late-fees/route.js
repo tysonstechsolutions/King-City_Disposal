@@ -125,11 +125,10 @@ export async function GET(request) {
       try {
         // Calculate when rental was supposed to end
         const deliveryDate = new Date(booking.delivery_date);
-        const rentalDays = booking.rental_duration === '3-day' ? 3 : 7;
-        
-        // Handle extended rentals
-        const extensionMatch = booking.rental_duration?.match(/(\d+)-day/);
-        const totalDays = extensionMatch ? parseInt(extensionMatch[1]) : rentalDays;
+
+        // Parse rental duration
+        const durationMatch = booking.rental_duration?.match(/(\d+)-day/);
+        const totalDays = durationMatch ? parseInt(durationMatch[1]) : 10;
         
         const endDate = new Date(deliveryDate);
         endDate.setDate(endDate.getDate() + totalDays);

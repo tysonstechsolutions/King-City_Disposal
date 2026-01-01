@@ -51,7 +51,7 @@ const faqCategories = [
       },
       {
         q: 'How much does a dumpster cost in ${config.address.city}?',
-        a: `Our dumpster rentals start at $${config.dumpsters[0]?.pricing['3-day'] || '425'} for a 3-day rental. The 7-day rental is $${config.dumpsters[0]?.pricing['7-day'] || '485'}. Price includes delivery, pickup, and disposal up to the included weight limit. Check our pricing page for current rates on all sizes.`
+        a: `Our dumpster rentals start at $${config.dumpsters[0]?.pricing['10-day'] || '475'} for a 10-day rental. Price includes delivery, pickup, and disposal up to the included weight limit. Check our pricing page for current rates on all sizes.`
       },
     ]
   },
@@ -61,7 +61,7 @@ const faqCategories = [
     questions: [
       {
         q: 'How long can I keep the dumpster?',
-        a: `Our standard rental periods are 3 days or 7 days. Need more time? No problem — you can extend your rental at a daily rate ($${config.dumpsters[0]?.dailyExtension || '20'}/day depending on size).`
+        a: `Our standard rental period is 10 days. Need more time? No problem — you can extend your rental at a weekly rate ($${config.dumpsters[0]?.extensionRate || '100'}/week).`
       },
       {
         q: 'What if I fill it up before my rental period ends?',
@@ -73,7 +73,7 @@ const faqCategories = [
       },
       {
         q: 'When does my rental period start?',
-        a: `Your rental period starts the day we deliver the dumpster. So if you book a 3-day rental and we deliver Monday morning, your rental includes Monday, Tuesday, and Wednesday. We'll pick up Thursday morning.`
+        a: `Your rental period starts the day we deliver the dumpster. So if you book a 10-day rental and we deliver on a Monday, your rental runs through the following Wednesday. We'll pick up Thursday morning.`
       },
     ]
   },

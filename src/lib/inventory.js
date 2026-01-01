@@ -26,7 +26,7 @@ export async function getAvailability(date, size) {
   try {
     // Query bookings that overlap with this date
     // A dumpster is "in use" from delivery_date through pickup_date
-    // pickup_date = delivery_date + rental_duration (3 or 7 days)
+    // pickup_date = delivery_date + rental_duration (default 10 days)
     //
     // We need to find bookings where:
     // - delivery_date <= requested_date
@@ -64,10 +64,10 @@ export async function getAvailability(date, size) {
       const deliveryDate = new Date(booking.delivery_date + 'T00:00:00')
 
       // Calculate pickup date based on rental duration
-      // Default to 10 days for standard rentals, support legacy 3/7 day
+      // Standard 10-day rental
       let durationDays = 10
-      if (booking.rental_duration === '3-day') durationDays = 3
-      else if (booking.rental_duration === '7-day') durationDays = 7
+      const durationMatch = booking.rental_duration?.match(/(\d+)-day/)
+      if (durationMatch) durationDays = parseInt(durationMatch[1])
       const pickupDate = new Date(deliveryDate)
       pickupDate.setDate(pickupDate.getDate() + durationDays)
 

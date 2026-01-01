@@ -386,7 +386,7 @@ export default function ChatbotWidget() {
     setBookingData(prev => ({ ...prev, placementNotes: notes }))
     addUserMessage(`Placement confirmed`)
 
-    await addBotMessage(`Got it!\n\nWhen do you need it delivered, and how long? (3 or 7 days)`, 600)
+    await addBotMessage(`Got it!\n\nWhen do you need it delivered?`, 600)
     setStep(STEPS.DATE_DURATION)
   }
 

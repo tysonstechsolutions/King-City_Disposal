@@ -115,7 +115,8 @@ export async function GET(request) {
     const allDelivered = await queryBookings(`status=eq.delivered`);
     const pickups = allDelivered.filter(b => {
       const deliveryDate = new Date(b.delivery_date);
-      const days = b.rental_duration === '3-day' ? 3 : 7;
+      const durationMatch = b.rental_duration?.match(/(\d+)-day/);
+      const days = durationMatch ? parseInt(durationMatch[1]) : 10;
       const pickupDate = new Date(deliveryDate);
       pickupDate.setDate(pickupDate.getDate() + days);
       return pickupDate.toISOString().split('T')[0] === today;
@@ -124,7 +125,8 @@ export async function GET(request) {
     // Also get overdue pickups
     const overdue = allDelivered.filter(b => {
       const deliveryDate = new Date(b.delivery_date);
-      const days = b.rental_duration === '3-day' ? 3 : 7;
+      const durationMatch = b.rental_duration?.match(/(\d+)-day/);
+      const days = durationMatch ? parseInt(durationMatch[1]) : 10;
       const pickupDate = new Date(deliveryDate);
       pickupDate.setDate(pickupDate.getDate() + days);
       return pickupDate.toISOString().split('T')[0] < today;

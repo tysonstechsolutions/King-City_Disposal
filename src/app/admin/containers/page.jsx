@@ -45,10 +45,11 @@ export default function ContainerBoardPage() {
         // Calculate status for each container
         const enrichedData = data.map(booking => {
           const deliveryDate = new Date(booking.delivery_date)
-          // Default to 10 days for standard rentals, support legacy 3/7-day
+          // Standard 10-day rental
           let rentalDays = 10
-          if (booking.rental_duration === '3-day') rentalDays = 3
-          else if (booking.rental_duration === '7-day') rentalDays = 7
+          // Support custom durations if specified
+          const durationMatch = booking.rental_duration?.match(/(\d+)-day/)
+          if (durationMatch) rentalDays = parseInt(durationMatch[1])
           const pickupDate = new Date(deliveryDate)
           pickupDate.setDate(pickupDate.getDate() + rentalDays)
           
@@ -323,7 +324,7 @@ export default function ContainerBoardPage() {
                           {dumpster?.name || container.dumpster_size}
                         </p>
                         <p className="text-neutral-400 text-sm mt-1">
-                          {container.rental_duration === '3-day' ? '3-Day' : '7-Day'} Rental
+                          {container.rental_duration || '10-day'} Rental
                         </p>
                       </div>
                       

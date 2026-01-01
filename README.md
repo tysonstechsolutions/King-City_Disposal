@@ -66,7 +66,7 @@ src/
 ## Booking Flow
 
 ### Online Booking (/book)
-1. **Project & Size** - Select project type, choose dumpster size, pick 3 or 7 day rental
+1. **Project & Size** - Select project type, choose dumpster size (10-day rental included)
 2. **Location** - Enter address, drop pin on satellite map to show exact placement
 3. **Date** - Pick delivery date from calendar
 4. **Contact** - Name, phone, email
@@ -174,8 +174,8 @@ John Smith - (618) 555-1234
 
 20 Yard Dumpster
 Delivery: Mon, Jan 6
-7-Day Rental
-$485
+10-Day Rental
+$475
 
 View booking in admin dashboard
 ```

@@ -256,10 +256,11 @@ export async function POST(request) {
       // ========================================
       else if (type === 'extension' && bookingId) {
         const booking = await getBooking(bookingId);
-        const extensionDays = parseInt(metadata.extension_days) || 3;
+        const extensionDays = parseInt(metadata.extension_days) || 7;
 
         if (booking) {
-          const currentDays = booking.rental_duration === '3-day' ? 3 : 7;
+          const durationMatch = booking.rental_duration?.match(/(\d+)-day/);
+          const currentDays = durationMatch ? parseInt(durationMatch[1]) : 10;
           const totalDays = currentDays + extensionDays;
 
           await updateBooking(bookingId, {

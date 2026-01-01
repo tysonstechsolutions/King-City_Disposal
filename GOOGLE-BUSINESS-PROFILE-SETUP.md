@@ -106,11 +106,11 @@ Add your services with descriptions and prices:
 
 ### Service 1: 20 Yard Dumpster Rental
 - Description: "Perfect for home cleanouts, single-room remodels, and medium projects. Holds about 8 pickup truck loads."
-- Price: "$425" (for 3-day)
+- Price: "$475" (10-day rental)
 
 ### Service 2: 30 Yard Dumpster Rental
 - Description: "Great for large renovations, whole-house cleanouts, and construction projects. Holds about 12 pickup truck loads."
-- Price: "$549" (for 3-day)
+- Price: "$525" (10-day rental)
 
 ### Service 3: Same-Day Dumpster Delivery
 - Description: "Need a dumpster today? Order before noon for same-day delivery in most areas."

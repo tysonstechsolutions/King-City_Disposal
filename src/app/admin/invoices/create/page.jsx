@@ -421,7 +421,7 @@ function CreateInvoiceContent() {
                   type="text"
                   value={invoice.rental_duration}
                   onChange={(e) => setInvoice({ ...invoice, rental_duration: e.target.value })}
-                  placeholder="e.g., 7-day"
+                  placeholder="e.g., 10-day"
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>

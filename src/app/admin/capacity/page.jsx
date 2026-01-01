@@ -70,13 +70,10 @@ export default function CapacityCalendarPage() {
 
     for (const booking of bookings) {
       const deliveryDate = new Date(booking.delivery_date)
-      // Default to 10 days for standard rentals, support legacy 3/7-day
+      // Standard 10-day rental
       let rentalDays = 10
-      if (booking.rental_duration === '3-day') rentalDays = 3
-      else if (booking.rental_duration === '7-day') rentalDays = 7
-      else if (booking.rental_duration?.match(/(\d+)-day/)) {
-        rentalDays = parseInt(booking.rental_duration.match(/(\d+)-day/)[1])
-      }
+      const durationMatch = booking.rental_duration?.match(/(\d+)-day/)
+      if (durationMatch) rentalDays = parseInt(durationMatch[1])
       const pickupDate = new Date(deliveryDate)
       pickupDate.setDate(pickupDate.getDate() + rentalDays)
 

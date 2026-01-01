@@ -69,13 +69,15 @@ export default function DriverChecklistPage() {
       // Find pickups due today or overdue
       const pickups = allDelivered.filter(b => {
         const deliveryDate = new Date(b.delivery_date)
-        const days = b.rental_duration === '3-day' ? 3 : 7
+        const durationMatch = b.rental_duration?.match(/(\d+)-day/)
+        const days = durationMatch ? parseInt(durationMatch[1]) : 10
         const pickupDate = new Date(deliveryDate)
         pickupDate.setDate(pickupDate.getDate() + days)
         return pickupDate.toISOString().split('T')[0] <= today
       }).map(b => {
         const deliveryDate = new Date(b.delivery_date)
-        const days = b.rental_duration === '3-day' ? 3 : 7
+        const durationMatch = b.rental_duration?.match(/(\d+)-day/)
+        const days = durationMatch ? parseInt(durationMatch[1]) : 10
         const pickupDate = new Date(deliveryDate)
         pickupDate.setDate(pickupDate.getDate() + days)
         const isOverdue = pickupDate.toISOString().split('T')[0] < today

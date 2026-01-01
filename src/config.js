@@ -46,7 +46,7 @@ export const config = {
     // │  add credentials in VERCEL ENV VARS     │
     // └─────────────────────────────────────────┘
     twilio: {
-      enabled: false, // ← FLIP TO true WHEN READY
+      enabled: true, // SMS notifications active
       // ADD THESE IN VERCEL → Settings → Environment Variables:
       // TWILIO_ACCOUNT_SID
       // TWILIO_AUTH_TOKEN  

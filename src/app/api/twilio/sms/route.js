@@ -380,9 +380,8 @@ async function handleRoute() {
   
   const pickups = allDelivered.filter(b => {
     const d = new Date(b.delivery_date);
-    let days = 10;
-    if (b.rental_duration === '3-day') days = 3;
-    else if (b.rental_duration === '7-day') days = 7;
+    const durationMatch = b.rental_duration?.match(/(\d+)-day/);
+    const days = durationMatch ? parseInt(durationMatch[1]) : 10;
     d.setDate(d.getDate() + days);
     return d.toISOString().split('T')[0] === today;
   });
@@ -663,9 +662,8 @@ export async function POST(request) {
 
       const dumpster = config.dumpsters.find(d => d.id === rental.dumpster_size);
       const endDate = new Date(rental.delivery_date);
-      let rentalDays = 10;
-      if (rental.rental_duration === '3-day') rentalDays = 3;
-      else if (rental.rental_duration === '7-day') rentalDays = 7;
+      const durationMatch = rental.rental_duration?.match(/(\d+)-day/);
+      const rentalDays = durationMatch ? parseInt(durationMatch[1]) : 10;
       endDate.setDate(endDate.getDate() + rentalDays);
 
       return twiml(`📦 YOUR RENTAL\n\n${rental.status.toUpperCase()}\n📍 ${rental.address}\n🚛 ${dumpster?.name}\n📅 Pickup: ${formatDate(endDate)}\n\nEXTEND for more time\nPICKUP when ready`);

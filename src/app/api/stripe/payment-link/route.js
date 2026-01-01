@@ -58,7 +58,8 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Invalid rental duration' }, { status: 400 });
       }
 
-      const durationLabel = rentalDuration === '3-day' ? '3-Day' : '7-Day';
+      const durationMatch = rentalDuration.match(/(\d+)-day/);
+      const durationLabel = durationMatch ? `${durationMatch[1]}-Day` : '10-Day';
 
       lineItems = [{
         price_data: {

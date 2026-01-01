@@ -70,8 +70,8 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-neutral-900 mb-4">5. Rental Period</h2>
             <p className="text-neutral-600">
-              Rental periods begin on the delivery date. Standard rental periods are 3 or 7 days.
-              Extensions are available at a daily rate. Please contact us if you need to extend your rental.
+              Rental periods begin on the delivery date. Standard rental period is 10 days.
+              Extensions are available at a weekly rate. Please contact us if you need to extend your rental.
             </p>
           </section>
 
