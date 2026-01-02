@@ -8,7 +8,6 @@ import {
   Star,
   MapPin,
   Clock,
-  Truck,
   Shield,
   Sofa,
   Hammer,
@@ -57,55 +56,69 @@ export default function HomePage() {
       {/* Hero Section - Clean & Professional */}
       <section className="bg-neutral-900 text-white">
         <div className="container-custom py-16 md:py-24">
-          <div className="max-w-3xl">
-            {/* Trust indicator */}
-            <div className="flex items-center gap-2 text-primary-400 mb-6">
-              <Shield className="w-5 h-5" />
-              <span className="text-sm font-medium">Locally Owned & Operated</span>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              {/* Trust indicator */}
+              <div className="flex items-center gap-2 text-primary-400 mb-6">
+                <Shield className="w-5 h-5" />
+                <span className="text-sm font-medium">Family Owned & Operated</span>
+              </div>
+
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+                Dumpster Rentals in<br />
+                <span className="text-primary-400">Southern Illinois</span>
+              </h1>
+
+              <p className="text-xl text-neutral-300 mb-8 max-w-2xl">
+                Easy online booking, transparent pricing, and reliable service.
+                Get a dumpster delivered to your driveway as soon as tomorrow.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <Link
+                  href="/book"
+                  className="inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
+                >
+                  Book Online Now
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+                <a
+                  href={`tel:${config.phoneRaw}`}
+                  className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
+                >
+                  <Phone className="w-5 h-5" />
+                  {config.phone}
+                </a>
+              </div>
+
+              {/* Quick benefits */}
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-neutral-400 text-sm">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-primary-400" />
+                  <span>Same-Day Delivery Available</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-primary-400" />
+                  <span>No Hidden Fees</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-primary-400" />
+                  <span>Serving {config.serviceRadius}+ Mile Radius</span>
+                </div>
+              </div>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-              Dumpster Rentals in<br />
-              <span className="text-primary-400">Southern Illinois</span>
-            </h1>
-
-            <p className="text-xl text-neutral-300 mb-8 max-w-2xl">
-              Easy online booking, transparent pricing, and reliable service.
-              Get a dumpster delivered to your driveway as soon as tomorrow.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <Link
-                href="/book"
-                className="inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
-              >
-                Book Online Now
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <a
-                href={`tel:${config.phoneRaw}`}
-                className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
-              >
-                <Phone className="w-5 h-5" />
-                {config.phone}
-              </a>
-            </div>
-
-            {/* Quick benefits */}
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-neutral-400 text-sm">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary-400" />
-                <span>Same-Day Delivery Available</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary-400" />
-                <span>No Hidden Fees</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary-400" />
-                <span>Serving {config.serviceRadius}+ Mile Radius</span>
-              </div>
+            {/* Hero Image */}
+            <div className="hidden lg:block">
+              <Image
+                src="/images/dumpster.jpg"
+                alt="King City Disposal roll-off truck with dumpster"
+                width={600}
+                height={400}
+                className="rounded-xl shadow-2xl"
+                priority
+              />
             </div>
           </div>
         </div>
@@ -127,9 +140,14 @@ export default function HomePage() {
                 key={dumpster.id}
                 className="bg-white rounded-xl border border-neutral-200 overflow-hidden hover:shadow-xl transition-shadow duration-300"
               >
-                {/* Dumpster Image Placeholder */}
-                <div className="h-48 bg-neutral-100 flex items-center justify-center relative">
-                  <Truck className="w-24 h-24 text-neutral-300" />
+                {/* Dumpster Image */}
+                <div className="h-48 bg-neutral-100 relative overflow-hidden">
+                  <Image
+                    src="/images/dumpster.jpg"
+                    alt={dumpster.name}
+                    fill
+                    className="object-cover"
+                  />
                   <div className="absolute top-4 right-4 bg-primary-600 text-white text-sm font-bold px-3 py-1 rounded">
                     {dumpster.shortName}
                   </div>
@@ -314,39 +332,61 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Service Area */}
-            <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-200">
-              <h3 className="text-xl font-semibold text-neutral-900 mb-4">
-                Service Area
-              </h3>
-              <p className="text-neutral-600 mb-6">
-                We serve {config.address.city} and surrounding communities within
-                a {config.serviceRadius}-mile radius.
-              </p>
-
-              <div className="flex flex-wrap gap-2 mb-6">
-                {config.serviceTowns.slice(0, 12).map((town) => (
-                  <span
-                    key={town}
-                    className="bg-white px-3 py-1 rounded-full text-sm text-neutral-600 border border-neutral-200"
-                  >
-                    {town}
-                  </span>
-                ))}
-                {config.serviceTowns.length > 12 && (
-                  <span className="bg-primary-50 px-3 py-1 rounded-full text-sm text-primary-600 font-medium">
-                    +{config.serviceTowns.length - 12} more
-                  </span>
-                )}
+            <div className="space-y-6">
+              {/* Meet the Owners */}
+              <div className="bg-neutral-50 rounded-xl overflow-hidden border border-neutral-200">
+                <Image
+                  src="/images/fam.jpg"
+                  alt="King City Disposal owners"
+                  width={600}
+                  height={400}
+                  className="w-full h-48 object-cover object-top"
+                />
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+                    Meet the Owners
+                  </h3>
+                  <p className="text-neutral-600">
+                    We&apos;re a family-owned business dedicated to providing reliable,
+                    honest service to our Southern Illinois neighbors.
+                  </p>
+                </div>
               </div>
 
-              <Link
-                href="/service-area"
-                className="text-primary-600 font-semibold hover:underline inline-flex items-center gap-1"
-              >
-                View full service area
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+              {/* Service Area */}
+              <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
+                <h3 className="text-lg font-semibold text-neutral-900 mb-3">
+                  Service Area
+                </h3>
+                <p className="text-neutral-600 text-sm mb-4">
+                  Serving {config.address.city} and surrounding communities within
+                  a {config.serviceRadius}-mile radius.
+                </p>
+
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {config.serviceTowns.slice(0, 8).map((town) => (
+                    <span
+                      key={town}
+                      className="bg-white px-2 py-1 rounded-full text-xs text-neutral-600 border border-neutral-200"
+                    >
+                      {town}
+                    </span>
+                  ))}
+                  {config.serviceTowns.length > 8 && (
+                    <span className="bg-primary-50 px-2 py-1 rounded-full text-xs text-primary-600 font-medium">
+                      +{config.serviceTowns.length - 8} more
+                    </span>
+                  )}
+                </div>
+
+                <Link
+                  href="/service-area"
+                  className="text-primary-600 font-semibold hover:underline inline-flex items-center gap-1 text-sm"
+                >
+                  View full service area
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
