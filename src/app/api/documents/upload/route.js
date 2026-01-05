@@ -51,7 +51,8 @@ export async function POST(request) {
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
       console.error('Storage upload error:', errorText);
-      
+      console.error('Upload status:', uploadResponse.status);
+
       // Check if bucket doesn't exist
       if (errorText.includes('Bucket not found')) {
         return NextResponse.json(
@@ -59,10 +60,19 @@ export async function POST(request) {
           { status: 500 }
         );
       }
-      
+
+      // Parse error for more detail
+      let errorMessage = 'Failed to upload file';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorJson.error || errorText;
+      } catch {
+        errorMessage = errorText || 'Failed to upload file';
+      }
+
       return NextResponse.json(
-        { error: 'Failed to upload file' },
-        { status: 500 }
+        { error: errorMessage },
+        { status: uploadResponse.status }
       );
     }
 
