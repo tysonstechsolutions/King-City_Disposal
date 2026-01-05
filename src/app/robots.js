@@ -21,7 +21,6 @@ export default function robots() {
           '/admin/',          // Admin dashboard - don't index
           '/api/',            // API routes - don't index
           '/driver/',         // Driver pages - don't index
-          '/_next/static/',   // Actually, let's allow this - Google needs it
         ],
       },
       {
