@@ -91,8 +91,8 @@ export const config = {
   // These use environment variables with fallbacks
   // Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://qtlhjxejgzjrrfmthutw.supabase.co",
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0bGhqeGVqZ3pqcnJmbXRodXR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5Njc5MTgsImV4cCI6MjA4MjU0MzkxOH0.AllL3A553URTYkSGr0jEoCaV87weo5uoh0fG9fAIlNc",
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://oziwzamcepnegyttpclp.supabase.co",
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96aXd6YW1jZXBuZWd5dHRwY2xwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NDUwMDMsImV4cCI6MjA4MzIyMTAwM30.-4BzySr98WEv_1v8wbnDGSnSJ4DX7Mid8qym-s4bcuU",
     // Secret key goes in environment variables for security
   },
   
