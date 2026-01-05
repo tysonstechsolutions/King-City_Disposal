@@ -10,6 +10,7 @@ module.exports = {
       colors: {
         // Professional green palette - muted and trustworthy
         primary: {
+          DEFAULT: '#3d8b64',  // Default for bg-primary, text-primary, etc.
           50: '#f0f7f4',
           100: '#dceee5',
           200: '#bcdccc',
@@ -23,6 +24,7 @@ module.exports = {
         },
         // Gold/amber accent - professional and warm
         accent: {
+          DEFAULT: '#d97706',  // Default for bg-accent, text-accent, etc.
           50: '#fffbeb',
           100: '#fef3c7',
           200: '#fde68a',
