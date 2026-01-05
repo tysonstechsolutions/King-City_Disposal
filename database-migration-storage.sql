@@ -26,6 +26,13 @@ ON CONFLICT (id) DO UPDATE SET
 -- STORAGE POLICIES FOR DOCUMENTS BUCKET
 -- ============================================
 
+-- Drop existing policies first (allows re-running this script)
+DROP POLICY IF EXISTS "Allow authenticated uploads" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated reads" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated updates" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated deletes" ON storage.objects;
+DROP POLICY IF EXISTS "Allow service role full access" ON storage.objects;
+
 -- Policy: Allow authenticated users to upload documents
 CREATE POLICY "Allow authenticated uploads"
 ON storage.objects FOR INSERT
