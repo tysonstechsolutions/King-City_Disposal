@@ -105,7 +105,7 @@ export async function POST(request) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-20250514',
         max_tokens: 4000,
         messages: [
           {
@@ -121,7 +121,9 @@ export async function POST(request) {
               },
               {
                 type: 'text',
-                text: `Analyze this invoice image and extract all information. Return a JSON object with this exact structure:
+                text: `CAREFULLY analyze this invoice/receipt image and extract ALL information with high accuracy. Read every number, word, and detail precisely.
+
+Return a JSON object with this exact structure:
 
 {
   "invoice_type": "vendor_expense" or "customer_record",
@@ -143,8 +145,9 @@ export async function POST(request) {
   "payment_terms": "Payment terms (Net 30, Due on Receipt, etc.)",
   "line_items": [
     {
-      "description": "Item/service description",
+      "description": "Full item/service description including weight, quantity, units (e.g. '3 tons debris disposal')",
       "quantity": 1,
+      "unit": "tons/lbs/yards/each/gallons",
       "unit_price_cents": 10000,
       "total_cents": 10000
     }
@@ -155,16 +158,20 @@ export async function POST(request) {
   "discount_cents": 0,
   "total_cents": 10000,
   "expense_category": "landfill" or "fuel" or "parts" or "repairs" or "supplies" or "dumpster_rental" or "other",
-  "notes": "Any additional notes or important info",
+  "notes": "Any additional notes, weight tickets, reference numbers, or important info",
   "confidence": 0.95
 }
 
-IMPORTANT:
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+- ACCURACY IS PARAMOUNT: Double-check all numbers, especially quantities, weights, and amounts
+- READ NUMBERS EXACTLY: If it says "3 tons", extract 3 not 2. If it says "$156.75", that's 15675 cents
+- WEIGHTS: Look for tonnage, pounds, cubic yards - include in line item descriptions AND notes
 - If this is an invoice FROM "King City Disposal" to a customer, set invoice_type to "customer_record"
 - If this is a bill TO "King City Disposal" from a vendor, set invoice_type to "vendor_expense"
-- All monetary amounts should be in cents (multiply dollars by 100)
-- For expense_category, choose the most appropriate: landfill (dump fees), fuel (gas/diesel), parts, repairs, supplies, dumpster_rental, or other
-- Set confidence between 0 and 1 based on how clearly you could read the invoice
+- All monetary amounts must be in cents (multiply dollars by 100)
+- For expense_category: landfill (dump fees/waste disposal), fuel (gas/diesel), parts, repairs, supplies, dumpster_rental, or other
+- Include weight/tonnage info in the notes field even if it appears elsewhere
+- Set confidence between 0 and 1 based on image clarity and your certainty
 - If a field is not visible or unclear, use null
 
 Return ONLY the JSON object, no other text.`
