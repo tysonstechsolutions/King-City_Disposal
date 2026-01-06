@@ -345,7 +345,7 @@ export default function DocumentsPage() {
             {/* Category Selection */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-neutral-700 mb-2">Type</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {DOCUMENT_CATEGORIES.slice(0, 6).map(cat => {
                   const Icon = cat.icon
                   const isSelected = uploadCategory === cat.id
