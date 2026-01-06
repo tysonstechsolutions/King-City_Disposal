@@ -163,12 +163,17 @@ Return a JSON object with this exact structure:
 }
 
 CRITICAL INSTRUCTIONS - READ CAREFULLY:
-- ACCURACY IS PARAMOUNT: Double-check all numbers, especially quantities, weights, and amounts
-- READ NUMBERS EXACTLY: If it says "3 tons", extract 3 not 2. If it says "$156.75", that's 15675 cents
+- ACCURACY IS PARAMOUNT: Double-check ALL numbers including phone numbers, quantities, weights, and dollar amounts
+- READ EVERY DIGIT EXACTLY: Do not confuse similar digits (1/7, 4/8, 5/6, 3/8). Read each digit carefully!
+- PHONE NUMBERS: Read each digit precisely. (618)231-8481 is NOT (618)231-4481 - verify every digit
+- READ DOLLAR AMOUNTS EXACTLY: $525.00 = 52500 cents, $83.36 = 8336 cents. NEVER drop digits!
+- VERIFY TOTALS: The total should match what's shown on the invoice. If it says TOTAL $525.00, use 52500 cents
 - WEIGHTS: Look for tonnage, pounds, cubic yards - include in line item descriptions AND notes
-- If this is an invoice FROM "King City Disposal" to a customer, set invoice_type to "customer_record"
-- If this is a bill TO "King City Disposal" from a vendor, set invoice_type to "vendor_expense"
-- All monetary amounts must be in cents (multiply dollars by 100)
+- INVOICE TYPE DETECTION:
+  * If "King City Disposal" appears in the FROM/sender section at the top, this is a "customer_record" (invoice TO a customer)
+  * If "King City Disposal" appears in the TO/recipient/billing section, this is a "vendor_expense" (bill FROM a vendor)
+- All monetary amounts must be in cents (multiply dollars by 100). Example: $525.00 = 52500 cents
+- DATE FORMAT: Convert dates to YYYY-MM-DD. Example: 1/4/2026 becomes 2026-01-04
 - For expense_category: landfill (dump fees/waste disposal), fuel (gas/diesel), parts, repairs, supplies, dumpster_rental, or other
 - Include weight/tonnage info in the notes field even if it appears elsewhere
 - Set confidence between 0 and 1 based on image clarity and your certainty
