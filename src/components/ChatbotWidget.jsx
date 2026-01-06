@@ -73,6 +73,7 @@ export default function ChatbotWidget() {
     placementLat: null,
     placementLng: null,
     placementNotes: '',
+    skipMap: false, // User chose to describe placement instead of using map
     size: '',
     duration: '10-day',
     deliveryDate: '',
@@ -382,9 +383,14 @@ export default function ChatbotWidget() {
 
   // Step 3: Handle address and map placement
   const handlePlacementConfirm = async () => {
-    const notes = placementDescription.trim() || 'See map placement'
+    const notes = placementDescription.trim() || (bookingData.skipMap ? 'Call to confirm placement' : 'See map placement')
     setBookingData(prev => ({ ...prev, placementNotes: notes }))
-    addUserMessage(`Placement confirmed`)
+
+    if (bookingData.skipMap) {
+      addUserMessage(`Placement: ${notes}`)
+    } else {
+      addUserMessage(`Placement confirmed`)
+    }
 
     await addBotMessage(`Got it!\n\nWhen do you need it delivered?`, 600)
     setStep(STEPS.DATE_DURATION)
@@ -722,92 +728,165 @@ export default function ChatbotWidget() {
             {/* Step 3: Map Placement */}
             {!isTyping && step === STEPS.MAP_PLACEMENT && (
               <div className="space-y-3">
-                <div className="bg-dark-700 rounded-xl overflow-hidden">
-                  <div className="relative" style={{ height: '220px' }}>
-                    <div
-                      ref={mapContainerRef}
-                      className="h-full w-full bg-dark-600"
+                {!bookingData.skipMap ? (
+                  <>
+                    <div className="bg-dark-700 rounded-xl overflow-hidden">
+                      <div className="relative" style={{ height: '220px' }}>
+                        <div
+                          ref={mapContainerRef}
+                          className="h-full w-full bg-dark-600"
+                        />
+
+                        {!mapLoaded && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-dark-600">
+                            <div className="w-14 h-14 bg-primary-500/20 rounded-xl flex items-center justify-center mb-3 animate-pulse">
+                              <MapPin className="w-7 h-7 text-primary-400" />
+                            </div>
+                            <p className="text-white font-medium">Loading satellite view...</p>
+                          </div>
+                        )}
+
+                        {mapLoaded && !dumpsterPlaced && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <button
+                              onClick={placeDumpster}
+                              className="bg-primary-500 hover:bg-primary-600 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
+                            >
+                              <Plus className="w-5 h-5" />
+                              Place Dumpster Here
+                            </button>
+                          </div>
+                        )}
+
+                        {dumpsterPlaced && (
+                          <div className="absolute bottom-3 right-3 flex gap-2">
+                            <button
+                              onClick={rotateLeft}
+                              className="w-11 h-11 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                            >
+                              <RotateCcw className="w-5 h-5 text-primary-400" />
+                            </button>
+                            <button
+                              onClick={rotateRight}
+                              className="w-11 h-11 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                            >
+                              <RotateCw className="w-5 h-5 text-primary-400" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 bg-dark-800 border-t border-dark-600 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-3 bg-primary-500/60 border-2 border-primary-500 rounded-sm"></div>
+                          <span className="text-sm text-dark-300">{selectedDumpster?.dimensions?.display || '22ft × 8ft'}</span>
+                        </div>
+                        {dumpsterPlaced && <span className="text-primary-400 text-sm font-medium">Pan map to move</span>}
+                      </div>
+                    </div>
+
+                    {/* House not shown option */}
+                    <button
+                      onClick={() => setBookingData(prev => ({ ...prev, skipMap: true }))}
+                      className="w-full text-center text-sm text-dark-400 hover:text-primary-400 py-2 transition-colors"
+                    >
+                      House not showing? Click here to describe placement instead
+                    </button>
+
+                    <input
+                      type="text"
+                      value={placementDescription}
+                      onChange={(e) => setPlacementDescription(e.target.value)}
+                      placeholder="Placement notes (optional)..."
+                      className="input-field w-full"
                     />
 
-                    {!mapLoaded && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-dark-600">
-                        <div className="w-14 h-14 bg-primary-500/20 rounded-xl flex items-center justify-center mb-3 animate-pulse">
-                          <MapPin className="w-7 h-7 text-primary-400" />
-                        </div>
-                        <p className="text-white font-medium">Loading satellite view...</p>
-                      </div>
-                    )}
-
-                    {mapLoaded && !dumpsterPlaced && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        <button
-                          onClick={placeDumpster}
-                          className="bg-primary-500 hover:bg-primary-600 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
-                        >
-                          <Plus className="w-5 h-5" />
-                          Place Dumpster Here
-                        </button>
-                      </div>
-                    )}
-
-                    {dumpsterPlaced && (
-                      <div className="absolute bottom-3 right-3 flex gap-2">
-                        <button
-                          onClick={rotateLeft}
-                          className="w-11 h-11 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg"
-                        >
-                          <RotateCcw className="w-5 h-5 text-primary-400" />
-                        </button>
-                        <button
-                          onClick={rotateRight}
-                          className="w-11 h-11 bg-dark-800/90 hover:bg-dark-700 text-white rounded-full flex items-center justify-center shadow-lg"
-                        >
-                          <RotateCw className="w-5 h-5 text-primary-400" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-3 bg-dark-800 border-t border-dark-600 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-3 bg-primary-500/60 border-2 border-primary-500 rounded-sm"></div>
-                      <span className="text-sm text-dark-300">{selectedDumpster?.dimensions?.display || '22ft × 8ft'}</span>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setMessages(prev => prev.slice(0, -2))
+                          setBookingData(prev => ({ ...prev, address: '', skipMap: false }))
+                          setPlacementDescription('')
+                          setStep(STEPS.ADDRESS)
+                        }}
+                        className="flex-1 bg-dark-700 hover:bg-dark-600 text-white rounded-xl py-3 flex items-center justify-center gap-2"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back
+                      </button>
+                      <button
+                        onClick={handlePlacementConfirm}
+                        disabled={!dumpsterPlaced}
+                        className={`flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl font-semibold ${
+                          dumpsterPlaced ? 'btn-primary' : 'bg-dark-600 text-dark-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <Check className="w-5 h-5" />
+                        Confirm Placement
+                      </button>
                     </div>
-                    {dumpsterPlaced && <span className="text-primary-400 text-sm font-medium">Pan map to move</span>}
+                  </>
+                ) : (
+                  /* Skip Map - Manual Description Mode */
+                  <div className="space-y-4">
+                    <div className="bg-dark-700 rounded-xl p-4">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <MapPin className="w-5 h-5 text-primary-400" />
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">Describe Dumpster Placement</p>
+                          <p className="text-dark-400 text-sm">Tell us exactly where you'd like it placed</p>
+                        </div>
+                      </div>
+                      <textarea
+                        value={placementDescription}
+                        onChange={(e) => setPlacementDescription(e.target.value)}
+                        placeholder="Example: In the driveway on the left side, near the garage door. Or: On the street in front of the house..."
+                        className="input-field w-full h-24 resize-none"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2">
+                      <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-amber-200 text-sm">
+                        We'll call to confirm exact placement before delivery
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setBookingData(prev => ({ ...prev, skipMap: false }))}
+                        className="flex-1 bg-dark-700 hover:bg-dark-600 text-white rounded-xl py-3 flex items-center justify-center gap-2"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to Map
+                      </button>
+                      <button
+                        onClick={handlePlacementConfirm}
+                        disabled={!placementDescription.trim()}
+                        className={`flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl font-semibold ${
+                          placementDescription.trim() ? 'btn-primary' : 'bg-dark-600 text-dark-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <Check className="w-5 h-5" />
+                        Continue
+                      </button>
+                    </div>
+
+                    <div className="text-center">
+                      <p className="text-dark-400 text-sm mb-2">Or prefer to talk to someone?</p>
+                      <a
+                        href={`tel:${config.phoneRaw}`}
+                        className="inline-flex items-center gap-2 bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 px-4 py-2 rounded-xl transition-colors"
+                      >
+                        <Phone className="w-4 h-4" />
+                        Call {config.phone}
+                      </a>
+                    </div>
                   </div>
-                </div>
-
-                <input
-                  type="text"
-                  value={placementDescription}
-                  onChange={(e) => setPlacementDescription(e.target.value)}
-                  placeholder="Placement notes (optional)..."
-                  className="input-field w-full"
-                />
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setMessages(prev => prev.slice(0, -2))
-                      setBookingData(prev => ({ ...prev, address: '' }))
-                      setStep(STEPS.ADDRESS)
-                    }}
-                    className="flex-1 bg-dark-700 hover:bg-dark-600 text-white rounded-xl py-3 flex items-center justify-center gap-2"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back
-                  </button>
-                  <button
-                    onClick={handlePlacementConfirm}
-                    disabled={!dumpsterPlaced}
-                    className={`flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl font-semibold ${
-                      dumpsterPlaced ? 'btn-primary' : 'bg-dark-600 text-dark-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <Check className="w-5 h-5" />
-                    Confirm Placement
-                  </button>
-                </div>
+                )}
               </div>
             )}
 
