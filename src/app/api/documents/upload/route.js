@@ -136,12 +136,31 @@ export async function POST(request) {
       );
     }
 
+    // Auto-parse invoices with AI
+    let parsedInvoice = null;
+    if (category === 'invoice' && process.env.ANTHROPIC_API_KEY) {
+      try {
+        // Trigger async parsing (don't wait for it)
+        const parseUrl = new URL('/api/documents/parse', request.url);
+        fetch(parseUrl.toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ document_id: document.id }),
+        }).catch(err => console.error('Background parse error:', err));
+
+        console.log(`🔍 Invoice parsing triggered for document ${document.id}`);
+      } catch (parseError) {
+        console.error('Failed to trigger invoice parsing:', parseError);
+      }
+    }
+
     console.log(`📄 Document uploaded: ${storagePath}`);
 
     return NextResponse.json({
       success: true,
       document,
       storage_path: storagePath,
+      parsing: category === 'invoice' && process.env.ANTHROPIC_API_KEY ? true : false,
     });
 
   } catch (error) {

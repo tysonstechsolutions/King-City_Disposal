@@ -11,6 +11,7 @@ import {
   FileText,
   CreditCard,
   Camera,
+  Receipt,
 } from 'lucide-react'
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/admin/invoices', label: 'Invoices', icon: FileText },
   { href: '/admin/payments', label: 'Payments', icon: CreditCard },
   { href: '/admin/documents', label: 'Docs', icon: Camera },
+  { href: '/admin/expenses', label: 'Expenses', icon: Receipt },
 ]
 
 export default function AdminNav() {

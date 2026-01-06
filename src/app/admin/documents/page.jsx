@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
+import ParsedInvoiceReview from '../../../components/ParsedInvoiceReview'
 import {
   Upload,
   FileText,
@@ -20,7 +21,10 @@ import {
   X,
   File,
   Droplet,
-  Calendar
+  Calendar,
+  Sparkles,
+  Eye,
+  RotateCcw
 } from 'lucide-react'
 
 const CATEGORIES = [
@@ -49,6 +53,11 @@ export default function DocumentsPage() {
   const [uploadAmount, setUploadAmount] = useState('')
   const [uploadWeight, setUploadWeight] = useState('')
   const [showUploadForm, setShowUploadForm] = useState(false)
+
+  // Invoice parsing state
+  const [reviewingDoc, setReviewingDoc] = useState(null)
+  const [parsedInvoice, setParsedInvoice] = useState(null)
+  const [parsing, setParsing] = useState({})
 
   const fileInputRef = useRef(null)
 
@@ -195,6 +204,53 @@ export default function DocumentsPage() {
     setUploadAmount('')
     setUploadWeight('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Parse an invoice with AI
+  const parseInvoice = async (docId) => {
+    setParsing(prev => ({ ...prev, [docId]: true }))
+    try {
+      const response = await fetch('/api/documents/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id: docId }),
+      })
+
+      if (response.ok) {
+        setSuccess('Invoice parsed! Click Review to see results.')
+        fetchDocuments()
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        const err = await response.json()
+        setError(err.error || 'Failed to parse invoice')
+      }
+    } catch (err) {
+      console.error('Parse error:', err)
+      setError('Failed to parse invoice')
+    }
+    setParsing(prev => ({ ...prev, [docId]: false }))
+  }
+
+  // Open review modal for a parsed invoice
+  const openReview = async (doc) => {
+    setReviewingDoc(doc)
+    try {
+      const response = await fetch(`/api/documents/parse?document_id=${doc.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.length > 0) {
+          setParsedInvoice(data[0])
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching parsed data:', err)
+    }
+  }
+
+  const closeReview = () => {
+    setReviewingDoc(null)
+    setParsedInvoice(null)
+    fetchDocuments()
   }
 
   const formatDate = (dateStr) => {
@@ -497,10 +553,69 @@ export default function DocumentsPage() {
                         {formatCurrency(doc.amount_cents)}
                       </p>
                     )}
+                    {/* Parse Status Badge */}
+                    {doc.category === 'invoice' && doc.parse_status && (
+                      <div className="mt-1">
+                        {doc.parse_status === 'parsing' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Parsing...
+                          </span>
+                        )}
+                        {doc.parse_status === 'parsed' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700">
+                            <Sparkles className="w-3 h-3" />
+                            Parsed - Review
+                          </span>
+                        )}
+                        {doc.parse_status === 'failed' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                            <AlertCircle className="w-3 h-3" />
+                            Parse Failed
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {/* Parse/Review buttons for invoices */}
+                    {doc.category === 'invoice' && (
+                      <>
+                        {doc.parse_status === 'parsed' ? (
+                          <button
+                            onClick={() => openReview(doc)}
+                            className="p-2 text-purple-500 hover:text-purple-700 rounded-lg hover:bg-purple-50"
+                            title="Review parsed data"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        ) : doc.parse_status === 'parsing' || parsing[doc.id] ? (
+                          <div className="p-2">
+                            <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => parseInvoice(doc.id)}
+                            disabled={parsing[doc.id]}
+                            className="p-2 text-amber-500 hover:text-amber-700 rounded-lg hover:bg-amber-50"
+                            title="Parse with AI"
+                          >
+                            <Sparkles className="w-5 h-5" />
+                          </button>
+                        )}
+                        {doc.parse_status === 'failed' && (
+                          <button
+                            onClick={() => parseInvoice(doc.id)}
+                            className="p-2 text-neutral-400 hover:text-amber-500 rounded-lg hover:bg-neutral-100"
+                            title="Retry parse"
+                          >
+                            <RotateCcw className="w-5 h-5" />
+                          </button>
+                        )}
+                      </>
+                    )}
                     {doc.storage_path && (
                       <a
                         href={doc.storage_path.startsWith('http')
@@ -526,6 +641,26 @@ export default function DocumentsPage() {
           )}
         </div>
       </main>
+
+      {/* Parsed Invoice Review Modal */}
+      {reviewingDoc && parsedInvoice && (
+        <ParsedInvoiceReview
+          document={reviewingDoc}
+          parsedInvoice={parsedInvoice}
+          imageUrl={reviewingDoc.storage_path
+            ? `${config.supabase.url}/storage/v1/object/public/documents/${reviewingDoc.storage_path}`
+            : null}
+          onClose={closeReview}
+          onConfirm={() => {
+            setSuccess('Invoice confirmed!')
+            setTimeout(() => setSuccess(null), 3000)
+          }}
+          onReparse={() => {
+            closeReview()
+            parseInvoice(reviewingDoc.id)
+          }}
+        />
+      )}
     </div>
   )
 }
