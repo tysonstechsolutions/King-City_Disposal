@@ -1,6 +1,112 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
 
+const supabaseUrl = config.supabase.url;
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+// ============================================
+// FIND OR CREATE CUSTOMER
+// ============================================
+async function findOrCreateCustomer({ name, phone, email, address }) {
+  if (!name || !phone) return null;
+
+  // Clean phone number for matching
+  const cleanPhone = phone.replace(/\D/g, '');
+
+  // Try to find existing customer by phone or email
+  const conditions = [];
+  if (cleanPhone.length >= 10) {
+    conditions.push(`phone.ilike.%${cleanPhone.slice(-10)}%`);
+  }
+  if (email) {
+    conditions.push(`email.ilike.${email}`);
+  }
+
+  if (conditions.length > 0) {
+    const searchResponse = await fetch(
+      `${supabaseUrl}/rest/v1/customers?or=(${conditions.join(',')})&limit=1`,
+      {
+        headers: {
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+      }
+    );
+
+    if (searchResponse.ok) {
+      const existing = await searchResponse.json();
+      if (existing.length > 0) {
+        console.log(`Found existing customer: ${existing[0].name} (ID: ${existing[0].id})`);
+
+        // Update customer stats
+        await fetch(
+          `${supabaseUrl}/rest/v1/customers?id=eq.${existing[0].id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': getSupabaseKey(),
+              'Authorization': `Bearer ${getSupabaseKey()}`,
+            },
+            body: JSON.stringify({
+              total_jobs: (existing[0].total_jobs || 0) + 1,
+              last_job_date: new Date().toISOString().split('T')[0],
+            }),
+          }
+        );
+
+        return existing[0];
+      }
+    }
+  }
+
+  // Parse address for city/state/zip
+  let city = null, state = 'IL', zip = null;
+  if (address) {
+    const stateZipMatch = address.match(/([A-Za-z\s]+),?\s*([A-Z]{2})\s*(\d{5})?/);
+    if (stateZipMatch) {
+      city = stateZipMatch[1]?.trim();
+      state = stateZipMatch[2] || 'IL';
+      zip = stateZipMatch[3] || null;
+    }
+  }
+
+  // Create new customer
+  const createResponse = await fetch(
+    `${supabaseUrl}/rest/v1/customers`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify({
+        name,
+        phone,
+        email: email || null,
+        address: address || null,
+        city,
+        state,
+        zip,
+        total_jobs: 1,
+        last_job_date: new Date().toISOString().split('T')[0],
+        notes: 'Auto-created from online booking',
+      }),
+    }
+  );
+
+  if (createResponse.ok) {
+    const [created] = await createResponse.json();
+    console.log(`✅ Created new customer: ${created.name} (ID: ${created.id})`);
+    return created;
+  }
+
+  console.error('Failed to create customer');
+  return null;
+}
+
 // Parse "Mon, Jan 6" format to "2025-01-06" for database
 function parseDeliveryDate(dateStr) {
   try {
@@ -63,12 +169,20 @@ export async function POST(request) {
     }
 
     // ============================================
-    // 1. SAVE TO DATABASE (Supabase)
+    // 1. FIND OR CREATE CUSTOMER
     // ============================================
-    const supabaseUrl = config.supabase.url;
-    const supabaseKey = config.supabase.anonKey;
+    const customer = await findOrCreateCustomer({
+      name: customerName,
+      phone: customerPhone,
+      email: customerEmail,
+      address: address,
+    });
 
+    // ============================================
+    // 2. SAVE BOOKING TO DATABASE
+    // ============================================
     const bookingData = {
+      customer_id: customer?.id || null,
       customer_name: customerName,
       customer_phone: customerPhone,
       customer_email: customerEmail || null,
@@ -89,8 +203,8 @@ export async function POST(request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
         'Prefer': 'return=representation',
       },
       body: JSON.stringify(bookingData),
@@ -109,7 +223,7 @@ export async function POST(request) {
     console.log('Booking saved:', savedBooking);
 
     // ============================================
-    // 2. SEND NOTIFICATIONS
+    // 3. SEND NOTIFICATIONS
     // ============================================
     
     // Get dumpster info for notification
@@ -143,11 +257,13 @@ export async function POST(request) {
     // Email can be added later with Resend API
 
     // ============================================
-    // 3. RETURN SUCCESS
+    // 4. RETURN SUCCESS
     // ============================================
     return NextResponse.json({
       success: true,
       bookingId: savedBooking[0]?.id,
+      customerId: customer?.id || null,
+      customerCreated: customer ? !customer.created_at || (Date.now() - new Date(customer.created_at).getTime()) < 5000 : false,
       message: 'Booking received! We\'ll be in touch soon.',
     });
 

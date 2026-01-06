@@ -1,10 +1,11 @@
 // ============================================
 // INVOICE PARSING API - Claude AI Vision
 // ============================================
-// Extracts structured data from invoice images
+// Extracts structured data from invoice images and Excel files
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import * as XLSX from 'xlsx';
 
 // Force dynamic rendering (not static)
 export const dynamic = 'force-dynamic';
@@ -12,116 +13,105 @@ export const dynamic = 'force-dynamic';
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
-// ============================================
-// POST - Parse an invoice document
-// ============================================
-export async function POST(request) {
-  try {
-    const { document_id } = await request.json();
+// Parsing prompts for different document types
+function getParsingPrompt(docCategory = 'invoice') {
+  if (docCategory === 'weight_ticket') {
+    return getWeightTicketPrompt();
+  } else if (docCategory === 'fuel_receipt') {
+    return getFuelReceiptPrompt();
+  }
+  return getInvoicePrompt();
+}
 
-    if (!document_id) {
-      return NextResponse.json(
-        { error: 'document_id is required' },
-        { status: 400 }
-      );
+function getWeightTicketPrompt() {
+  return `Analyze this weight ticket/landfill receipt and extract the information. Return a JSON object:
+
+{
+  "invoice_type": "vendor_expense",
+  "from": {
+    "name": "Landfill/dump name",
+    "address": "Address if visible",
+    "phone": "Phone if visible"
+  },
+  "to": {
+    "name": "Company name (truck owner)",
+    "address": null
+  },
+  "invoice_number": "Ticket number",
+  "invoice_date": "YYYY-MM-DD format",
+  "line_items": [
+    {
+      "description": "Waste disposal - X.XX tons",
+      "quantity": 1,
+      "unit": "tons",
+      "weight_tons": 2.5,
+      "total_cents": 10000
     }
+  ],
+  "subtotal_cents": 10000,
+  "tax_cents": 0,
+  "total_cents": 10000,
+  "expense_category": "landfill",
+  "notes": "Gross weight: X lbs, Tare weight: X lbs, Net weight: X lbs (X.XX tons)",
+  "confidence": 0.95
+}
 
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) {
-      return NextResponse.json(
-        { error: 'ANTHROPIC_API_KEY not configured' },
-        { status: 500 }
-      );
+CRITICAL:
+- Extract GROSS, TARE, and NET weights - these are crucial!
+- Convert net weight to tons (divide lbs by 2000)
+- Include all weight info in notes
+- All amounts in cents (multiply dollars by 100)
+- Date format: YYYY-MM-DD
+- Set confidence 0-1 based on readability
+
+Return ONLY JSON.`;
+}
+
+function getFuelReceiptPrompt() {
+  return `Analyze this fuel receipt and extract the information. Return a JSON object:
+
+{
+  "invoice_type": "vendor_expense",
+  "from": {
+    "name": "Gas station name",
+    "address": "Address if visible",
+    "phone": null
+  },
+  "to": {
+    "name": "King City Disposal",
+    "address": null
+  },
+  "invoice_number": "Receipt/transaction number",
+  "invoice_date": "YYYY-MM-DD format",
+  "line_items": [
+    {
+      "description": "Diesel fuel - XX.XX gallons @ $X.XX/gal",
+      "quantity": 25.5,
+      "unit": "gallons",
+      "unit_price_cents": 350,
+      "total_cents": 8925
     }
+  ],
+  "subtotal_cents": 8925,
+  "tax_cents": 0,
+  "total_cents": 8925,
+  "expense_category": "fuel",
+  "notes": "Vehicle: [if visible], Odometer: [if visible], Pump #: [if visible]",
+  "confidence": 0.95
+}
 
-    // 1. Fetch the document record
-    const docResponse = await fetch(
-      `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
-      {
-        headers: {
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
-        },
-      }
-    );
+CRITICAL:
+- Extract gallons purchased and price per gallon
+- Note fuel type (diesel, regular, premium)
+- Include vehicle info if visible
+- All amounts in cents
+- Date format: YYYY-MM-DD
 
-    if (!docResponse.ok) {
-      return NextResponse.json(
-        { error: 'Failed to fetch document' },
-        { status: 500 }
-      );
-    }
+Return ONLY JSON.`;
+}
 
-    const documents = await docResponse.json();
-    if (!documents.length) {
-      return NextResponse.json(
-        { error: 'Document not found' },
-        { status: 404 }
-      );
-    }
-
-    const document = documents[0];
-
-    // Update document status to 'parsing'
-    await fetch(
-      `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
-        },
-        body: JSON.stringify({ parse_status: 'parsing' }),
-      }
-    );
-
-    // 2. Fetch the image from Supabase Storage
-    const imageUrl = `${supabaseUrl}/storage/v1/object/authenticated/documents/${document.storage_path}`;
-    const imageResponse = await fetch(imageUrl, {
-      headers: {
-        'Authorization': `Bearer ${getSupabaseKey()}`,
-      },
-    });
-
-    if (!imageResponse.ok) {
-      await updateDocumentStatus(document_id, 'failed');
-      return NextResponse.json(
-        { error: 'Failed to fetch image from storage' },
-        { status: 500 }
-      );
-    }
-
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = Buffer.from(imageBuffer).toString('base64');
-    const mediaType = document.file_type || 'image/jpeg';
-
-    // 3. Call Claude AI Vision API
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-20250514',
-        max_tokens: 4000,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mediaType,
-                  data: base64Image,
-                },
-              },
-              {
-                type: 'text',
-                text: `CAREFULLY analyze this invoice/receipt image and extract ALL information with high accuracy. Read every number, word, and detail precisely.
+function getInvoicePrompt() {
+  return `CAREFULLY analyze this invoice/receipt data and extract ALL information with high accuracy. Read every number, word, and detail precisely.
 
 Return a JSON object with this exact structure:
 
@@ -176,12 +166,158 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
 - DATE FORMAT: Convert dates to YYYY-MM-DD. Example: 1/4/2026 becomes 2026-01-04
 - For expense_category: landfill (dump fees/waste disposal), fuel (gas/diesel), parts, repairs, supplies, dumpster_rental, or other
 - Include weight/tonnage info in the notes field even if it appears elsewhere
-- Set confidence between 0 and 1 based on image clarity and your certainty
+- Set confidence between 0 and 1 based on data clarity and your certainty
 - If a field is not visible or unclear, use null
 
-Return ONLY the JSON object, no other text.`
-              }
-            ],
+Return ONLY the JSON object, no other text.`;
+}
+
+// ============================================
+// POST - Parse an invoice document
+// ============================================
+export async function POST(request) {
+  try {
+    const { document_id, category } = await request.json();
+
+    if (!document_id) {
+      return NextResponse.json(
+        { error: 'document_id is required' },
+        { status: 400 }
+      );
+    }
+
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      return NextResponse.json(
+        { error: 'ANTHROPIC_API_KEY not configured' },
+        { status: 500 }
+      );
+    }
+
+    // 1. Fetch the document record
+    const docResponse = await fetch(
+      `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
+      {
+        headers: {
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+      }
+    );
+
+    if (!docResponse.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch document' },
+        { status: 500 }
+      );
+    }
+
+    const documents = await docResponse.json();
+    if (!documents.length) {
+      return NextResponse.json(
+        { error: 'Document not found' },
+        { status: 404 }
+      );
+    }
+
+    const document = documents[0];
+    const docCategory = category || document.category || 'invoice';
+
+    // Update document status to 'parsing'
+    await fetch(
+      `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+        body: JSON.stringify({ parse_status: 'parsing' }),
+      }
+    );
+
+    // 2. Fetch the file from Supabase Storage
+    const fileUrl = `${supabaseUrl}/storage/v1/object/authenticated/documents/${document.storage_path}`;
+    const fileResponse = await fetch(fileUrl, {
+      headers: {
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+      },
+    });
+
+    if (!fileResponse.ok) {
+      await updateDocumentStatus(document_id, 'failed');
+      return NextResponse.json(
+        { error: 'Failed to fetch file from storage' },
+        { status: 500 }
+      );
+    }
+
+    const fileBuffer = await fileResponse.arrayBuffer();
+    const mediaType = document.file_type || 'image/jpeg';
+
+    // Check if this is an Excel or CSV file
+    const isSpreadsheet = mediaType.includes('spreadsheet') ||
+                          mediaType.includes('excel') ||
+                          mediaType === 'text/csv' ||
+                          document.file_name?.endsWith('.xlsx') ||
+                          document.file_name?.endsWith('.xls') ||
+                          document.file_name?.endsWith('.csv');
+
+    let messageContent;
+
+    if (isSpreadsheet) {
+      // Parse Excel/CSV file and convert to text
+      const workbook = XLSX.read(fileBuffer, { type: 'array' });
+      let extractedText = '';
+
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        extractedText += `=== Sheet: ${sheetName} ===\n`;
+        extractedText += XLSX.utils.sheet_to_csv(sheet);
+        extractedText += '\n\n';
+      }
+
+      messageContent = [
+        {
+          type: 'text',
+          text: `The following is data extracted from a spreadsheet file. Analyze this invoice/expense data and extract the information.\n\n--- SPREADSHEET DATA ---\n${extractedText}\n--- END DATA ---\n\n` + getParsingPrompt(docCategory)
+        }
+      ];
+    } else {
+      // Image or PDF - use vision
+      const base64Image = Buffer.from(fileBuffer).toString('base64');
+      messageContent = [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Image,
+          },
+        },
+        {
+          type: 'text',
+          text: getParsingPrompt(docCategory)
+        }
+      ];
+    }
+
+    // 3. Call Claude AI API
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-20250514',
+        max_tokens: 4000,
+        messages: [
+          {
+            role: 'user',
+            content: messageContent,
           }
         ],
       }),
@@ -287,9 +423,11 @@ Return ONLY the JSON object, no other text.`
       total_cents: parsedData.total_cents || null,
       expense_category: parsedData.expense_category || 'other',
       tax_year: taxYear,
-      status: 'pending_review',
+      // Auto-confirm if confidence >= 95%
+      status: (parsedData.confidence >= 0.95) ? 'confirmed' : 'pending_review',
       confidence_score: parsedData.confidence || 0.8,
       raw_text: parsedData.notes || null,
+      confirmed_at: (parsedData.confidence >= 0.95) ? new Date().toISOString() : null,
     };
 
     const insertResponse = await fetch(
@@ -319,6 +457,21 @@ Return ONLY the JSON object, no other text.`
     const [parsedInvoice] = await insertResponse.json();
 
     // 7. Update document with parse status, link, and customer
+    // Extract weight for weight tickets
+    let weightLbs = null;
+    if (docCategory === 'weight_ticket' && parsedData.line_items?.length > 0) {
+      const weightItem = parsedData.line_items[0];
+      if (weightItem.weight_tons) {
+        weightLbs = Math.round(weightItem.weight_tons * 2000);
+      }
+    }
+
+    // Extract amount for fuel receipts
+    let amountCents = null;
+    if (docCategory === 'fuel_receipt') {
+      amountCents = parsedData.total_cents || null;
+    }
+
     await fetch(
       `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
       {
@@ -332,6 +485,8 @@ Return ONLY the JSON object, no other text.`
           parse_status: 'parsed',
           parsed_invoice_id: parsedInvoice.id,
           customer_id: customer?.id || null,
+          ...(weightLbs && { weight_lbs: weightLbs }),
+          ...(amountCents && { amount_cents: amountCents }),
         }),
       }
     );
@@ -358,10 +513,12 @@ Return ONLY the JSON object, no other text.`
       }
     }
 
-    console.log(`Invoice parsed successfully: Document ${document_id} -> Parsed Invoice ${parsedInvoice.id}${customer ? ` -> Customer ${customer.id} (${customer.name})` : ''}`);
+    const autoConfirmed = parsedData.confidence >= 0.95;
+    console.log(`✅ ${docCategory} parsed successfully: Document ${document_id} -> Parsed Invoice ${parsedInvoice.id}${autoConfirmed ? ' (AUTO-CONFIRMED)' : ''}${customer ? ` -> Customer ${customer.id} (${customer.name})` : ''}${weightLbs ? ` -> ${weightLbs} lbs` : ''}`);
 
     return NextResponse.json({
       success: true,
+      auto_confirmed: autoConfirmed,
       parsed_invoice: {
         ...parsedInvoice,
         line_items: parsedData.line_items || [],
@@ -371,6 +528,10 @@ Return ONLY the JSON object, no other text.`
         name: customer.name,
         is_new: !customer.created_at || (Date.now() - new Date(customer.created_at).getTime()) < 5000,
       } : null,
+      extracted: {
+        weight_lbs: weightLbs,
+        amount_cents: amountCents,
+      },
     });
 
   } catch (error) {

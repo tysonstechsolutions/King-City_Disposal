@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
+import { EXPENSE_CATEGORIES, formatCurrency, formatDate, getExpenseCategory } from '../../../lib/constants'
 import {
   Receipt,
   Download,
@@ -10,9 +11,6 @@ import {
   Calendar,
   Truck,
   Fuel,
-  Wrench,
-  Package,
-  HelpCircle,
   DollarSign,
   TrendingUp,
   FileText,
@@ -23,17 +21,6 @@ import {
   Clock,
   ExternalLink
 } from 'lucide-react'
-
-const EXPENSE_CATEGORIES = [
-  { id: 'all', label: 'All Categories', icon: Receipt },
-  { id: 'landfill', label: 'Landfill/Dump', icon: Truck, color: 'blue' },
-  { id: 'fuel', label: 'Fuel', icon: Fuel, color: 'amber' },
-  { id: 'parts', label: 'Parts', icon: Package, color: 'green' },
-  { id: 'repairs', label: 'Repairs', icon: Wrench, color: 'red' },
-  { id: 'supplies', label: 'Supplies', icon: Package, color: 'purple' },
-  { id: 'dumpster_rental', label: 'Dumpster Rental', icon: Truck, color: 'indigo' },
-  { id: 'other', label: 'Other', icon: HelpCircle, color: 'neutral' },
-]
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([])
@@ -111,26 +98,7 @@ export default function ExpensesPage() {
     setExporting(false)
   }
 
-  const formatCurrency = (cents) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format((cents || 0) / 100)
-  }
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-'
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
-
-  const getCategoryInfo = (catId) => {
-    return EXPENSE_CATEGORIES.find(c => c.id === catId) || EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length - 1]
-  }
-
+  
   // Generate year options (current year and past 5 years)
   const yearOptions = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i)
 
@@ -227,7 +195,7 @@ export default function ExpensesPage() {
             <h2 className="font-semibold text-neutral-900 mb-4">Expense Breakdown</h2>
             <div className="space-y-3">
               {Object.entries(summary.by_category).map(([catId, data]) => {
-                const catInfo = getCategoryInfo(catId)
+                const catInfo = getExpenseCategory(catId)
                 const Icon = catInfo.icon
                 const percentage = summary.grand_total_cents > 0
                   ? (data.total_cents / summary.grand_total_cents) * 100
@@ -365,7 +333,7 @@ export default function ExpensesPage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {expenses.map((expense) => {
-                    const catInfo = getCategoryInfo(expense.expense_category)
+                    const catInfo = getExpenseCategory(expense.expense_category)
                     const Icon = catInfo.icon
                     return (
                       <tr key={expense.id} className="hover:bg-neutral-50">

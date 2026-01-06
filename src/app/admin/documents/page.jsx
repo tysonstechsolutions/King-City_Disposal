@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
 import ParsedInvoiceReview from '../../../components/ParsedInvoiceReview'
+import { DOCUMENT_CATEGORIES, formatCurrency, formatDate, getDocumentCategory } from '../../../lib/constants'
 import {
   Upload,
   FileText,
@@ -26,15 +27,6 @@ import {
   Eye,
   RotateCcw
 } from 'lucide-react'
-
-const CATEGORIES = [
-  { id: 'weight_ticket', label: 'Weight Ticket', icon: Scale, color: 'blue' },
-  { id: 'fuel_receipt', label: 'Fuel Receipt', icon: Droplet, color: 'amber' },
-  { id: 'photo', label: 'Job Photo', icon: Camera, color: 'green' },
-  { id: 'invoice', label: 'Invoice', icon: FileText, color: 'purple' },
-  { id: 'contract', label: 'Contract', icon: FileText, color: 'indigo' },
-  { id: 'other', label: 'Other', icon: File, color: 'neutral' },
-]
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState([])
@@ -105,9 +97,14 @@ export default function DocumentsPage() {
       return
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv' // .csv
+    ]
     if (!allowedTypes.includes(file.type)) {
-      setError('Invalid file type. Use image or PDF.')
+      setError('Invalid file type. Use image, PDF, Excel, or CSV.')
       return
     }
 
@@ -253,25 +250,6 @@ export default function DocumentsPage() {
     fetchDocuments()
   }
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
-
-  const formatCurrency = (cents) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format((cents || 0) / 100)
-  }
-
-  const getCategoryInfo = (categoryId) => {
-    return CATEGORIES.find(c => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1]
-  }
-
   const filteredDocs = documents.filter(doc => {
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
@@ -326,7 +304,7 @@ export default function DocumentsPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,application/pdf"
+              accept="image/*,application/pdf,.xlsx,.xls,.csv"
               onChange={handleFileSelect}
               className="hidden"
               capture="environment"
@@ -368,7 +346,7 @@ export default function DocumentsPage() {
             <div className="mb-4">
               <label className="block text-sm font-medium text-neutral-700 mb-2">Type</label>
               <div className="grid grid-cols-3 gap-2">
-                {CATEGORIES.slice(0, 6).map(cat => {
+                {DOCUMENT_CATEGORIES.slice(0, 6).map(cat => {
                   const Icon = cat.icon
                   const isSelected = uploadCategory === cat.id
                   return (
@@ -471,7 +449,7 @@ export default function DocumentsPage() {
           >
             All
           </button>
-          {CATEGORIES.map(cat => (
+          {DOCUMENT_CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setFilterCategory(cat.id)}
@@ -512,7 +490,7 @@ export default function DocumentsPage() {
             </div>
           ) : (
             filteredDocs.map((doc) => {
-              const catInfo = getCategoryInfo(doc.category)
+              const catInfo = getDocumentCategory(doc.category)
               const Icon = catInfo.icon
               return (
                 <div

@@ -22,7 +22,10 @@ import {
   AlertCircle,
   Navigation,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Receipt,
+  Send,
+  UserCircle
 } from 'lucide-react'
 
 export default function BookingDetailPage() {
@@ -37,6 +40,8 @@ export default function BookingDetailPage() {
   const [status, setStatus] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [creatingInvoice, setCreatingInvoice] = useState(false)
+  const [invoiceCreated, setInvoiceCreated] = useState(null)
 
   // Fetch booking
   const fetchBooking = useCallback(async () => {
@@ -120,6 +125,95 @@ export default function BookingDetailPage() {
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Create invoice for this booking
+  const createInvoice = async () => {
+    if (!booking) return
+    setCreatingInvoice(true)
+
+    try {
+      const dumpster = getDumpsterInfo(booking.dumpster_size)
+
+      // Calculate pickup date (delivery + rental duration days)
+      const deliveryDate = new Date(booking.delivery_date)
+      const durationDays = parseInt(booking.rental_duration) || 10
+      const pickupDate = new Date(deliveryDate)
+      pickupDate.setDate(pickupDate.getDate() + durationDays)
+
+      // Calculate due date (delivery date + 15 days)
+      const dueDate = new Date(deliveryDate)
+      dueDate.setDate(dueDate.getDate() + 15)
+
+      const invoiceData = {
+        booking_id: booking.id,
+        customer_id: booking.customer_id || null,
+        customer_name: booking.customer_name,
+        customer_phone: booking.customer_phone,
+        customer_email: booking.customer_email,
+        customer_address: booking.address,
+        service_address: booking.address,
+        service_description: `${dumpster.name} Dumpster Rental - ${booking.rental_duration}`,
+        dumpster_size: booking.dumpster_size,
+        rental_duration: booking.rental_duration,
+        delivery_date: booking.delivery_date,
+        pickup_date: pickupDate.toISOString().split('T')[0],
+        line_items: [
+          {
+            description: `${dumpster.name} Dumpster - ${booking.rental_duration} Rental`,
+            amount_cents: booking.price_cents || 0,
+          }
+        ],
+        subtotal_cents: booking.price_cents || 0,
+        tax_cents: 0,
+        discount_cents: 0,
+        total_cents: booking.price_cents || 0,
+        due_date: dueDate.toISOString().split('T')[0],
+        notes: booking.placement_notes || null,
+      }
+
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invoiceData),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setInvoiceCreated(result.invoice || result)
+        // Refresh booking to show invoice link
+        fetchBooking()
+      } else {
+        const err = await response.json()
+        alert(err.error || 'Failed to create invoice')
+      }
+    } catch (err) {
+      console.error('Error creating invoice:', err)
+      alert('Error creating invoice')
+    }
+
+    setCreatingInvoice(false)
+  }
+
+  // Send invoice via SMS
+  const sendInvoice = async (invoiceId) => {
+    try {
+      const response = await fetch('/api/invoices/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_id: invoiceId }),
+      })
+
+      if (response.ok) {
+        alert('Invoice sent!')
+        fetchBooking()
+      } else {
+        const err = await response.json()
+        alert(err.error || 'Failed to send invoice')
+      }
+    } catch (err) {
+      console.error('Error sending invoice:', err)
+    }
   }
 
   // Open in Google Maps
@@ -311,7 +405,87 @@ export default function BookingDetailPage() {
                     </a>
                   </div>
                 )}
+
+                {booking.customer_id && (
+                  <div className="pt-2 border-t border-dark-700">
+                    <button
+                      onClick={() => router.push(`/admin/customers/${booking.customer_id}`)}
+                      className="text-primary-400 hover:text-primary-300 flex items-center gap-2 text-sm"
+                    >
+                      <UserCircle className="w-4 h-4" />
+                      View Customer Profile
+                    </button>
+                  </div>
+                )}
               </div>
+            </div>
+
+            {/* Invoice Section */}
+            <div className="bg-dark-800 rounded-2xl border border-dark-700 p-6">
+              <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-primary-400" />
+                Invoice
+              </h2>
+
+              {booking.invoice_id || invoiceCreated ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span>Invoice Created</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => router.push(`/admin/invoices/${booking.invoice_id || invoiceCreated?.id}`)}
+                      className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      View Invoice
+                    </button>
+
+                    <button
+                      onClick={() => sendInvoice(booking.invoice_id || invoiceCreated?.id)}
+                      className="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors flex items-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      Send to Customer
+                    </button>
+
+                    <a
+                      href={`/invoice/${invoiceCreated?.invoice_number || ''}`}
+                      target="_blank"
+                      className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Customer View
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-dark-400 text-sm">
+                    Create an invoice to send to the customer for payment.
+                  </p>
+
+                  <button
+                    onClick={createInvoice}
+                    disabled={creatingInvoice}
+                    className="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {creatingInvoice ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Receipt className="w-4 h-4" />
+                        Create Invoice
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Booking Details */}

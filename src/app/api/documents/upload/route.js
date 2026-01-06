@@ -136,21 +136,21 @@ export async function POST(request) {
       );
     }
 
-    // Auto-parse invoices with AI
-    let parsedInvoice = null;
-    if (category === 'invoice' && process.env.ANTHROPIC_API_KEY) {
+    // Auto-parse documents with AI based on category
+    const shouldParse = ['invoice', 'weight_ticket', 'fuel_receipt'].includes(category);
+    if (shouldParse && process.env.ANTHROPIC_API_KEY) {
       try {
         // Trigger async parsing (don't wait for it)
         const parseUrl = new URL('/api/documents/parse', request.url);
         fetch(parseUrl.toString(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ document_id: document.id }),
+          body: JSON.stringify({ document_id: document.id, category }),
         }).catch(err => console.error('Background parse error:', err));
 
-        console.log(`🔍 Invoice parsing triggered for document ${document.id}`);
+        console.log(`🔍 ${category} parsing triggered for document ${document.id}`);
       } catch (parseError) {
-        console.error('Failed to trigger invoice parsing:', parseError);
+        console.error('Failed to trigger document parsing:', parseError);
       }
     }
 

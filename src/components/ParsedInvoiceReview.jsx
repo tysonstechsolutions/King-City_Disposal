@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { config } from '../config'
+import { CATEGORY_ICONS, CATEGORY_LABELS } from '../lib/constants'
 import {
   X,
   Building2,
@@ -20,32 +21,8 @@ import {
   Save,
   RotateCcw,
   Receipt,
-  Truck,
-  Fuel,
-  Wrench,
-  Package,
   HelpCircle
 } from 'lucide-react'
-
-const categoryIcons = {
-  landfill: Truck,
-  fuel: Fuel,
-  parts: Package,
-  repairs: Wrench,
-  supplies: Package,
-  dumpster_rental: Truck,
-  other: HelpCircle,
-}
-
-const categoryLabels = {
-  landfill: 'Landfill/Dump Fees',
-  fuel: 'Fuel',
-  parts: 'Parts',
-  repairs: 'Repairs',
-  supplies: 'Supplies',
-  dumpster_rental: 'Dumpster Rental',
-  other: 'Other',
-}
 
 export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl, onClose, onConfirm, onReparse }) {
   const [loading, setLoading] = useState(false)
@@ -176,7 +153,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
     )
   }
 
-  const CategoryIcon = categoryIcons[formData.expense_category] || HelpCircle
+  const CategoryIcon = CATEGORY_ICONS[formData.expense_category] || HelpCircle
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -584,14 +561,14 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                     onChange={(e) => setFormData({ ...formData, expense_category: e.target.value })}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                   >
-                    {Object.entries(categoryLabels).map(([value, label]) => (
+                    {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </select>
                 ) : (
                   <div className="flex items-center gap-2">
                     <CategoryIcon className="w-5 h-5 text-amber-600" />
-                    <span className="font-medium">{categoryLabels[formData.expense_category] || 'Other'}</span>
+                    <span className="font-medium">{CATEGORY_LABELS[formData.expense_category] || 'Other'}</span>
                   </div>
                 )}
 
