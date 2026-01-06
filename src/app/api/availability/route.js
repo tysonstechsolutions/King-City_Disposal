@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getAvailability, getAllAvailability } from '../../../lib/inventory'
 
+// Force dynamic rendering (not static)
+export const dynamic = 'force-dynamic'
+
 // ============================================
 // AVAILABILITY API ENDPOINT
 // ============================================

@@ -6,6 +6,9 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
 
+// Force dynamic rendering (not static)
+export const dynamic = 'force-dynamic';
+
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
