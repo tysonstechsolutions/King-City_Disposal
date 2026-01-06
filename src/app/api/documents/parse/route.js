@@ -178,9 +178,20 @@ Return ONLY the JSON object, no other text.`
     if (!claudeResponse.ok) {
       const errorText = await claudeResponse.text();
       console.error('Claude API error:', errorText);
+      console.error('Claude API status:', claudeResponse.status);
       await updateDocumentStatus(document_id, 'failed');
+
+      // Parse error for more detail
+      let errorMessage = 'Failed to parse invoice with AI';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error?.message || errorJson.message || errorText;
+      } catch {
+        errorMessage = errorText || 'Failed to parse invoice with AI';
+      }
+
       return NextResponse.json(
-        { error: 'Failed to parse invoice with AI' },
+        { error: errorMessage },
         { status: 500 }
       );
     }
