@@ -521,9 +521,9 @@ export default function DocumentsPage() {
                 >
                   {/* Thumbnail or Icon */}
                   <div className={`w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 bg-${catInfo.color}-100`}>
-                    {doc.file_type?.startsWith('image/') && doc.storage_path ? (
+                    {doc.file_type?.startsWith('image/') && doc.id ? (
                       <img
-                        src={`${config.supabase.url}/storage/v1/object/public/documents/${doc.storage_path}`}
+                        src={`/api/documents/image/${doc.id}`}
                         alt=""
                         className="w-full h-full object-cover rounded-lg"
                         onError={(e) => { e.target.style.display = 'none' }}
@@ -647,8 +647,8 @@ export default function DocumentsPage() {
         <ParsedInvoiceReview
           document={reviewingDoc}
           parsedInvoice={parsedInvoice}
-          imageUrl={reviewingDoc.storage_path
-            ? `${config.supabase.url}/storage/v1/object/public/documents/${reviewingDoc.storage_path}`
+          imageUrl={reviewingDoc.id
+            ? `/api/documents/image/${reviewingDoc.id}`
             : null}
           onClose={closeReview}
           onConfirm={() => {
