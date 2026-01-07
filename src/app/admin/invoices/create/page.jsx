@@ -41,14 +41,14 @@ function CreateInvoiceContent() {
     booking_id: null,
     service_address: '',
     service_description: '',
-    dumpster_size: '',
-    rental_duration: '',
+    dumpster_size: '20yd',
+    rental_duration: '10-day',
     delivery_date: '',
     pickup_date: '',
     weight_lbs: '',
-    weight_included_lbs: 4000, // 2 tons default
+    weight_included_lbs: 6000, // 3 tons default (matches config)
     line_items: [
-      { description: '', amount_cents: 0 }
+      { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: 47500 }
     ],
     notes: '',
     payment_terms: 15,
@@ -147,7 +147,7 @@ function CreateInvoiceContent() {
   const addLineItem = () => {
     setInvoice(prev => ({
       ...prev,
-      line_items: [...prev.line_items, { description: '', amount_cents: 0 }]
+      line_items: [...prev.line_items, { description: '', amount_cents: null }]
     }))
   }
 
