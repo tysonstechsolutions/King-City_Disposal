@@ -30,6 +30,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('date') // 'date' or 'customer'
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [showActions, setShowActions] = useState(null)
 
@@ -130,16 +131,31 @@ export default function InvoicesPage() {
     totalOutstanding: invoices.filter(i => i.status !== 'paid' && i.status !== 'void').reduce((sum, i) => sum + (i.balance_due_cents || 0), 0),
   }
 
-  const filteredInvoices = invoices.filter(i => {
-    if (!searchTerm) return true
-    const search = searchTerm.toLowerCase()
-    return (
-      i.invoice_number?.toLowerCase().includes(search) ||
-      i.customer_name?.toLowerCase().includes(search) ||
-      i.customer_phone?.includes(search) ||
-      i.service_address?.toLowerCase().includes(search)
-    )
-  })
+  const filteredInvoices = invoices
+    .filter(i => {
+      if (!searchTerm) return true
+      const search = searchTerm.toLowerCase()
+      return (
+        i.invoice_number?.toLowerCase().includes(search) ||
+        i.customer_name?.toLowerCase().includes(search) ||
+        i.customer_phone?.includes(search) ||
+        i.service_address?.toLowerCase().includes(search)
+      )
+    })
+    .sort((a, b) => {
+      if (sortBy === 'customer') {
+        // Sort by customer name alphabetically, then by date within same customer
+        const nameA = (a.customer_name || '').toLowerCase()
+        const nameB = (b.customer_name || '').toLowerCase()
+        if (nameA !== nameB) {
+          return nameA.localeCompare(nameB)
+        }
+        // Same customer, sort by date descending
+        return new Date(b.created_at) - new Date(a.created_at)
+      }
+      // Default: sort by date descending (already sorted from API)
+      return 0
+    })
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -235,6 +251,14 @@ export default function InvoicesPage() {
               <option value="partial">Partial Payment</option>
               <option value="paid">Paid</option>
               <option value="overdue">Overdue</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            >
+              <option value="date">Sort by Date</option>
+              <option value="customer">Sort by Customer</option>
             </select>
           </div>
         </div>
