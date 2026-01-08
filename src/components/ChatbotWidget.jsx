@@ -67,6 +67,8 @@ export default function ChatbotWidget() {
   const [placementDescription, setPlacementDescription] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [showProhibited, setShowProhibited] = useState(false)
+  const [contactName, setContactName] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
   const [bookingData, setBookingData] = useState({
     projectType: '',
     address: '',
@@ -415,6 +417,22 @@ export default function ChatbotWidget() {
 
     await addBotMessage(`Thanks ${name}! Let me show you a summary...`, 500)
     setStep(STEPS.SUMMARY)
+  }
+
+  // Form-based contact submit
+  const handleContactFormSubmit = async (e) => {
+    if (e) e.preventDefault()
+    const name = contactName.trim()
+    const phone = contactPhone.trim().replace(/\D/g, '')
+
+    if (!name || phone.length < 10) {
+      await addBotMessage("Please enter your full name and a valid phone number.")
+      return
+    }
+
+    setContactName('')
+    setContactPhone('')
+    await handleContactSubmit(name, phone)
   }
 
   // Final: Confirm booking
@@ -987,7 +1005,37 @@ export default function ChatbotWidget() {
               </div>
             )}
 
-            {/* Step 5: Summary with Surcharges & Prohibited Items */}
+            {/* Step 5: Contact Form */}
+            {!isTyping && step === STEPS.CONTACT && (
+              <div className="mt-4">
+                <form onSubmit={handleContactFormSubmit} className="bg-dark-700 rounded-xl p-4 space-y-3">
+                  <input
+                    type="text"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Your full name"
+                    className="input-field w-full"
+                    autoFocus
+                  />
+                  <input
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="Phone number"
+                    className="input-field w-full"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+                  >
+                    <ArrowRight className="w-5 h-5" />
+                    Continue
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Step 6: Summary with Surcharges & Prohibited Items */}
             {!isTyping && step === STEPS.SUMMARY && (
               <div className="space-y-4">
                 <div className="bg-dark-700 rounded-xl p-4">
@@ -1106,7 +1154,7 @@ export default function ChatbotWidget() {
           </div>
 
           {/* Input Area */}
-          {step !== STEPS.COMPLETE && step !== STEPS.MAP_PLACEMENT && step !== STEPS.PROJECT_TYPE && step !== STEPS.SIZE_CONFIRM && step !== STEPS.DATE_DURATION && step !== STEPS.SUMMARY && (
+          {step !== STEPS.COMPLETE && step !== STEPS.MAP_PLACEMENT && step !== STEPS.PROJECT_TYPE && step !== STEPS.SIZE_CONFIRM && step !== STEPS.DATE_DURATION && step !== STEPS.SUMMARY && step !== STEPS.CONTACT && (
             <div className="p-4 border-t border-dark-700 flex-shrink-0 bg-dark-800">
               <form onSubmit={handleSubmit} className="flex gap-2">
                 <input
@@ -1151,7 +1199,7 @@ export default function ChatbotWidget() {
           )}
 
           {/* Minimal footer for other steps */}
-          {(step === STEPS.MAP_PLACEMENT || step === STEPS.PROJECT_TYPE || step === STEPS.SIZE_CONFIRM || step === STEPS.DATE_DURATION || step === STEPS.SUMMARY) && (
+          {(step === STEPS.MAP_PLACEMENT || step === STEPS.PROJECT_TYPE || step === STEPS.SIZE_CONFIRM || step === STEPS.DATE_DURATION || step === STEPS.SUMMARY || step === STEPS.CONTACT) && (
             <div className="p-3 border-t border-dark-700 flex-shrink-0 bg-dark-800">
               <p className="text-center text-sm text-dark-400">
                 Need help? <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:underline inline-flex items-center gap-1">
