@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
+import { notifyCustomer, notifyOwner, bookingConfirmationEmail } from '../../../lib/notifications';
+import { bookingSchema, validateInput } from '../../../lib/validations';
+import { logger } from '../../../lib/logger';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -108,16 +111,35 @@ async function findOrCreateCustomer({ name, phone, email, address }) {
 }
 
 // Parse "Mon, Jan 6" format to "2025-01-06" for database
+// Handles year rollover (e.g., booking in December for January)
 function parseDeliveryDate(dateStr) {
   try {
-    const currentYear = new Date().getFullYear();
-    const parsed = new Date(`${dateStr} ${currentYear}`);
+    // If already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentYear = today.getFullYear();
+
+    // Try parsing with current year
+    let parsed = new Date(`${dateStr} ${currentYear}`);
+
     if (isNaN(parsed.getTime())) {
       // Fallback: return tomorrow's date
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       return tomorrow.toISOString().split('T')[0];
     }
+
+    // Year rollover fix: if parsed date is more than 7 days in the past,
+    // it's likely meant for next year (e.g., "Jan 6" in December)
+    const daysDiff = Math.floor((parsed - today) / (1000 * 60 * 60 * 24));
+    if (daysDiff < -7) {
+      parsed = new Date(`${dateStr} ${currentYear + 1}`);
+    }
+
     return parsed.toISOString().split('T')[0]; // Returns "2025-01-06" format
   } catch {
     const tomorrow = new Date();
@@ -144,7 +166,16 @@ function parseDeliveryDate(dateStr) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    
+
+    // Validate input with Zod
+    const validation = validateInput(bookingSchema, body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error, errors: validation.errors },
+        { status: 400 }
+      );
+    }
+
     const {
       customerName,
       customerPhone,
@@ -158,15 +189,7 @@ export async function POST(request) {
       deliveryDate,
       priceCents,
       projectType,
-    } = body;
-
-    // Validate required fields
-    if (!customerName || !customerPhone || !address || !dumpsterSize || !rentalDuration || !deliveryDate) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     // ============================================
     // 1. FIND OR CREATE CUSTOMER
@@ -220,41 +243,58 @@ export async function POST(request) {
     }
 
     const savedBooking = await dbResponse.json();
-    console.log('Booking saved:', savedBooking);
+    logger.info('Booking saved', {
+      booking_id: savedBooking[0]?.id,
+      customer: customerName,
+      size: dumpsterSize,
+      date: deliveryDate,
+    });
 
     // ============================================
     // 3. SEND NOTIFICATIONS
     // ============================================
-    
+
     // Get dumpster info for notification
     const dumpster = config.dumpsters.find(d => d.id === dumpsterSize);
     const priceDisplay = priceCents ? `$${(priceCents / 100).toFixed(0)}` : 'TBD';
 
-    // ┌─────────────────────────────────────────┐
-    // │  🔌 PLUG IN LATER: Twilio SMS           │
-    // └─────────────────────────────────────────┘
-    if (config.notifications.twilio.enabled && process.env.TWILIO_PHONE_NUMBER) {
-      try {
-        const ownerPhone = process.env.OWNER_PHONE;
-        if (ownerPhone) {
-          await sendTwilioSMS({
-            to: ownerPhone,
-            message: `🚛 NEW BOOKING!\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n📌 Placement: ${placementNotes || 'Not specified'}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}`,
-          });
-          console.log('SMS notification sent');
-        }
-      } catch (smsError) {
-        console.error('SMS failed (continuing):', smsError);
-        // Don't fail the booking if SMS fails
-      }
+    // Notify owner via SMS
+    try {
+      await notifyOwner(
+        `🚛 NEW BOOKING!\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n📌 Placement: ${placementNotes || 'Not specified'}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}`
+      );
+      logger.notification('sms', 'owner', true, { booking_id: savedBooking[0]?.id });
+    } catch (notifyError) {
+      logger.error('Owner notification failed', notifyError, { booking_id: savedBooking[0]?.id });
     }
 
-    // ┌─────────────────────────────────────────┐
-    // │  🔌 PLUG IN LATER: Email notification   │
-    // │  Using Resend (free tier: 100/day)      │
-    // └─────────────────────────────────────────┘
-    // For now, bookings show up in the admin panel
-    // Email can be added later with Resend API
+    // Notify customer via SMS and Email
+    try {
+      const bookingForEmail = {
+        ...bookingData,
+        customer_name: customerName,
+        dumpster_size: dumpsterSize,
+        delivery_date: deliveryDate,
+        rental_duration: rentalDuration,
+        address: address,
+        placement_notes: placementNotes,
+        price_cents: priceCents,
+      };
+
+      const { html, text } = bookingConfirmationEmail(bookingForEmail);
+
+      await notifyCustomer({
+        phone: customerPhone,
+        email: customerEmail,
+        subject: `Booking Confirmed - ${config.businessName}`,
+        smsMessage: `Thanks for booking with ${config.businessName}!\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n📍 ${address}\n\nWe'll deliver between 8am-12pm. Questions? Call ${config.phone}`,
+        emailHtml: html,
+        emailText: text,
+      });
+      logger.notification('sms+email', customerPhone, true, { booking_id: savedBooking[0]?.id });
+    } catch (notifyError) {
+      logger.error('Customer notification failed', notifyError, { booking_id: savedBooking[0]?.id });
+    }
 
     // ============================================
     // 4. RETURN SUCCESS
@@ -268,7 +308,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Booking error:', error);
+    logger.error('Booking API error', error);
     return NextResponse.json(
       { error: 'Something went wrong. Please call us directly.' },
       { status: 500 }
@@ -276,39 +316,3 @@ export async function POST(request) {
   }
 }
 
-// ============================================
-// TWILIO SMS HELPER
-// ============================================
-// Reads from environment variables (set in Vercel)
-
-async function sendTwilioSMS({ to, message }) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !from) {
-    throw new Error('Twilio credentials not configured');
-  }
-
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-      },
-      body: new URLSearchParams({
-        To: to,
-        From: from,
-        Body: message,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Twilio error: ${response.status}`);
-  }
-
-  return response.json();
-}

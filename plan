@@ -1,0 +1,358 @@
+# King City Disposal - Issues & Improvement Plan
+
+## Project Overview
+
+King City Disposal is a business consolidation platform for a dumpster rental company (Southern Illinois) that aims to replace multiple small business software tools with one website. The app covers booking, invoicing, customer management, expense tracking, driver routes, and more.
+
+**Tech Stack:** Next.js 14, React, Tailwind CSS, Supabase (PostgreSQL), Twilio (SMS), Stripe (payments), Claude AI (document parsing), Google Maps, Leaflet
+
+---
+
+## PART 1: CRITICAL ISSUES TO FIX IMMEDIATELY
+
+### 1. EXPOSED API KEYS (CRITICAL SECURITY)
+
+| File | Issue | Line |
+|------|-------|------|
+| `src/config.js` | Google Maps API key hardcoded | 140 |
+| `src/config.js` | Supabase anon key hardcoded as fallback | 95 |
+| `.env.local` | Anthropic API key in repository | - |
+| `src/config.js` | Admin password hardcoded: `kingcity2024` | 336 |
+
+**Action Required:**
+- Remove ALL hardcoded keys from config.js
+- Move to environment variables only
+- Regenerate any exposed keys immediately
+- Add `.env.local` to `.gitignore`
+- Rotate the Anthropic API key in dashboard
+
+### 2. WEAK ADMIN AUTHENTICATION
+
+**Current Problem:** Single hardcoded password in config.js, stored in browser sessionStorage (not secure).
+
+**Fix Options:**
+- A) Supabase Auth (simplest, free)
+- B) NextAuth.js with credentials provider
+- C) Clerk/Auth0 (more features, but adds cost)
+
+### 3. NO CSRF PROTECTION
+
+Admin forms update database via fetch without CSRF tokens. Cross-site attacks possible.
+
+**Fix:** Add CSRF token verification to all state-changing API routes.
+
+### 4. NO RATE LIMITING
+
+`/api/book` endpoint accepts unlimited submissions - spam/DOS vulnerability.
+
+**Fix:** Add `@vercel/rate-limit` or implement token bucket in API routes.
+
+---
+
+## PART 2: BUGS & BROKEN FUNCTIONALITY
+
+### 5. Stripe Integration Not Enabled
+
+**Location:** `src/config.js:67`
+```js
+payments: {
+  enabled: false, // ← Currently disabled
+```
+
+**Issue:** Stripe webhook handler exists but:
+- `STRIPE_WEBHOOK_SECRET` may not be verified properly
+- No Stripe SDK in package.json (using raw REST calls)
+- Payment links generated but flow incomplete
+
+**Fix:**
+- Install `stripe` package
+- Complete webhook signature verification
+- Test end-to-end payment flow
+- Set `payments.enabled: true` when ready
+
+### 6. Email Notifications Not Working
+
+**Issue:** System only sends SMS. Comments mention Resend but not implemented.
+
+**Impact:** Customers without SMS can't get booking confirmations.
+
+**Fix:** Integrate Resend or SendGrid for email fallback.
+
+### 7. Cron Jobs Unprotected
+
+**Location:** `vercel.json` defines cron jobs, but endpoints lack secret verification.
+
+**Issue:** Anyone can trigger `/api/cron/reminders`, `/api/cron/late-fees`, etc.
+
+**Fix:** Add `CRON_SECRET` validation:
+```js
+if (request.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+```
+
+### 8. Route Optimization Not Implemented
+
+**Location:** `src/config.js:319-327` - placeholder only
+
+**Current State:** Driver page just lists today's stops, no actual route optimization.
+
+**Fix:**
+- Use Google Maps Directions API or OpenRouteService
+- Calculate optimal delivery/pickup sequence
+- Display turn-by-turn or clickable route
+
+### 9. Inventory Availability Check Inconsistent
+
+**Location:** `src/lib/inventory.js`
+
+**Issue:** Client uses anon key directly. If RLS not configured, could have race conditions.
+
+**Fix:** Server-side availability check in `/api/book` before confirming.
+
+### 10. Date Parsing Edge Cases
+
+**Location:** `src/app/api/book/route.js:111-127`
+
+**Issue:** `parseDeliveryDate("Mon, Jan 6")` can fail on year rollover (December → January).
+
+**Fix:** More robust date parsing with year inference:
+```js
+// If parsed month < current month, assume next year
+```
+
+---
+
+## PART 3: CODE QUALITY IMPROVEMENTS
+
+### 11. Missing Error Boundaries
+
+React components crash entire page on error. No graceful degradation.
+
+**Fix:** Add ErrorBoundary component to admin layout.
+
+### 12. Console Logging in Production
+
+Scattered `console.log()` and `console.error()` calls leak info.
+
+**Fix:** Replace with proper logging (Sentry, LogRocket, or custom logger).
+
+### 13. No Input Validation Library
+
+API routes manually validate inputs - inconsistent, error-prone.
+
+**Fix:** Add Zod schemas for all API inputs:
+```js
+const BookingSchema = z.object({
+  customerName: z.string().min(1),
+  customerPhone: z.string().regex(/^\d{10}$/),
+  // ...
+});
+```
+
+### 14. Large Component Files
+
+`ChatbotWidget.jsx` is 51KB / 1229 lines - hard to maintain.
+
+**Fix:** Split into smaller components:
+- `ChatbotHeader.jsx`
+- `ChatbotMessages.jsx`
+- `ChatbotSteps/*.jsx` (one per step)
+
+### 15. Duplicated Code
+
+SMS sending logic repeated in 6+ files.
+
+**Fix:** Create `src/lib/twilio.js` helper:
+```js
+export async function sendSMS(to, message) { ... }
+export async function sendBulkSMS(messages) { ... }
+```
+
+---
+
+## PART 4: MISSING FEATURES TO ADD
+
+### 16. Multi-User Admin Support
+
+**Current:** One password for everyone.
+
+**Need:**
+- Role-based access (Owner, Driver, Office)
+- Per-user audit logs
+- Different permissions per role
+
+### 17. Real-Time Dashboard Updates
+
+**Current:** Manual refresh button.
+
+**Need:** Supabase Realtime or polling every 30s for new bookings.
+
+### 18. Customer Portal
+
+**Current:** Customers only see invoice/receipt links.
+
+**Need:**
+- View booking history
+- Request pickup
+- Extend rental
+- Download past invoices
+
+### 19. Mobile App for Drivers
+
+**Current:** Mobile-responsive web page.
+
+**Consider:** React Native or PWA with offline support.
+
+### 20. Reporting & Analytics
+
+**Need:**
+- Monthly revenue reports
+- Popular sizes/times
+- Customer acquisition costs
+- Overdue payment tracking
+
+### 21. QuickBooks/Xero Integration
+
+For accounting software sync - export expenses and income.
+
+---
+
+## PART 5: DATABASE IMPROVEMENTS
+
+### 22. Add Missing Indexes
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+CREATE INDEX IF NOT EXISTS idx_bookings_customer_id ON bookings(customer_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_customer_id ON invoices(customer_id);
+```
+
+### 23. Implement Soft Deletes
+
+Change DELETE operations to SET `deleted_at = NOW()`.
+
+### 24. Consolidate Migrations
+
+Multiple migration files exist. Create single versioned schema file.
+
+### 25. RLS Policy Audit
+
+Verify Supabase Row Level Security is properly configured:
+- Customers can only see their own invoices
+- Anon users can only insert bookings (not read all)
+
+---
+
+## PART 6: DEPLOYMENT & OPERATIONS
+
+### 26. Environment Variable Documentation
+
+Update `.env.example` with ALL required variables:
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_PHONE_NUMBER=
+OWNER_PHONE=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_GOOGLE_MAPS_KEY=
+ANTHROPIC_API_KEY=
+ADMIN_PASSWORD=
+CRON_SECRET=
+NEXT_PUBLIC_SITE_URL=
+```
+
+### 27. Monitoring & Alerting
+
+Add:
+- Sentry for error tracking
+- Uptime monitoring (Vercel analytics or UptimeRobot)
+- Alert on failed payments, high error rates
+
+### 28. Backup Strategy
+
+- Enable Supabase daily backups (Pro plan)
+- Document restore procedure
+- Test restore quarterly
+
+### 29. Testing
+
+No tests exist currently.
+
+**Add:**
+- Unit tests for price calculations
+- Integration tests for booking flow
+- E2E tests with Playwright for critical paths
+
+---
+
+## IMPLEMENTATION PRIORITY
+
+### Phase 1: Security (Do This Week)
+1. Remove hardcoded API keys
+2. Implement proper admin auth
+3. Add CRON_SECRET validation
+4. Add rate limiting to /api/book
+5. Verify Supabase RLS
+
+### Phase 2: Complete Core Features (1-2 Weeks)
+6. Enable and test Stripe payments
+7. Add email notification fallback
+8. Fix date parsing edge cases
+9. Add error boundaries
+
+### Phase 3: Code Quality (2-4 Weeks)
+10. Add Zod validation
+11. Extract shared utilities
+12. Split large components
+13. Set up logging service
+
+### Phase 4: New Features (Ongoing)
+14. Multi-user admin
+15. Real-time updates
+16. Customer portal
+17. Reporting dashboard
+
+### Phase 5: Operations (Parallel)
+18. Complete .env.example
+19. Set up monitoring
+20. Add automated tests
+21. Document backup procedures
+
+---
+
+## QUICK WINS (< 1 Hour Each)
+
+- [ ] Add `.env.local` to `.gitignore`
+- [ ] Move Google Maps key to env var
+- [ ] Move admin password to env var
+- [ ] Add CRON_SECRET check to cron routes
+- [ ] Add index on customers.phone in Supabase
+- [ ] Set `payments.enabled: true` (if Stripe is ready)
+- [ ] Add ErrorBoundary wrapper to admin layout
+- [ ] Document all env vars in .env.example
+
+---
+
+## Summary
+
+**Total Issues Found:** 29
+- Critical Security: 4
+- Broken/Incomplete Features: 6
+- Code Quality: 5
+- Missing Features: 6
+- Database: 4
+- Operations: 4
+
+**Estimated Effort:**
+- Phase 1 (Security): 4-8 hours
+- Phase 2 (Core): 1-2 weeks
+- Phase 3 (Quality): 2-4 weeks
+- Phase 4 (Features): Ongoing
+- Phase 5 (Ops): 1 week parallel
+
+This plan consolidates all small business software needs into one robust platform. Addressing security first, then completing payment/notification flows, will make the system production-ready.

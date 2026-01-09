@@ -19,62 +19,13 @@
 // ============================================
 
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
+import Stripe from 'stripe';
 import { config } from '../../../../config';
 
-// ============================================
-// STRIPE SIGNATURE VERIFICATION
-// ============================================
-function verifyStripeSignature(payload, signature, secret) {
-  if (!secret) {
-    console.warn('STRIPE_WEBHOOK_SECRET not set - webhook verification disabled');
-    return false;
-  }
-
-  if (!signature) {
-    console.error('No stripe-signature header present');
-    return false;
-  }
-
-  try {
-    const elements = signature.split(',');
-    let timestamp = null;
-    let v1Signature = null;
-
-    for (const element of elements) {
-      const [key, value] = element.split('=');
-      if (key === 't') timestamp = value;
-      if (key === 'v1') v1Signature = value;
-    }
-
-    if (!timestamp || !v1Signature) {
-      console.error('Invalid signature format');
-      return false;
-    }
-
-    const timestampAge = Math.floor(Date.now() / 1000) - parseInt(timestamp);
-    if (timestampAge > 300) {
-      console.error('Webhook timestamp too old');
-      return false;
-    }
-
-    const signedPayload = `${timestamp}.${payload}`;
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(signedPayload)
-      .digest('hex');
-
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(v1Signature),
-      Buffer.from(expectedSignature)
-    );
-
-    return isValid;
-  } catch (error) {
-    console.error('Signature verification error:', error.message);
-    return false;
-  }
-}
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16',
+});
 
 // ============================================
 // HELPER FUNCTIONS
@@ -181,17 +132,23 @@ export async function POST(request) {
     const signature = request.headers.get('stripe-signature');
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    // Verify signature
-    const isValid = verifyStripeSignature(body, signature, webhookSecret);
-    if (!isValid) {
-      console.error('Webhook signature verification failed');
+    // Verify signature using Stripe SDK
+    let event;
+    try {
+      if (!webhookSecret) {
+        console.warn('STRIPE_WEBHOOK_SECRET not set - parsing without verification');
+        event = JSON.parse(body);
+      } else {
+        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      }
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err.message);
       return NextResponse.json(
-        { error: 'Invalid signature' },
+        { error: `Webhook Error: ${err.message}` },
         { status: 400 }
       );
     }
 
-    const event = JSON.parse(body);
     console.log(`Stripe webhook: ${event.type}`);
 
     // Handle checkout session completed

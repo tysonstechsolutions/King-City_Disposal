@@ -15,42 +15,10 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { sendSMS, notifyCustomer, notifyOwner, deliveryReminderEmail } from '../../../../lib/notifications';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
-
-// ============================================
-// SEND SMS HELPER
-// ============================================
-async function sendSMS(to, message) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !from || !to) return false;
-
-  let cleanPhone = to.replace(/\D/g, '');
-  if (cleanPhone.length === 10) cleanPhone = '1' + cleanPhone;
-  if (!cleanPhone.startsWith('+')) cleanPhone = '+' + cleanPhone;
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-        },
-        body: new URLSearchParams({ To: cleanPhone, From: from, Body: message }),
-      }
-    );
-    return response.ok;
-  } catch (e) {
-    console.error('SMS error:', e);
-    return false;
-  }
-}
 
 // ============================================
 // 1. DAILY ROUTE
@@ -138,9 +106,9 @@ async function runReminders() {
   let sent = 0;
 
   for (const booking of deliveries) {
-    if (!booking.customer_phone) continue;
+    if (!booking.customer_phone && !booking.customer_email) continue;
 
-    const message = `🚛 DELIVERY REMINDER
+    const smsMessage = `🚛 DELIVERY REMINDER
 
 Hi ${booking.customer_name?.split(' ')[0] || 'there'}!
 
@@ -154,8 +122,20 @@ Questions? Reply to this text or call ${config.phone}
 
 - ${config.businessName}`;
 
-    const success = await sendSMS(booking.customer_phone, message);
-    if (success) {
+    // Get email template
+    const { html: emailHtml, text: emailText } = deliveryReminderEmail(booking);
+
+    // Send both SMS and email
+    const results = await notifyCustomer({
+      phone: booking.customer_phone,
+      email: booking.customer_email,
+      subject: `Delivery Tomorrow - ${config.businessName}`,
+      smsMessage,
+      emailHtml,
+      emailText,
+    });
+
+    if (results.sms?.success || results.email?.success) {
       await fetch(
         `${supabaseUrl}/rest/v1/bookings?id=eq.${booking.id}`,
         {

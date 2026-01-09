@@ -58,16 +58,11 @@ export const config = {
   // ============================================
   // 💳 PAYMENTS — Stripe setup
   // ============================================
-  // ┌─────────────────────────────────────────┐
-  // │  🔌 PLUG IN LATER: Stripe Payments      │
-  // │  When ready, set enabled: true and      │
-  // │  add API keys in VERCEL ENV VARS        │
-  // └─────────────────────────────────────────┘
+  // 💳 STRIPE PAYMENTS
+  // ============================================
+  // REQUIRED ENV VARS: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
   payments: {
-    enabled: false, // ← FLIP TO true WHEN READY
-    // ADD THESE IN VERCEL → Settings → Environment Variables:
-    // STRIPE_PUBLISHABLE_KEY
-    // STRIPE_SECRET_KEY
+    enabled: true,
 
     // If false, customers can book without paying (invoice later)
     requirePaymentUpfront: false,
@@ -88,12 +83,13 @@ export const config = {
   // ============================================
   // 🗄️ DATABASE — Supabase
   // ============================================
-  // These use environment variables with fallbacks
-  // Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel
+  // REQUIRED: Set these in Vercel environment variables
+  // NEXT_PUBLIC_SUPABASE_URL
+  // NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // SUPABASE_SERVICE_ROLE_KEY (for server-side operations)
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://oziwzamcepnegyttpclp.supabase.co",
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96aXd6YW1jZXBuZWd5dHRwY2xwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NDUwMDMsImV4cCI6MjA4MzIyMTAwM30.-4BzySr98WEv_1v8wbnDGSnSJ4DX7Mid8qym-s4bcuU",
-    // Secret key goes in environment variables for security
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
   },
   
   // ============================================
@@ -136,8 +132,9 @@ export const config = {
   // ============================================
   // 🗺️ GOOGLE MAPS (for satellite maps)
   // ============================================
+  // Set NEXT_PUBLIC_GOOGLE_MAPS_KEY in Vercel environment variables
   googleMaps: {
-    apiKey: "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM",
+    apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "",
   },
   
   // ============================================
@@ -330,10 +327,9 @@ export const config = {
   // ============================================
   // 🔐 ADMIN SETTINGS
   // ============================================
+  // REQUIRED: Set ADMIN_PASSWORD in Vercel environment variables
   admin: {
-    // Password for /admin page
-    // Set ADMIN_PASSWORD in Vercel for production!
-    password: process.env.ADMIN_PASSWORD || "kingcity2024",
+    password: process.env.ADMIN_PASSWORD || "",
   },
 };
 

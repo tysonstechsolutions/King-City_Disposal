@@ -63,6 +63,11 @@ export default function Footer() {
                   Contact Us
                 </Link>
               </li>
+              <li>
+                <Link href="/my-rentals" className="text-primary-400 hover:text-primary-300 text-sm font-medium transition-colors">
+                  My Rentals
+                </Link>
+              </li>
             </ul>
           </div>
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { config } from '../../config'
 import AdminNav from '../../components/AdminNav'
+import { useRealtimeBookings } from '../../hooks/useRealtimeBookings'
 import {
   Truck,
   Phone,
@@ -24,7 +25,8 @@ import {
   List,
   CalendarDays,
   Eye,
-  ExternalLink
+  ExternalLink,
+  Bell
 } from 'lucide-react'
 
 export default function AdminPage() {
@@ -32,12 +34,20 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const [bookings, setBookings] = useState([])
-  const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState('list') // 'list' or 'calendar'
   const [calendarDate, setCalendarDate] = useState(new Date())
+
+  // Real-time bookings hook (only enabled when authenticated)
+  const {
+    bookings,
+    loading,
+    lastUpdated,
+    newBookingCount,
+    refresh: fetchBookings,
+    clearNewBookingAlert,
+  } = useRealtimeBookings(isAuthenticated)
 
   // Check password
   const handleLogin = (e) => {
@@ -47,7 +57,6 @@ export default function AdminPage() {
       setPasswordError('')
       // Store in sessionStorage so refresh doesn't log out
       sessionStorage.setItem('adminAuth', 'true')
-      fetchBookings()
     } else {
       setPasswordError('Wrong password')
     }
@@ -57,35 +66,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (sessionStorage.getItem('adminAuth') === 'true') {
       setIsAuthenticated(true)
-      fetchBookings()
     }
   }, [])
-
-  // Fetch bookings from Supabase
-  const fetchBookings = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/bookings?order=created_at.desc`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
-      
-      if (response.ok) {
-        const data = await response.json()
-        setBookings(data)
-      } else {
-        console.error('Failed to fetch bookings')
-      }
-    } catch (error) {
-      console.error('Error fetching bookings:', error)
-    }
-    setLoading(false)
-  }
 
   // Update booking status
   const updateStatus = async (bookingId, newStatus, e) => {
@@ -261,13 +243,34 @@ export default function AdminPage() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* New Booking Alert */}
+            {newBookingCount > 0 && (
+              <button
+                onClick={() => {
+                  clearNewBookingAlert()
+                  fetchBookings()
+                }}
+                className="flex items-center gap-2 px-3 py-2 bg-green-500/20 border border-green-500 rounded-lg text-green-400 animate-pulse"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="font-medium">{newBookingCount} new booking{newBookingCount > 1 ? 's' : ''}!</span>
+              </button>
+            )}
+
+            {/* Last Updated */}
+            {lastUpdated && (
+              <span className="text-dark-500 text-xs hidden md:block">
+                Updated {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+
             {/* View Toggle */}
             <div className="flex bg-dark-800 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('list')}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                  viewMode === 'list' 
-                    ? 'bg-primary-500 text-white' 
+                  viewMode === 'list'
+                    ? 'bg-primary-500 text-white'
                     : 'text-dark-300 hover:text-white'
                 }`}
               >
@@ -277,8 +280,8 @@ export default function AdminPage() {
               <button
                 onClick={() => setViewMode('calendar')}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                  viewMode === 'calendar' 
-                    ? 'bg-primary-500 text-white' 
+                  viewMode === 'calendar'
+                    ? 'bg-primary-500 text-white'
                     : 'text-dark-300 hover:text-white'
                 }`}
               >
@@ -286,11 +289,12 @@ export default function AdminPage() {
                 Calendar
               </button>
             </div>
-            
+
             <button
               onClick={fetchBookings}
               disabled={loading}
               className="btn-secondary flex items-center gap-2"
+              title="Auto-refreshes every 30 seconds"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
@@ -580,7 +584,7 @@ export default function AdminPage() {
 
         {/* Footer */}
         <p className="text-center text-dark-500 text-sm mt-8">
-          💡 Click any booking to view details and placement map
+          Auto-refreshes every 30 seconds • Click any booking to view details
         </p>
       </div>
       </div>
