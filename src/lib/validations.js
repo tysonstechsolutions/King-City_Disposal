@@ -68,8 +68,6 @@ export const bookingSchema = z.object({
   surcharges: z.record(z.string(), z.number().int().min(0)).optional(),
 });
 
-export type BookingInput = z.infer<typeof bookingSchema>;
-
 // ============================================
 // INVOICE SCHEMAS
 // ============================================
@@ -175,7 +173,7 @@ export function validateInput(schema, data) {
   const result = schema.safeParse(data);
 
   if (!result.success) {
-    const errors = result.error.errors.map(e => ({
+    const errors = result.error.issues.map(e => ({
       field: e.path.join('.'),
       message: e.message,
     }));
@@ -200,7 +198,7 @@ export function validateInput(schema, data) {
  * Format validation errors for API response
  */
 export function formatValidationError(zodError) {
-  return zodError.errors.map(e => ({
+  return zodError.issues.map(e => ({
     field: e.path.join('.'),
     message: e.message,
   }));
