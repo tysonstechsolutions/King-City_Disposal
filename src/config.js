@@ -10,6 +10,14 @@
 export const config = {
 
   // ============================================
+  // 🚧 BOOKING MAINTENANCE MODE
+  // ============================================
+  // Set to true to show "call us" message instead of booking form
+  // Set to false when Stripe is set up and ready
+  bookingMaintenance: true,
+  bookingMaintenanceMessage: "Online booking is temporarily unavailable. Please call us to schedule your dumpster rental!",
+
+  // ============================================
   // 📋 BUSINESS INFO — Change these anytime
   // ============================================
   businessName: "King City Disposal",

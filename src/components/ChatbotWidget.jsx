@@ -648,6 +648,29 @@ export default function ChatbotWidget() {
             </button>
           </div>
 
+          {/* Maintenance Mode */}
+          {config.bookingMaintenance ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mb-6">
+                <AlertCircle className="w-10 h-10 text-yellow-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Online Booking Unavailable</h3>
+              <p className="text-dark-300 mb-6 max-w-sm">
+                {config.bookingMaintenanceMessage}
+              </p>
+              <a
+                href={`tel:${config.phoneRaw}`}
+                className="btn-primary py-3 px-6 flex items-center gap-2 text-lg"
+              >
+                <Phone className="w-5 h-5" />
+                Call {config.phone}
+              </a>
+              <p className="text-dark-500 text-sm mt-4">
+                We're available Mon-Sat, 7am-6pm
+              </p>
+            </div>
+          ) : (
+          <>
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((msg, idx) => (
@@ -1235,6 +1258,8 @@ export default function ChatbotWidget() {
                 </a>
               </p>
             </div>
+          )}
+          </>
           )}
         </div>
       )}
