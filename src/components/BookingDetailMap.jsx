@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { config } from '../config'
 import { Loader2, MapPin, AlertCircle, ExternalLink } from 'lucide-react'
 
-const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
+const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || ""
 
 // Convert feet to lat/lng offset
 // 1 degree latitude ≈ 364,173 feet

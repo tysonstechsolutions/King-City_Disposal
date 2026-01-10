@@ -45,7 +45,7 @@ const projectIcons = {
   other: Package
 }
 
-const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || "AIzaSyAAU2wsDoDPH4n9BNk_pWlxBla3irr_AtM"
+const GOOGLE_MAPS_KEY = config.googleMaps?.apiKey || ""
 
 // Wrapper component to handle Suspense boundary for useSearchParams
 export default function BookingPage() {
