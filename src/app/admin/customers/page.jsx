@@ -86,11 +86,11 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-dark-900">
       <AdminNav />
 
       {/* Header */}
-      <header className="bg-white border-b border-neutral-200">
+      <header className="bg-dark-800 border-b border-dark-700">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -98,8 +98,8 @@ export default function CustomersPage() {
                 <Users className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-neutral-900">Customers</h1>
-                <p className="text-sm text-neutral-500">{stats.total} customers</p>
+                <h1 className="text-xl font-bold text-white">Customers</h1>
+                <p className="text-sm text-dark-400">{stats.total} customers</p>
               </div>
             </div>
             <button
@@ -116,31 +116,31 @@ export default function CustomersPage() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 border border-neutral-200">
-            <p className="text-sm text-neutral-500 mb-1">Total Customers</p>
-            <p className="text-2xl font-bold">{stats.total}</p>
+          <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
+            <p className="text-sm text-dark-400 mb-1">Total Customers</p>
+            <p className="text-2xl font-bold text-white">{stats.total}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-neutral-200">
-            <p className="text-sm text-neutral-500 mb-1">With Balance Due</p>
+          <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
+            <p className="text-sm text-dark-400 mb-1">With Balance Due</p>
             <p className="text-2xl font-bold text-amber-600">{stats.withBalance}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-neutral-200">
-            <p className="text-sm text-neutral-500 mb-1">Total Outstanding</p>
+          <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
+            <p className="text-sm text-dark-400 mb-1">Total Outstanding</p>
             <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalOutstanding)}</p>
           </div>
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 mb-6">
+        <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
               <input
                 type="text"
                 placeholder="Search by name, phone, email, address..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full pl-10 pr-4 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
             <div className="flex gap-2">
@@ -156,7 +156,7 @@ export default function CustomersPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     filter === f.value
                       ? 'bg-primary text-white'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                      : 'bg-dark-700 text-dark-200 hover:bg-dark-600'
                   }`}
                 >
                   {f.label}
@@ -167,15 +167,15 @@ export default function CustomersPage() {
         </div>
 
         {/* Customer List */}
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+        <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : filteredCustomers.length === 0 ? (
             <div className="text-center py-12">
-              <Users className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-              <p className="text-neutral-500">
+              <Users className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+              <p className="text-dark-400">
                 {searchTerm ? 'No customers match your search' : 'No customers yet'}
               </p>
               <button
@@ -186,16 +186,16 @@ export default function CustomersPage() {
               </button>
             </div>
           ) : (
-            <div className="divide-y divide-neutral-100">
+            <div className="divide-y divide-dark-700">
               {filteredCustomers.map((customer) => (
                 <Link
                   key={customer.id}
                   href={`/admin/customers/${customer.id}`}
-                  className="flex items-center gap-4 p-4 hover:bg-neutral-50 transition-colors"
+                  className="flex items-center gap-4 p-4 hover:bg-dark-700 transition-colors"
                 >
                   {/* Avatar */}
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
-                    customer.is_flagged 
+                    customer.is_flagged
                       ? 'bg-red-100 text-red-600'
                       : customer.is_vip
                       ? 'bg-amber-100 text-amber-600'
@@ -207,7 +207,7 @@ export default function CustomersPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-neutral-900 truncate">
+                      <p className="font-semibold text-white truncate">
                         {customer.name}
                       </p>
                       {customer.is_vip && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
@@ -215,9 +215,9 @@ export default function CustomersPage() {
                       {customer.is_business && <Building2 className="w-4 h-4 text-blue-500" />}
                     </div>
                     {customer.company_name && (
-                      <p className="text-sm text-neutral-500">{customer.company_name}</p>
+                      <p className="text-sm text-dark-400">{customer.company_name}</p>
                     )}
-                    <div className="flex items-center gap-4 mt-1 text-sm text-neutral-500">
+                    <div className="flex items-center gap-4 mt-1 text-sm text-dark-400">
                       {customer.phone && (
                         <span className="flex items-center gap-1">
                           <Phone className="w-3 h-3" />
@@ -235,8 +235,8 @@ export default function CustomersPage() {
 
                   {/* Stats */}
                   <div className="text-right hidden md:block">
-                    <p className="text-sm text-neutral-500">{customer.total_jobs || 0} jobs</p>
-                    <p className="font-semibold text-neutral-900">
+                    <p className="text-sm text-dark-400">{customer.total_jobs || 0} jobs</p>
+                    <p className="font-semibold text-white">
                       {formatCurrency(customer.total_spent_cents)}
                     </p>
                     {customer.outstanding_balance_cents > 0 && (
@@ -246,7 +246,7 @@ export default function CustomersPage() {
                     )}
                   </div>
 
-                  <ChevronRight className="w-5 h-5 text-neutral-400" />
+                  <ChevronRight className="w-5 h-5 text-dark-500" />
                 </Link>
               ))}
             </div>
@@ -318,21 +318,21 @@ function AddCustomerModal({ onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b border-neutral-200">
-          <h2 className="text-lg font-bold">Add Customer</h2>
-          <button onClick={onClose} className="text-neutral-500 hover:text-neutral-700">✕</button>
+      <div className="bg-dark-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-dark-700">
+        <div className="flex items-center justify-between p-4 border-b border-dark-700">
+          <h2 className="text-lg font-bold text-white">Add Customer</h2>
+          <button onClick={onClose} className="text-dark-400 hover:text-white">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Name *</label>
+            <label className="block text-sm font-medium text-dark-200 mb-1">Name *</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               required
             />
           </div>
@@ -340,21 +340,21 @@ function AddCustomerModal({ onClose, onSuccess }) {
           {/* Phone & Email */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Phone</label>
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Email</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
           </div>
@@ -368,31 +368,31 @@ function AddCustomerModal({ onClose, onSuccess }) {
                 onChange={(e) => setFormData({ ...formData, is_business: e.target.checked })}
                 className="w-4 h-4 text-primary rounded"
               />
-              <span className="text-sm font-medium text-neutral-700">This is a business/contractor</span>
+              <span className="text-sm font-medium text-dark-200">This is a business/contractor</span>
             </label>
           </div>
 
           {formData.is_business && (
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Company Name</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Company Name</label>
               <input
                 type="text"
                 value={formData.company_name}
                 onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
           )}
 
           {/* Address */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Default Address</label>
+            <label className="block text-sm font-medium text-dark-200 mb-1">Default Address</label>
             <input
               type="text"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               placeholder="Street address"
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             />
           </div>
 
@@ -403,7 +403,7 @@ function AddCustomerModal({ onClose, onSuccess }) {
                 value={formData.city}
                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                 placeholder="City"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
             <div>
@@ -412,7 +412,7 @@ function AddCustomerModal({ onClose, onSuccess }) {
                 value={formData.state}
                 onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                 placeholder="State"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
             <div>
@@ -421,7 +421,7 @@ function AddCustomerModal({ onClose, onSuccess }) {
                 value={formData.zip}
                 onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
                 placeholder="ZIP"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
           </div>
@@ -429,11 +429,11 @@ function AddCustomerModal({ onClose, onSuccess }) {
           {/* Payment Terms */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Default Payment</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Default Payment</label>
               <select
                 value={formData.default_payment_method}
                 onChange={(e) => setFormData({ ...formData, default_payment_method: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               >
                 <option value="upfront">Pay Upfront</option>
                 <option value="invoice">Invoice After</option>
@@ -442,11 +442,11 @@ function AddCustomerModal({ onClose, onSuccess }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Terms</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Payment Terms</label>
               <select
                 value={formData.payment_terms}
                 onChange={(e) => setFormData({ ...formData, payment_terms: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               >
                 <option value={0}>Due on Receipt</option>
                 <option value={7}>Net 7</option>
@@ -458,13 +458,13 @@ function AddCustomerModal({ onClose, onSuccess }) {
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
+            <label className="block text-sm font-medium text-dark-200 mb-1">Notes</label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Gate code, call preferences, etc."
               rows={2}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+              className="w-full px-3 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
             />
           </div>
 

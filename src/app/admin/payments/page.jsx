@@ -211,9 +211,9 @@ export default function AdminPaymentsPage() {
       extension: 'bg-purple-100 text-purple-800',
       overage: 'bg-orange-100 text-orange-800',
       late_fee: 'bg-red-100 text-red-800',
-      custom: 'bg-neutral-100 text-neutral-800'
+      custom: 'bg-dark-700 text-dark-200'
     }
-    return colors[type] || 'bg-neutral-100 text-neutral-800'
+    return colors[type] || 'bg-dark-700 text-dark-200'
   }
 
   const getPaymentIcon = (method) => {
@@ -256,23 +256,23 @@ export default function AdminPaymentsPage() {
   })
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-dark-900">
       <AdminNav />
 
       {/* Header */}
-      <header className="bg-white border-b border-neutral-200">
+      <header className="bg-dark-800 border-b border-dark-700">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-xl font-bold text-neutral-900">Payments & Receipts</h1>
-                <p className="text-sm text-neutral-500">Track all sales and transactions</p>
+                <h1 className="text-xl font-bold text-white">Payments & Receipts</h1>
+                <p className="text-sm text-dark-400">Track all sales and transactions</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={fetchTransactions}
-                className="p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors"
+                className="p-2 text-dark-400 hover:text-dark-200 hover:bg-dark-700 rounded-lg transition-colors"
                 title="Refresh"
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
@@ -292,59 +292,59 @@ export default function AdminPaymentsPage() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 border border-neutral-200">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-green-100 rounded-lg">
                 <DollarSign className="w-5 h-5 text-green-600" />
               </div>
-              <span className="text-sm text-neutral-500">Today</span>
+              <span className="text-sm text-dark-400">Today</span>
             </div>
-            <p className="text-2xl font-bold text-neutral-900">{formatCurrency(stats.today)}</p>
+            <p className="text-2xl font-bold text-white">{formatCurrency(stats.today)}</p>
           </div>
 
-          <div className="bg-white rounded-xl p-4 border border-neutral-200">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Calendar className="w-5 h-5 text-blue-600" />
               </div>
-              <span className="text-sm text-neutral-500">This Week</span>
+              <span className="text-sm text-dark-400">This Week</span>
             </div>
-            <p className="text-2xl font-bold text-neutral-900">{formatCurrency(stats.thisWeek)}</p>
+            <p className="text-2xl font-bold text-white">{formatCurrency(stats.thisWeek)}</p>
           </div>
 
-          <div className="bg-white rounded-xl p-4 border border-neutral-200">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <TrendingUp className="w-5 h-5 text-purple-600" />
               </div>
-              <span className="text-sm text-neutral-500">This Month</span>
+              <span className="text-sm text-dark-400">This Month</span>
             </div>
-            <p className="text-2xl font-bold text-neutral-900">{formatCurrency(stats.thisMonth)}</p>
+            <p className="text-2xl font-bold text-white">{formatCurrency(stats.thisMonth)}</p>
           </div>
 
-          <div className="bg-white rounded-xl p-4 border border-neutral-200">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-amber-100 rounded-lg">
                 <Receipt className="w-5 h-5 text-amber-600" />
               </div>
-              <span className="text-sm text-neutral-500">This Year</span>
+              <span className="text-sm text-dark-400">This Year</span>
             </div>
-            <p className="text-2xl font-bold text-neutral-900">{formatCurrency(stats.thisYear)}</p>
+            <p className="text-2xl font-bold text-white">{formatCurrency(stats.thisYear)}</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 mb-6">
+        <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
               <input
                 type="text"
                 placeholder="Search by receipt #, customer, phone, address..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+                className="w-full pl-10 pr-4 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
               />
             </div>
 
@@ -352,7 +352,7 @@ export default function AdminPaymentsPage() {
             <select
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+              className="px-4 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
             >
               <option value="all">All Types</option>
               <option value="booking">Bookings</option>
@@ -366,7 +366,7 @@ export default function AdminPaymentsPage() {
             <select
               value={dateRange}
               onChange={(e) => { setDateRange(e.target.value); setCurrentPage(1); }}
-              className="px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+              className="px-4 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>
@@ -378,7 +378,7 @@ export default function AdminPaymentsPage() {
         </div>
 
         {/* Transactions Table */}
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+        <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
@@ -389,8 +389,8 @@ export default function AdminPaymentsPage() {
               <p>{error}</p>
             </div>
           ) : filteredTransactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-              <Receipt className="w-12 h-12 mb-3 text-neutral-300" />
+            <div className="flex flex-col items-center justify-center py-12 text-dark-400">
+              <Receipt className="w-12 h-12 mb-3 text-dark-600" />
               <p className="font-medium">No transactions found</p>
               <p className="text-sm">Payments will appear here after customers pay</p>
             </div>
@@ -399,34 +399,34 @@ export default function AdminPaymentsPage() {
               {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <thead className="bg-neutral-50 border-b border-dark-700">
                     <tr>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-neutral-500">Receipt #</th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-neutral-500">Date</th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-neutral-500">Customer</th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-neutral-500">Type</th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-neutral-500">Description</th>
-                      <th className="text-right px-4 py-3 text-sm font-medium text-neutral-500">Amount</th>
-                      <th className="text-center px-4 py-3 text-sm font-medium text-neutral-500">Method</th>
-                      <th className="text-center px-4 py-3 text-sm font-medium text-neutral-500">Receipt</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-dark-400">Receipt #</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-dark-400">Date</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-dark-400">Customer</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-dark-400">Type</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-dark-400">Description</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-dark-400">Amount</th>
+                      <th className="text-center px-4 py-3 text-sm font-medium text-dark-400">Method</th>
+                      <th className="text-center px-4 py-3 text-sm font-medium text-dark-400">Receipt</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-100">
+                  <tbody className="divide-y divide-dark-700">
                     {filteredTransactions.map((t) => (
-                      <tr key={t.id} className="hover:bg-neutral-50">
+                      <tr key={t.id} className="hover:bg-dark-700">
                         <td className="px-4 py-3">
                           <span className="font-mono text-sm">{t.receipt_number}</span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm">
                             <p>{formatDate(t.created_at)}</p>
-                            <p className="text-neutral-500">{formatTime(t.created_at)}</p>
+                            <p className="text-dark-400">{formatTime(t.created_at)}</p>
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <p className="font-medium">{t.customer_name}</p>
                           {t.customer_phone && (
-                            <p className="text-sm text-neutral-500">{t.customer_phone}</p>
+                            <p className="text-sm text-dark-400">{t.customer_phone}</p>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -435,7 +435,7 @@ export default function AdminPaymentsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm text-neutral-600 max-w-xs truncate">
+                          <p className="text-sm text-dark-300 max-w-xs truncate">
                             {t.description || t.service_address || '-'}
                           </p>
                         </td>
@@ -445,7 +445,7 @@ export default function AdminPaymentsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center text-neutral-500" title={t.payment_method || 'card'}>
+                          <div className="flex items-center justify-center text-dark-400" title={t.payment_method || 'card'}>
                             {getPaymentIcon(t.payment_method)}
                           </div>
                         </td>
@@ -466,12 +466,12 @@ export default function AdminPaymentsPage() {
               </div>
 
               {/* Mobile Cards */}
-              <div className="md:hidden divide-y divide-neutral-100">
+              <div className="md:hidden divide-y divide-dark-700">
                 {filteredTransactions.map((t) => (
                   <div key={t.id} className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <span className="font-mono text-sm text-neutral-500">{t.receipt_number}</span>
+                        <span className="font-mono text-sm text-dark-400">{t.receipt_number}</span>
                         <p className="font-medium">{t.customer_name}</p>
                       </div>
                       <span className="font-semibold text-green-600">
@@ -482,10 +482,10 @@ export default function AdminPaymentsPage() {
                       <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getTypeColor(t.type)}`}>
                         {getTypeLabel(t.type)}
                       </span>
-                      <span className="text-sm text-neutral-500">{formatDate(t.created_at)}</span>
+                      <span className="text-sm text-dark-400">{formatDate(t.created_at)}</span>
                     </div>
                     {t.description && (
-                      <p className="text-sm text-neutral-600 mb-2">{t.description}</p>
+                      <p className="text-sm text-dark-300 mb-2">{t.description}</p>
                     )}
                     <Link
                       href={`/receipt/${t.receipt_number}`}
@@ -500,23 +500,23 @@ export default function AdminPaymentsPage() {
 
               {/* Pagination */}
               {stats.totalCount > perPage && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 bg-neutral-50">
-                  <p className="text-sm text-neutral-500">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-dark-700 bg-dark-700">
+                  <p className="text-sm text-dark-400">
                     Showing {((currentPage - 1) * perPage) + 1} - {Math.min(currentPage * perPage, stats.totalCount)} of {stats.totalCount}
                   </p>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="p-2 rounded-lg border border-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-100"
+                      className="p-2 rounded-lg border border-dark-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-dark-700"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-sm text-neutral-600">Page {currentPage}</span>
+                    <span className="text-sm text-dark-300">Page {currentPage}</span>
                     <button
                       onClick={() => setCurrentPage(p => p + 1)}
                       disabled={currentPage * perPage >= stats.totalCount}
-                      className="p-2 rounded-lg border border-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-100"
+                      className="p-2 rounded-lg border border-dark-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-dark-700"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>

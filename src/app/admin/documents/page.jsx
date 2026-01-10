@@ -260,11 +260,11 @@ export default function DocumentsPage() {
   })
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-dark-900">
       <AdminNav />
 
       {/* Header */}
-      <header className="bg-white border-b border-neutral-200 sticky top-14 z-10">
+      <header className="bg-dark-800 border-b border-dark-700 sticky top-14 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -272,8 +272,8 @@ export default function DocumentsPage() {
                 <FileText className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-neutral-900">Documents</h1>
-                <p className="text-sm text-neutral-500">{documents.length} files</p>
+                <h1 className="text-xl font-bold text-white">Documents</h1>
+                <p className="text-sm text-dark-400">{documents.length} files</p>
               </div>
             </div>
           </div>
@@ -311,12 +311,12 @@ export default function DocumentsPage() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-6 bg-amber-400 rounded-xl font-bold text-xl flex items-center justify-center gap-3 hover:bg-amber-500 active:scale-[0.98] transition-all shadow-lg text-black"
+              className="w-full py-6 bg-amber-400 rounded-xl font-bold text-xl flex items-center justify-center gap-3 hover:bg-amber-500 active:scale-[0.98] transition-all shadow-lg text-white"
             >
               <Camera className="w-8 h-8" />
               Upload Photo or Document
             </button>
-            <p className="text-center text-sm text-neutral-500 mt-2">
+            <p className="text-center text-sm text-dark-400 mt-2">
               Tap to take a photo or choose from gallery
             </p>
           </div>
@@ -324,27 +324,27 @@ export default function DocumentsPage() {
 
         {/* Upload Form */}
         {showUploadForm && selectedFile && (
-          <div className="mb-6 bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
+          <div className="mb-6 bg-dark-800 rounded-xl border border-dark-700 p-4 shadow-sm">
             <div className="flex items-start gap-4 mb-4">
               {preview ? (
                 <img src={preview} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
               ) : (
-                <div className="w-20 h-20 bg-neutral-100 rounded-lg flex items-center justify-center">
-                  <FileText className="w-8 h-8 text-neutral-400" />
+                <div className="w-20 h-20 bg-dark-700 rounded-lg flex items-center justify-center">
+                  <FileText className="w-8 h-8 text-dark-500" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-neutral-900 truncate">{selectedFile.name}</p>
-                <p className="text-sm text-neutral-500">{(selectedFile.size / 1024).toFixed(0)} KB</p>
+                <p className="font-medium text-white truncate">{selectedFile.name}</p>
+                <p className="text-sm text-dark-400">{(selectedFile.size / 1024).toFixed(0)} KB</p>
               </div>
-              <button onClick={cancelUpload} className="p-2 text-neutral-400 hover:text-neutral-600">
+              <button onClick={cancelUpload} className="p-2 text-dark-500 hover:text-dark-300">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Category Selection */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-neutral-700 mb-2">Type</label>
+              <label className="block text-sm font-medium text-dark-200 mb-2">Type</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {DOCUMENT_CATEGORIES.slice(0, 6).map(cat => {
                   const Icon = cat.icon
@@ -356,7 +356,7 @@ export default function DocumentsPage() {
                       className={`p-3 rounded-lg border text-center transition-colors ${
                         isSelected
                           ? 'border-primary bg-primary/5 text-primary'
-                          : 'border-neutral-200 hover:border-neutral-300'
+                          : 'border-dark-700 hover:border-dark-600'
                       }`}
                     >
                       <Icon className="w-5 h-5 mx-auto mb-1" />
@@ -369,26 +369,26 @@ export default function DocumentsPage() {
 
             {/* Title */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Title (optional)</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Title (optional)</label>
               <input
                 type="text"
                 value={uploadTitle}
                 onChange={(e) => setUploadTitle(e.target.value)}
                 placeholder={selectedFile.name}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
 
             {/* Weight (for weight tickets) */}
             {uploadCategory === 'weight_ticket' && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Weight (lbs)</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Weight (lbs)</label>
                 <input
                   type="number"
                   value={uploadWeight}
                   onChange={(e) => setUploadWeight(e.target.value)}
                   placeholder="e.g., 4500"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
             )}
@@ -396,14 +396,14 @@ export default function DocumentsPage() {
             {/* Amount (for receipts) */}
             {(uploadCategory === 'fuel_receipt' || uploadCategory === 'invoice' || uploadCategory === 'other') && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Amount ($)</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Amount ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={uploadAmount}
                   onChange={(e) => setUploadAmount(e.target.value)}
                   placeholder="e.g., 125.50"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
             )}
@@ -412,7 +412,7 @@ export default function DocumentsPage() {
             <div className="flex gap-3">
               <button
                 onClick={cancelUpload}
-                className="flex-1 py-3 bg-neutral-100 text-neutral-700 rounded-lg font-medium"
+                className="flex-1 py-3 bg-dark-700 text-dark-200 rounded-lg font-medium"
               >
                 Cancel
               </button>
@@ -444,7 +444,7 @@ export default function DocumentsPage() {
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               filterCategory === 'all'
                 ? 'bg-primary text-white'
-                : 'bg-white border border-neutral-200 text-neutral-700'
+                : 'bg-white border border-dark-700 text-dark-200'
             }`}
           >
             All
@@ -456,7 +456,7 @@ export default function DocumentsPage() {
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 filterCategory === cat.id
                   ? 'bg-primary text-white'
-                  : 'bg-white border border-neutral-200 text-neutral-700'
+                  : 'bg-white border border-dark-700 text-dark-200'
               }`}
             >
               {cat.label}
@@ -466,13 +466,13 @@ export default function DocumentsPage() {
 
         {/* Search */}
         <div className="mb-4 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
           <input
             type="text"
             placeholder="Search documents..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-dark-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
           />
         </div>
 
@@ -483,10 +483,10 @@ export default function DocumentsPage() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : filteredDocs.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border border-neutral-200">
-              <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-              <p className="text-neutral-500">No documents yet</p>
-              <p className="text-sm text-neutral-400">Upload your first document above</p>
+            <div className="text-center py-12 bg-dark-800 rounded-xl border border-dark-700">
+              <FileText className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+              <p className="text-dark-400">No documents yet</p>
+              <p className="text-sm text-dark-500">Upload your first document above</p>
             </div>
           ) : (
             filteredDocs.map((doc) => {
@@ -495,7 +495,7 @@ export default function DocumentsPage() {
               return (
                 <div
                   key={doc.id}
-                  className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-4 hover:border-neutral-300 transition-colors"
+                  className="bg-dark-800 rounded-xl border border-dark-700 p-4 flex items-center gap-4 hover:border-dark-600 transition-colors"
                 >
                   {/* Thumbnail or Icon - Clickable to view/review */}
                   <button
@@ -527,8 +527,8 @@ export default function DocumentsPage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-neutral-900 truncate">{doc.title || doc.file_name}</p>
-                    <div className="flex items-center gap-3 text-sm text-neutral-500">
+                    <p className="font-medium text-white truncate">{doc.title || doc.file_name}</p>
+                    <div className="flex items-center gap-3 text-sm text-dark-400">
                       <span className={`px-2 py-0.5 rounded-full text-xs bg-${catInfo.color}-100 text-${catInfo.color}-700`}>
                         {catInfo.label}
                       </span>
@@ -596,7 +596,7 @@ export default function DocumentsPage() {
                         </button>
                         <button
                           onClick={() => parseInvoice(doc.id)}
-                          className="p-2 text-neutral-400 hover:text-amber-600 rounded-lg hover:bg-neutral-100"
+                          className="p-2 text-dark-500 hover:text-amber-600 rounded-lg hover:bg-dark-700"
                           title="Re-parse with AI"
                         >
                           <RotateCcw className="w-5 h-5" />
@@ -629,14 +629,14 @@ export default function DocumentsPage() {
                           : `${config.supabase.url}/storage/v1/object/public/documents/${doc.storage_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-neutral-400 hover:text-primary rounded-lg hover:bg-neutral-100"
+                        className="p-2 text-dark-500 hover:text-primary rounded-lg hover:bg-dark-700"
                       >
                         <ExternalLink className="w-5 h-5" />
                       </a>
                     )}
                     <button
                       onClick={() => deleteDocument(doc.id)}
-                      className="p-2 text-neutral-400 hover:text-red-500 rounded-lg hover:bg-neutral-100"
+                      className="p-2 text-dark-500 hover:text-red-500 rounded-lg hover:bg-dark-700"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>

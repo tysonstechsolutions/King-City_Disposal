@@ -148,20 +148,20 @@ export default function CapacityCalendarPage() {
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-dark-900">
       <AdminNav />
 
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
+      <div className="bg-dark-800 border-b border-dark-700">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+                <h1 className="text-xl font-bold text-white flex items-center gap-2">
                   <Package className="w-6 h-6 text-primary-600" />
                   Capacity Calendar
                 </h1>
-                <p className="text-sm text-neutral-500">
+                <p className="text-sm text-dark-400">
                   {totalDumpsters} dumpsters in fleet
                 </p>
               </div>
@@ -170,17 +170,17 @@ export default function CapacityCalendarPage() {
             <div className="flex items-center gap-2">
               <Link
                 href="/admin/fleet"
-                className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+                className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
                 title="Manage Fleet"
               >
-                <Settings className="w-5 h-5 text-neutral-600" />
+                <Settings className="w-5 h-5 text-dark-300" />
               </Link>
               <button
                 onClick={fetchBookings}
                 disabled={loading}
-                className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+                className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
               >
-                <RefreshCw className={`w-5 h-5 text-neutral-600 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-5 h-5 text-dark-300 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
@@ -193,9 +193,9 @@ export default function CapacityCalendarPage() {
           {Object.entries(fleetSize).map(([size, count]) => {
             const dumpster = config.dumpsters.find(d => d.id === size)
             return (
-              <div key={size} className="bg-white rounded-xl p-4 text-center border border-neutral-200">
+              <div key={size} className="bg-dark-800 rounded-xl p-4 text-center border border-dark-700">
                 <Truck className="w-8 h-8 text-primary-600 mx-auto mb-2" />
-                <p className="text-neutral-900 font-bold">{count}x {dumpster?.shortName || size}</p>
+                <p className="text-white font-bold">{count}x {dumpster?.shortName || size}</p>
               </div>
             )
           })}
@@ -209,13 +209,13 @@ export default function CapacityCalendarPage() {
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={prevMonth}
-            className="p-2 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50"
+            className="p-2 bg-dark-800 border border-dark-700 rounded-lg hover:bg-dark-700"
           >
-            <ChevronLeft className="w-6 h-6 text-neutral-700" />
+            <ChevronLeft className="w-6 h-6 text-dark-200" />
           </button>
 
           <div className="text-center">
-            <h2 className="text-xl font-bold text-neutral-900">{monthName}</h2>
+            <h2 className="text-xl font-bold text-white">{monthName}</h2>
             <button
               onClick={goToToday}
               className="text-sm text-primary-600 hover:text-primary-700"
@@ -226,18 +226,18 @@ export default function CapacityCalendarPage() {
 
           <button
             onClick={nextMonth}
-            className="p-2 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50"
+            className="p-2 bg-dark-800 border border-dark-700 rounded-lg hover:bg-dark-700"
           >
-            <ChevronRight className="w-6 h-6 text-neutral-700" />
+            <ChevronRight className="w-6 h-6 text-dark-200" />
           </button>
         </div>
 
         {/* Calendar Grid */}
-        <div className="bg-white rounded-xl overflow-hidden border border-neutral-200">
+        <div className="bg-dark-800 rounded-xl overflow-hidden border border-dark-700">
           {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-neutral-200 bg-neutral-50">
+          <div className="grid grid-cols-7 border-b border-dark-700 bg-dark-700">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="p-2 text-center text-neutral-500 text-sm font-medium">
+              <div key={day} className="p-2 text-center text-dark-400 text-sm font-medium">
                 {day}
               </div>
             ))}
@@ -254,13 +254,13 @@ export default function CapacityCalendarPage() {
               return (
                 <div
                   key={idx}
-                  className={`min-h-[100px] p-2 border-b border-r border-neutral-200 ${
-                    day.isCurrentMonth ? 'bg-white' : 'bg-neutral-50 opacity-60'
+                  className={`min-h-[100px] p-2 border-b border-r border-dark-700 ${
+                    day.isCurrentMonth ? 'bg-dark-800' : 'bg-dark-900 opacity-60'
                   } ${isToday(day.date) ? 'ring-2 ring-primary-500 ring-inset' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-sm font-medium ${
-                      isToday(day.date) ? 'text-primary-600' : 'text-neutral-900'
+                      isToday(day.date) ? 'text-primary-600' : 'text-white'
                     }`}>
                       {day.date.getDate()}
                     </span>
@@ -281,7 +281,7 @@ export default function CapacityCalendarPage() {
                           <div
                             key={size}
                             className={`text-xs px-2 py-1 rounded flex items-center justify-between ${
-                              isMaxed ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-600'
+                              isMaxed ? 'bg-red-100 text-red-700' : 'bg-dark-700 text-dark-300'
                             }`}
                           >
                             <span>{size.replace('yd', '')}</span>
@@ -307,19 +307,19 @@ export default function CapacityCalendarPage() {
         <div className="mt-6 flex flex-wrap gap-4 justify-center text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-green-100 border border-green-300"></div>
-            <span className="text-neutral-600">&lt;50% booked</span>
+            <span className="text-dark-300">&lt;50% booked</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-yellow-100 border border-yellow-300"></div>
-            <span className="text-neutral-600">50-70% booked</span>
+            <span className="text-dark-300">50-70% booked</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-orange-100 border border-orange-300"></div>
-            <span className="text-neutral-600">70-90% booked</span>
+            <span className="text-dark-300">70-90% booked</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-red-100 border border-red-300"></div>
-            <span className="text-neutral-600">&gt;90% booked</span>
+            <span className="text-dark-300">&gt;90% booked</span>
           </div>
         </div>
 

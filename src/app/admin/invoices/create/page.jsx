@@ -282,16 +282,16 @@ function CreateInvoiceContent() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-dark-900">
       {/* Header */}
-      <header className="bg-white border-b border-neutral-200 sticky top-0 z-10">
+      <header className="bg-dark-800 border-b border-dark-700 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Link href="/admin/invoices" className="text-neutral-500 hover:text-neutral-700">
+            <Link href="/admin/invoices" className="text-dark-400 hover:text-dark-200">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div className="flex-1">
-              <h1 className="text-xl font-bold text-neutral-900">Create Invoice</h1>
+              <h1 className="text-xl font-bold text-white">Create Invoice</h1>
             </div>
           </div>
         </div>
@@ -300,7 +300,7 @@ function CreateInvoiceContent() {
       <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="space-y-6">
           {/* Customer Section */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
               Customer
@@ -310,20 +310,20 @@ function CreateInvoiceContent() {
             <div className="relative mb-4">
               <button
                 onClick={() => setShowCustomerSearch(!showCustomerSearch)}
-                className="w-full text-left px-4 py-3 border border-neutral-300 rounded-lg hover:border-primary focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full text-left px-4 py-3 border border-dark-600 rounded-lg hover:border-primary focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               >
                 {invoice.customer_name || 'Select or enter customer...'}
               </button>
 
               {showCustomerSearch && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-neutral-200 z-20 max-h-64 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-dark-700 z-20 max-h-64 overflow-y-auto">
                   <div className="p-2 border-b border-neutral-100">
                     <input
                       type="text"
                       placeholder="Search customers..."
                       value={customerSearch}
                       onChange={(e) => setCustomerSearch(e.target.value)}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                      className="w-full px-3 py-2 border border-dark-600 rounded-lg text-sm"
                       autoFocus
                     />
                   </div>
@@ -332,14 +332,14 @@ function CreateInvoiceContent() {
                       <button
                         key={customer.id}
                         onClick={() => selectCustomer(customer)}
-                        className="w-full text-left px-4 py-2 hover:bg-neutral-50"
+                        className="w-full text-left px-4 py-2 hover:bg-dark-700"
                       >
                         <p className="font-medium">{customer.name}</p>
-                        <p className="text-sm text-neutral-500">{customer.phone}</p>
+                        <p className="text-sm text-dark-400">{customer.phone}</p>
                       </button>
                     ))
                   ) : (
-                    <p className="px-4 py-2 text-sm text-neutral-500">No customers found</p>
+                    <p className="px-4 py-2 text-sm text-dark-400">No customers found</p>
                   )}
                 </div>
               )}
@@ -347,38 +347,38 @@ function CreateInvoiceContent() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Name *</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Name *</label>
                 <input
                   type="text"
                   value={invoice.customer_name}
                   onChange={(e) => setInvoice({ ...invoice, customer_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Phone</label>
                 <input
                   type="tel"
                   value={invoice.customer_phone}
                   onChange={(e) => setInvoice({ ...invoice, customer_phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Email</label>
                 <input
                   type="email"
                   value={invoice.customer_email}
                   onChange={(e) => setInvoice({ ...invoice, customer_email: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Terms</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Payment Terms</label>
                 <select
                   value={invoice.payment_terms}
                   onChange={(e) => setInvoice({ ...invoice, payment_terms: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 >
                   <option value={0}>Due on Receipt</option>
                   <option value={7}>Net 7</option>
@@ -390,7 +390,7 @@ function CreateInvoiceContent() {
           </div>
 
           {/* Service Details */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Truck className="w-5 h-5 text-primary" />
               Service Details
@@ -398,32 +398,32 @@ function CreateInvoiceContent() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Service Address</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Service Address</label>
                 <input
                   type="text"
                   value={invoice.service_address}
                   onChange={(e) => setInvoice({ ...invoice, service_address: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Dumpster Size</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Dumpster Size</label>
                 <input
                   type="text"
                   value={invoice.dumpster_size}
                   onChange={(e) => setInvoice({ ...invoice, dumpster_size: e.target.value })}
                   placeholder="e.g., 20 Yard"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Rental Duration</label>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Rental Duration</label>
                 <input
                   type="text"
                   value={invoice.rental_duration}
                   onChange={(e) => setInvoice({ ...invoice, rental_duration: e.target.value })}
                   placeholder="e.g., 10-day"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
             </div>
@@ -436,21 +436,21 @@ function CreateInvoiceContent() {
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm text-neutral-600 mb-1">Actual Weight (lbs)</label>
+                  <label className="block text-sm text-dark-300 mb-1">Actual Weight (lbs)</label>
                   <input
                     type="number"
                     value={invoice.weight_lbs}
                     onChange={(e) => setInvoice({ ...invoice, weight_lbs: e.target.value })}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-dark-600 rounded-lg"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-neutral-600 mb-1">Included (lbs)</label>
+                  <label className="block text-sm text-dark-300 mb-1">Included (lbs)</label>
                   <input
                     type="number"
                     value={invoice.weight_included_lbs}
                     onChange={(e) => setInvoice({ ...invoice, weight_included_lbs: e.target.value })}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-dark-600 rounded-lg"
                   />
                 </div>
                 <div className="flex items-end">
@@ -469,7 +469,7 @@ function CreateInvoiceContent() {
           </div>
 
           {/* Line Items */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-primary" />
               Line Items
@@ -483,24 +483,24 @@ function CreateInvoiceContent() {
                     value={item.description}
                     onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                     placeholder="Description"
-                    className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    className="flex-1 px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                   />
                   <div className="relative w-32">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
                     <input
                       type="number"
                       step="0.01"
                       value={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
                       onChange={(e) => updateLineItem(index, 'amount_cents', e.target.value)}
                       placeholder="0.00"
-                      className="w-full pl-7 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => removeLineItem(index)}
                     disabled={invoice.line_items.length <= 1}
-                    className="p-2 text-neutral-400 hover:text-red-500 disabled:opacity-30"
+                    className="p-2 text-dark-500 hover:text-red-500 disabled:opacity-30"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -518,23 +518,23 @@ function CreateInvoiceContent() {
             </button>
 
             {/* Total */}
-            <div className="mt-6 pt-4 border-t border-neutral-200 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-dark-700 flex justify-end">
               <div className="text-right">
-                <p className="text-sm text-neutral-500">Total</p>
+                <p className="text-sm text-dark-400">Total</p>
                 <p className="text-2xl font-bold">${(subtotal / 100).toFixed(2)}</p>
               </div>
             </div>
           </div>
 
           {/* Notes */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
             <h2 className="text-lg font-semibold mb-4">Notes</h2>
             <textarea
               value={invoice.notes}
               onChange={(e) => setInvoice({ ...invoice, notes: e.target.value })}
               placeholder="Notes to appear on invoice..."
               rows={3}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+              className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
             />
           </div>
 
@@ -543,7 +543,7 @@ function CreateInvoiceContent() {
             <button
               onClick={() => handleSubmit(false)}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 bg-neutral-100 text-neutral-700 rounded-lg font-medium hover:bg-neutral-200 disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-3 bg-dark-700 text-dark-200 rounded-lg font-medium hover:bg-dark-600 disabled:opacity-50"
             >
               <Save className="w-5 h-5" />
               Save Draft
