@@ -327,9 +327,9 @@ export const config = {
   // ============================================
   // 🔐 ADMIN SETTINGS
   // ============================================
-  // REQUIRED: Set ADMIN_PASSWORD in Vercel environment variables
+  // REQUIRED: Set NEXT_PUBLIC_ADMIN_PASSWORD in Vercel environment variables
   admin: {
-    password: process.env.ADMIN_PASSWORD || "",
+    password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "",
   },
 };
 
