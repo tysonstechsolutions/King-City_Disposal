@@ -10,7 +10,7 @@ const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.sup
 // ============================================
 // FIND OR CREATE CUSTOMER
 // ============================================
-async function findOrCreateCustomer({ name, phone, email, address }) {
+async function findOrCreateCustomer({ name, phone, email, address, city, zip }) {
   if (!name || !phone) return null;
 
   // Clean phone number for matching
@@ -41,7 +41,15 @@ async function findOrCreateCustomer({ name, phone, email, address }) {
       if (existing.length > 0) {
         console.log(`Found existing customer: ${existing[0].name} (ID: ${existing[0].id})`);
 
-        // Update customer stats
+        // Update customer stats and city/zip if provided
+        const updateData = {
+          total_jobs: (existing[0].total_jobs || 0) + 1,
+          last_job_date: new Date().toISOString().split('T')[0],
+        };
+        // Update city/zip if they were provided but customer doesn't have them
+        if (city && !existing[0].city) updateData.city = city;
+        if (zip && !existing[0].zip) updateData.zip = zip;
+
         await fetch(
           `${supabaseUrl}/rest/v1/customers?id=eq.${existing[0].id}`,
           {
@@ -51,10 +59,7 @@ async function findOrCreateCustomer({ name, phone, email, address }) {
               'apikey': getSupabaseKey(),
               'Authorization': `Bearer ${getSupabaseKey()}`,
             },
-            body: JSON.stringify({
-              total_jobs: (existing[0].total_jobs || 0) + 1,
-              last_job_date: new Date().toISOString().split('T')[0],
-            }),
+            body: JSON.stringify(updateData),
           }
         );
 
@@ -63,14 +68,18 @@ async function findOrCreateCustomer({ name, phone, email, address }) {
     }
   }
 
-  // Parse address for city/state/zip
-  let city = null, state = 'IL', zip = null;
-  if (address) {
+  // Use explicit city/zip if provided, otherwise parse from address
+  let customerCity = city || null;
+  let customerZip = zip || null;
+  let state = 'IL';
+
+  // Only parse address if city/zip not explicitly provided
+  if (!customerCity && !customerZip && address) {
     const stateZipMatch = address.match(/([A-Za-z\s]+),?\s*([A-Z]{2})\s*(\d{5})?/);
     if (stateZipMatch) {
-      city = stateZipMatch[1]?.trim();
+      customerCity = stateZipMatch[1]?.trim();
       state = stateZipMatch[2] || 'IL';
-      zip = stateZipMatch[3] || null;
+      customerZip = stateZipMatch[3] || null;
     }
   }
 
@@ -90,9 +99,9 @@ async function findOrCreateCustomer({ name, phone, email, address }) {
         phone,
         email: email || null,
         address: address || null,
-        city,
+        city: customerCity,
         state,
-        zip,
+        zip: customerZip,
         total_jobs: 1,
         last_job_date: new Date().toISOString().split('T')[0],
         notes: 'Auto-created from online booking',
@@ -191,6 +200,10 @@ export async function POST(request) {
       projectType,
     } = validation.data;
 
+    // Extract city and zip (not in Zod schema, just pass through)
+    const city = body.city || null;
+    const zip = body.zip || null;
+
     // ============================================
     // 1. FIND OR CREATE CUSTOMER
     // ============================================
@@ -199,6 +212,8 @@ export async function POST(request) {
       phone: customerPhone,
       email: customerEmail,
       address: address,
+      city: city,
+      zip: zip,
     });
 
     // ============================================

@@ -13,6 +13,65 @@ export const dynamic = 'force-dynamic';
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
+// ============================================
+// Vendor Corrections - AI Learning System
+// ============================================
+async function getVendorCorrections() {
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/vendor_corrections?select=*`,
+      {
+        headers: {
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+      }
+    );
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (e) {
+    console.error('Error fetching vendor corrections:', e);
+  }
+  return [];
+}
+
+// Apply vendor corrections to parsed data
+function applyVendorCorrections(parsedData, corrections) {
+  if (!parsedData.from?.name || corrections.length === 0) {
+    return parsedData;
+  }
+
+  const vendorName = parsedData.from.name.toLowerCase();
+
+  for (const correction of corrections) {
+    const correctionVendor = (correction.vendor_name || '').toLowerCase();
+
+    // Match by partial vendor name (either contains the other)
+    if (vendorName.includes(correctionVendor) || correctionVendor.includes(vendorName)) {
+      console.log(`Applying vendor correction for: ${parsedData.from.name} -> ${correction.corrected_name || parsedData.from.name}`);
+
+      // Apply corrections
+      if (correction.corrected_name) {
+        parsedData.from.name = correction.corrected_name;
+      }
+      if (correction.corrected_phone) {
+        parsedData.from.phone = correction.corrected_phone;
+      }
+      if (correction.corrected_address) {
+        parsedData.from.address = correction.corrected_address;
+      }
+      if (correction.default_category) {
+        parsedData.expense_category = correction.default_category;
+      }
+
+      break; // Use first matching correction
+    }
+  }
+
+  return parsedData;
+}
+
 // Parsing prompts for different document types
 function getParsingPrompt(docCategory = 'invoice') {
   if (docCategory === 'weight_ticket') {
@@ -367,7 +426,15 @@ export async function POST(request) {
       );
     }
 
+    // 4b. Apply vendor corrections from learning system
+    const vendorCorrections = await getVendorCorrections();
+    if (vendorCorrections.length > 0 && parsedData.invoice_type === 'vendor_expense') {
+      parsedData = applyVendorCorrections(parsedData, vendorCorrections);
+    }
+
     // 5. Find or create customer based on invoice type
+    // IMPORTANT: Only create customers for customer_record invoices (invoices TO customers)
+    // Vendor expenses (fuel, landfill fees, etc.) should NOT create customers
     let customer = null;
     const invoiceType = parsedData.invoice_type || 'vendor_expense';
 
@@ -381,18 +448,8 @@ export async function POST(request) {
           address: parsedData.to.address,
         }, false);
       }
-    } else {
-      // For vendor expenses, the vendor is in the "from" field
-      // We can optionally track vendors as "customers" too
-      if (parsedData.from?.name) {
-        customer = await findOrCreateCustomer({
-          name: parsedData.from.name,
-          phone: parsedData.from.phone,
-          email: parsedData.from.email,
-          address: parsedData.from.address,
-        }, true); // Mark as vendor
-      }
     }
+    // Note: Vendor expenses do NOT create customers - gas stations, landfills, etc. are vendors, not customers
 
     // 6. Store in parsed_invoices table
     const taxYear = parsedData.invoice_date

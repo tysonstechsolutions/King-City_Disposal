@@ -181,12 +181,13 @@ function CreateInvoiceContent() {
     if (overageCents <= 0) return
 
     const overageLbs = parseInt(invoice.weight_lbs) - parseInt(invoice.weight_included_lbs)
+    const overageTons = (overageLbs / 2000).toFixed(2)
     setInvoice(prev => ({
       ...prev,
       line_items: [
         ...prev.line_items,
         {
-          description: `Weight Overage (${overageLbs.toLocaleString()} lbs over limit)`,
+          description: `Weight Overage (${overageTons} tons over limit)`,
           amount_cents: overageCents
         }
       ]

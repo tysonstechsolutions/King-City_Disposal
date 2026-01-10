@@ -88,3 +88,17 @@ export function formatDate(dateStr) {
     year: 'numeric',
   });
 }
+
+// Format weight - convert lbs to tons for display
+export function formatWeight(lbs) {
+  if (!lbs) return '-';
+  const tons = lbs / 2000;
+  return `${tons.toFixed(2)} tons`;
+}
+
+// Format weight with lbs in parentheses (for detailed views)
+export function formatWeightDetailed(lbs) {
+  if (!lbs) return '-';
+  const tons = lbs / 2000;
+  return `${tons.toFixed(2)} tons (${lbs.toLocaleString()} lbs)`;
+}

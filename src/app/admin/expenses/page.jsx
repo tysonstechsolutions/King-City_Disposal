@@ -19,7 +19,13 @@ import {
   Search,
   CheckCircle2,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Image,
+  User,
+  Upload,
+  FileSpreadsheet,
+  X,
+  AlertCircle
 } from 'lucide-react'
 
 export default function ExpensesPage() {
@@ -27,6 +33,11 @@ export default function ExpensesPage() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+
+  // Excel Import state
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState(null)
 
   // Filters
   const [taxYear, setTaxYear] = useState(new Date().getFullYear())
@@ -98,7 +109,51 @@ export default function ExpensesPage() {
     setExporting(false)
   }
 
-  
+  // Import Excel file with multiple sheets
+  const handleExcelImport = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImporting(true)
+    setImportResult(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/expenses/import', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setImportResult({
+          success: true,
+          ...result,
+        })
+        // Refresh expenses list
+        fetchExpenses()
+      } else {
+        setImportResult({
+          success: false,
+          error: result.error || 'Import failed',
+        })
+      }
+    } catch (err) {
+      console.error('Import error:', err)
+      setImportResult({
+        success: false,
+        error: err.message,
+      })
+    }
+
+    setImporting(false)
+    // Reset file input
+    e.target.value = ''
+  }
+
   // Generate year options (current year and past 5 years)
   const yearOptions = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i)
 
@@ -115,8 +170,8 @@ export default function ExpensesPage() {
                 <Receipt className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-neutral-900">Expenses</h1>
-                <p className="text-sm text-neutral-500">Tax Year {taxYear}</p>
+                <h1 className="text-xl font-bold text-neutral-900">Business Expenses</h1>
+                <p className="text-sm text-neutral-500">Tax Year {taxYear} - For Tax Filing</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -129,6 +184,13 @@ export default function ExpensesPage() {
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span className="hidden sm:inline">Import Excel</span>
+              </button>
               <button
                 onClick={exportCSV}
                 disabled={exporting || expenses.length === 0}
@@ -328,7 +390,8 @@ export default function ExpensesPage() {
                     <th className="text-left px-4 py-3 text-sm font-medium text-neutral-500">Invoice #</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-neutral-500">Category</th>
                     <th className="text-right px-4 py-3 text-sm font-medium text-neutral-500">Amount</th>
-                    <th className="text-center px-4 py-3 text-sm font-medium text-neutral-500">Status</th>
+                    <th className="text-center px-4 py-3 text-sm font-medium text-neutral-500">Customer</th>
+                    <th className="text-center px-4 py-3 text-sm font-medium text-neutral-500">Doc</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
@@ -361,14 +424,31 @@ export default function ExpensesPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {expense.status === 'confirmed' ? (
-                            <span className="inline-flex items-center gap-1 text-green-600">
-                              <CheckCircle2 className="w-4 h-4" />
-                            </span>
+                          {expense.customer_id ? (
+                            <a
+                              href={`/admin/customers/${expense.customer_id}`}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                              title="View customer"
+                            >
+                              <User className="w-4 h-4" />
+                            </a>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-amber-600">
-                              <Clock className="w-4 h-4" />
-                            </span>
+                            <span className="text-neutral-300">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {expense.document_id ? (
+                            <a
+                              href={`/api/documents/image/${expense.document_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800"
+                              title="View document"
+                            >
+                              <Image className="w-4 h-4" />
+                            </a>
+                          ) : (
+                            <span className="text-neutral-300">-</span>
                           )}
                         </td>
                       </tr>
@@ -383,7 +463,7 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3 text-right text-lg font-bold text-neutral-900">
                       {formatCurrency(summary?.grand_total_cents || 0)}
                     </td>
-                    <td></td>
+                    <td colSpan="2"></td>
                   </tr>
                 </tfoot>
               </table>
@@ -400,6 +480,150 @@ export default function ExpensesPage() {
           </p>
         </div>
       </main>
+
+      {/* Excel Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <FileSpreadsheet className="w-5 h-5 text-purple-600" />
+                </div>
+                <h2 className="text-lg font-bold text-neutral-900">Import Excel File</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowImportModal(false)
+                  setImportResult(null)
+                }}
+                className="p-2 hover:bg-neutral-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {!importResult ? (
+                <>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <h3 className="font-medium text-purple-900 mb-2">Multi-Sheet Invoice Import</h3>
+                    <p className="text-sm text-purple-800">
+                      Upload an Excel file (.xlsx) with multiple sheets. Each sheet should contain one invoice.
+                      The system will parse vendor name, date, amounts, and categorize expenses automatically.
+                    </p>
+                  </div>
+
+                  <div className="border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleExcelImport}
+                      className="hidden"
+                      id="excel-import"
+                      disabled={importing}
+                    />
+                    <label
+                      htmlFor="excel-import"
+                      className={`cursor-pointer block ${importing ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      {importing ? (
+                        <>
+                          <Loader2 className="w-12 h-12 text-purple-400 mx-auto mb-3 animate-spin" />
+                          <p className="text-neutral-700 font-medium">Processing sheets...</p>
+                          <p className="text-sm text-neutral-500">This may take a moment</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-3" />
+                          <p className="text-neutral-700 font-medium">Click to upload Excel file</p>
+                          <p className="text-sm text-neutral-500">.xlsx or .xls files supported</p>
+                        </>
+                      )}
+                    </label>
+                  </div>
+
+                  <div className="text-sm text-neutral-500">
+                    <p className="font-medium mb-1">Tips for best results:</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li>Each sheet should have invoice number, date, vendor, and total</li>
+                      <li>Common labels like "Invoice", "Date", "Total" are auto-detected</li>
+                      <li>Imported invoices appear as "Pending" for review</li>
+                      <li>You can review and confirm each one in Documents</li>
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  {importResult.success ? (
+                    <>
+                      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                        <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h3 className="font-semibold text-green-900">Import Complete</h3>
+                          <p className="text-sm text-green-800">
+                            Successfully imported {importResult.imported} of {importResult.total_sheets} sheets
+                          </p>
+                        </div>
+                      </div>
+
+                      {importResult.invoices && importResult.invoices.length > 0 && (
+                        <div className="border border-neutral-200 rounded-xl overflow-hidden">
+                          <div className="bg-neutral-50 px-3 py-2 border-b border-neutral-200">
+                            <p className="font-medium text-sm text-neutral-700">Imported Invoices</p>
+                          </div>
+                          <div className="max-h-48 overflow-y-auto divide-y divide-neutral-100">
+                            {importResult.invoices.slice(0, 10).map((inv, idx) => (
+                              <div key={idx} className="px-3 py-2 text-sm flex justify-between items-center">
+                                <div>
+                                  <p className="font-medium text-neutral-900">{inv.vendor || 'Unknown'}</p>
+                                  <p className="text-xs text-neutral-500">{inv.date || 'No date'} - {inv.category}</p>
+                                </div>
+                                <span className="font-semibold text-neutral-900">${inv.total?.toFixed(2)}</span>
+                              </div>
+                            ))}
+                            {importResult.invoices.length > 10 && (
+                              <p className="px-3 py-2 text-sm text-neutral-500">
+                                And {importResult.invoices.length - 10} more...
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {importResult.skipped > 0 && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                          <p className="text-sm text-amber-800">
+                            <strong>{importResult.skipped}</strong> sheets were skipped (empty or couldn't parse)
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                      <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="font-semibold text-red-900">Import Failed</h3>
+                        <p className="text-sm text-red-800">{importResult.error}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setImportResult(null)
+                    }}
+                    className="w-full py-3 bg-neutral-900 text-white rounded-xl font-medium hover:bg-neutral-800"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

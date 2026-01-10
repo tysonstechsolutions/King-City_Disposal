@@ -69,9 +69,13 @@ export default function ChatbotWidget() {
   const [showProhibited, setShowProhibited] = useState(false)
   const [contactName, setContactName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
+  const [contactCity, setContactCity] = useState('')
+  const [contactZip, setContactZip] = useState('')
   const [bookingData, setBookingData] = useState({
     projectType: '',
     address: '',
+    city: '',
+    zip: '',
     placementLat: null,
     placementLng: null,
     placementNotes: '',
@@ -411,9 +415,9 @@ export default function ChatbotWidget() {
   }
 
   // Step 5: Handle contact info
-  const handleContactSubmit = async (name, phone) => {
-    setBookingData(prev => ({ ...prev, name, phone }))
-    addUserMessage(`${name}, ${phone}`)
+  const handleContactSubmit = async (name, phone, city, zip) => {
+    setBookingData(prev => ({ ...prev, name, phone, city, zip }))
+    addUserMessage(`${name}, ${phone}${city ? `, ${city}` : ''}${zip ? ` ${zip}` : ''}`)
 
     await addBotMessage(`Thanks ${name}! Let me show you a summary...`, 500)
     setStep(STEPS.SUMMARY)
@@ -424,6 +428,8 @@ export default function ChatbotWidget() {
     if (e) e.preventDefault()
     const name = contactName.trim()
     const phone = contactPhone.trim().replace(/\D/g, '')
+    const city = contactCity.trim()
+    const zip = contactZip.trim()
 
     if (!name || phone.length < 10) {
       await addBotMessage("Please enter your full name and a valid phone number.")
@@ -432,7 +438,9 @@ export default function ChatbotWidget() {
 
     setContactName('')
     setContactPhone('')
-    await handleContactSubmit(name, phone)
+    setContactCity('')
+    setContactZip('')
+    await handleContactSubmit(name, phone, city, zip)
   }
 
   // Final: Confirm booking
@@ -460,6 +468,8 @@ export default function ChatbotWidget() {
           customerPhone: bookingData.phone,
           customerEmail: null,
           address: bookingData.address,
+          city: bookingData.city,
+          zip: bookingData.zip,
           placementLat: bookingData.placementLat,
           placementLng: bookingData.placementLng,
           placementNotes: bookingData.placementNotes,
@@ -1024,6 +1034,23 @@ export default function ChatbotWidget() {
                     placeholder="Phone number"
                     className="input-field w-full"
                   />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={contactCity}
+                      onChange={(e) => setContactCity(e.target.value)}
+                      placeholder="City"
+                      className="input-field flex-[2]"
+                    />
+                    <input
+                      type="text"
+                      value={contactZip}
+                      onChange={(e) => setContactZip(e.target.value)}
+                      placeholder="ZIP"
+                      className="input-field flex-1"
+                      maxLength={5}
+                    />
+                  </div>
                   <button
                     type="submit"
                     className="w-full btn-primary py-3 flex items-center justify-center gap-2"

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { config } from '../../../../config'
 import AdminNav from '../../../../components/AdminNav'
+import { formatWeight } from '../../../../lib/constants'
 import {
   ArrowLeft,
   Phone,
@@ -577,13 +578,13 @@ export default function InvoiceDetailPage() {
                     {invoice.weight_lbs && (
                       <div>
                         <span className="text-neutral-500">Weight:</span>
-                        <span className="ml-2 font-medium">{invoice.weight_lbs.toLocaleString()} lbs</span>
+                        <span className="ml-2 font-medium">{formatWeight(invoice.weight_lbs)}</span>
                       </div>
                     )}
                     {invoice.weight_included_lbs && (
                       <div>
                         <span className="text-neutral-500">Included:</span>
-                        <span className="ml-2 font-medium">{invoice.weight_included_lbs.toLocaleString()} lbs</span>
+                        <span className="ml-2 font-medium">{formatWeight(invoice.weight_included_lbs)}</span>
                       </div>
                     )}
                   </div>

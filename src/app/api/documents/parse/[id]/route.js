@@ -195,7 +195,16 @@ export async function POST(request, { params }) {
         lineItems = JSON.parse(lineItems);
       }
 
-      // Mark as confirmed
+      // Determine tax year from invoice date or current year
+      let taxYear = new Date().getFullYear();
+      if (parsedInvoice.invoice_date) {
+        const invoiceDate = new Date(parsedInvoice.invoice_date);
+        if (!isNaN(invoiceDate.getTime())) {
+          taxYear = invoiceDate.getFullYear();
+        }
+      }
+
+      // Mark as confirmed with tax_year
       const response = await fetch(
         `${supabaseUrl}/rest/v1/parsed_invoices?id=eq.${id}`,
         {
@@ -209,6 +218,7 @@ export async function POST(request, { params }) {
           body: JSON.stringify({
             status: 'confirmed',
             confirmed_at: new Date().toISOString(),
+            tax_year: taxYear,
           }),
         }
       );
