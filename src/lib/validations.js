@@ -53,7 +53,7 @@ export const bookingSchema = z.object({
   placementLng: z.number().min(-180).max(180).optional().nullable(),
   placementNotes: z.string().max(500).optional().nullable(),
 
-  dumpsterSize: z.enum(['20-yard', '30-yard'], {
+  dumpsterSize: z.enum(['20yd', '30yd'], {
     errorMap: () => ({ message: 'Invalid dumpster size' }),
   }),
 

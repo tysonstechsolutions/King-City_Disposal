@@ -24,7 +24,8 @@ import {
   Save,
   Truck,
   Send,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react'
 
 export default function CustomerDetailPage() {
@@ -40,6 +41,7 @@ export default function CustomerDetailPage() {
   const [formData, setFormData] = useState({})
   const [showNewInvoice, setShowNewInvoice] = useState(false)
   const [creatingInvoice, setCreatingInvoice] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchCustomer = useCallback(async () => {
     try {
@@ -122,6 +124,34 @@ export default function CustomerDetailPage() {
       console.error('Error saving:', err)
     }
     setSaving(false)
+  }
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${customer.name}? This cannot be undone.`)) {
+      return
+    }
+    setDeleting(true)
+    try {
+      const response = await fetch(
+        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': config.supabase.anonKey,
+            'Authorization': `Bearer ${config.supabase.anonKey}`,
+          },
+        }
+      )
+      if (response.ok) {
+        router.push('/admin/customers')
+      } else {
+        alert('Failed to delete customer')
+      }
+    } catch (err) {
+      console.error('Error deleting:', err)
+      alert('Error deleting customer')
+    }
+    setDeleting(false)
   }
 
   const createQuickInvoice = async (invoiceData) => {
@@ -257,13 +287,23 @@ export default function CustomerDetailPage() {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg flex items-center gap-2 hover:bg-neutral-200"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Edit
-                </button>
+                <>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="px-4 py-2 bg-red-100 text-red-600 rounded-lg flex items-center gap-2 hover:bg-red-200"
+                  >
+                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg flex items-center gap-2 hover:bg-neutral-200"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit
+                  </button>
+                </>
               )}
             </div>
           </div>
