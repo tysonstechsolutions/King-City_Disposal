@@ -63,8 +63,13 @@ export const metadata = {
     google: config.googleSiteVerification || '',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
     apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.ico',
   },
 }
 
@@ -81,8 +86,8 @@ function LocalBusinessSchema() {
     "url": config.websiteUrl,
     "telephone": config.phoneRaw,
     "email": config.email,
-    "image": `${config.websiteUrl}/logo.png`,
-    "logo": `${config.websiteUrl}/logo.png`,
+    "image": `${config.websiteUrl}/images/logo.png`,
+    "logo": `${config.websiteUrl}/images/logo.png`,
     "priceRange": "$$",
     "address": {
       "@type": "PostalAddress",
