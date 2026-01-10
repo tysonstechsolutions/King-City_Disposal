@@ -1,15 +1,41 @@
 import { NextResponse } from 'next/server'
 import { config } from '../../../../../config'
+import { requireAdminAuth } from '../../../../../lib/adminAuth'
 
 // Get service role key for admin operations
 const getServiceKey = () => {
   return process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey
 }
 
+// Validate booking ID
+function validateBookingId(id) {
+  const numId = parseInt(id, 10)
+  return !isNaN(numId) && numId > 0 ? numId : null
+}
+
 // PATCH - Update booking (status, notes)
 export async function PATCH(request, { params }) {
   try {
+    // Check admin authentication
+    const auth = requireAdminAuth(request)
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.status }
+      )
+    }
+
     const { id } = await params
+
+    // Validate booking ID
+    const validId = validateBookingId(id)
+    if (!validId) {
+      return NextResponse.json(
+        { error: 'Invalid booking ID' },
+        { status: 400 }
+      )
+    }
+
     const body = await request.json()
 
     // Only allow updating specific fields
@@ -30,7 +56,7 @@ export async function PATCH(request, { params }) {
     }
 
     const response = await fetch(
-      `${config.supabase.url}/rest/v1/bookings?id=eq.${id}`,
+      `${config.supabase.url}/rest/v1/bookings?id=eq.${validId}`,
       {
         method: 'PATCH',
         headers: {
@@ -67,10 +93,28 @@ export async function PATCH(request, { params }) {
 // DELETE - Delete booking
 export async function DELETE(request, { params }) {
   try {
+    // Check admin authentication
+    const auth = requireAdminAuth(request)
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.status }
+      )
+    }
+
     const { id } = await params
 
+    // Validate booking ID
+    const validId = validateBookingId(id)
+    if (!validId) {
+      return NextResponse.json(
+        { error: 'Invalid booking ID' },
+        { status: 400 }
+      )
+    }
+
     const response = await fetch(
-      `${config.supabase.url}/rest/v1/bookings?id=eq.${id}`,
+      `${config.supabase.url}/rest/v1/bookings?id=eq.${validId}`,
       {
         method: 'DELETE',
         headers: {

@@ -157,7 +157,6 @@ export async function notifyOwner(message, emailSubject = null, emailHtml = null
 export function bookingConfirmationEmail(booking) {
   const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
   const dumpsterName = dumpster?.name || booking.dumpster_size;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kingcitydisposal.com';
 
   const html = `
 <!DOCTYPE html>

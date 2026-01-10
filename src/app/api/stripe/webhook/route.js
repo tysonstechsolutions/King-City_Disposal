@@ -136,11 +136,22 @@ export async function POST(request) {
     let event;
     try {
       if (!webhookSecret) {
-        console.warn('STRIPE_WEBHOOK_SECRET not set - parsing without verification');
-        event = JSON.parse(body);
-      } else {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+        console.error('STRIPE_WEBHOOK_SECRET not set - rejecting webhook for security');
+        return NextResponse.json(
+          { error: 'Webhook secret not configured' },
+          { status: 500 }
+        );
       }
+
+      if (!signature) {
+        console.error('Missing stripe-signature header');
+        return NextResponse.json(
+          { error: 'Missing signature' },
+          { status: 400 }
+        );
+      }
+
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err) {
       console.error('Webhook signature verification failed:', err.message);
       return NextResponse.json(

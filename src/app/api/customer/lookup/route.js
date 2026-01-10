@@ -8,13 +8,36 @@ const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.sup
 const lookupAttempts = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_ATTEMPTS = 5;
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // Clean up every 5 minutes
+let lastCleanup = Date.now();
+
+// Clean up expired entries to prevent memory leaks
+function cleanupExpiredEntries() {
+  const now = Date.now();
+
+  // Only run cleanup periodically
+  if (now - lastCleanup < CLEANUP_INTERVAL) {
+    return;
+  }
+
+  lastCleanup = now;
+
+  for (const [key, attempts] of lookupAttempts.entries()) {
+    const recentAttempts = attempts.filter(t => now - t < RATE_LIMIT_WINDOW);
+    if (recentAttempts.length === 0) {
+      lookupAttempts.delete(key);
+    } else {
+      lookupAttempts.set(key, recentAttempts);
+    }
+  }
+}
 
 function checkRateLimit(phone) {
   const now = Date.now();
   const key = phone.replace(/\D/g, '').slice(-10);
   const attempts = lookupAttempts.get(key) || [];
 
-  // Clean old attempts
+  // Clean old attempts for this key
   const recentAttempts = attempts.filter(t => now - t < RATE_LIMIT_WINDOW);
 
   if (recentAttempts.length >= MAX_ATTEMPTS) {
@@ -23,6 +46,10 @@ function checkRateLimit(phone) {
 
   recentAttempts.push(now);
   lookupAttempts.set(key, recentAttempts);
+
+  // Periodically clean up all expired entries
+  cleanupExpiredEntries();
+
   return true;
 }
 

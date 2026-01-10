@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { config } from '../config'
 import {
@@ -148,27 +148,8 @@ export default function ChatbotWidget() {
     }
   }, [])
 
-  // Load Google Maps when entering map step
-  useEffect(() => {
-    if (step === STEPS.MAP_PLACEMENT && bookingData.address) {
-      loadMap()
-    }
-
-    return () => {
-      if (step !== STEPS.MAP_PLACEMENT) {
-        setMapLoaded(false)
-        setDumpsterPlaced(false)
-        setRotation(0)
-        if (polygonRef.current) {
-          polygonRef.current.setMap(null)
-          polygonRef.current = null
-        }
-        mapRef.current = null
-      }
-    }
-  }, [step, bookingData.address])
-
-  const loadMap = async () => {
+  // Load map function wrapped in useCallback
+  const loadMap = useCallback(async () => {
     if (!window.google?.maps) {
       if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
         const script = document.createElement('script')
@@ -222,7 +203,27 @@ export default function ChatbotWidget() {
 
       setMapLoaded(true)
     })
-  }
+  }, [bookingData.address])
+
+  // Load Google Maps when entering map step
+  useEffect(() => {
+    if (step === STEPS.MAP_PLACEMENT && bookingData.address) {
+      loadMap()
+    }
+
+    return () => {
+      if (step !== STEPS.MAP_PLACEMENT) {
+        setMapLoaded(false)
+        setDumpsterPlaced(false)
+        setRotation(0)
+        if (polygonRef.current) {
+          polygonRef.current.setMap(null)
+          polygonRef.current = null
+        }
+        mapRef.current = null
+      }
+    }
+  }, [step, bookingData.address, loadMap])
 
   const calculatePolygonCoords = (centerLat, centerLng, rotationDeg) => {
     const lengthFt = 22
@@ -562,7 +563,12 @@ export default function ChatbotWidget() {
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
       setIsListening(true)
-      try { recognitionRef.current.start() } catch (e) {}
+      try {
+        recognitionRef.current.start()
+      } catch (e) {
+        console.warn('Speech recognition start failed:', e.message)
+        setIsListening(false)
+      }
     }
   }
 

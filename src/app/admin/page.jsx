@@ -49,24 +49,61 @@ export default function AdminPage() {
     clearNewBookingAlert,
   } = useRealtimeBookings(isAuthenticated)
 
-  // Check password
-  const handleLogin = (e) => {
+  // Check password via server-side validation
+  const handleLogin = async (e) => {
     e.preventDefault()
-    if (password === config.admin.password) {
-      setIsAuthenticated(true)
-      setPasswordError('')
-      // Store in sessionStorage so refresh doesn't log out
-      sessionStorage.setItem('adminAuth', 'true')
-    } else {
-      setPasswordError('Wrong password')
+    setPasswordError('')
+
+    try {
+      const response = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setIsAuthenticated(true)
+        // Store token securely in sessionStorage
+        sessionStorage.setItem('adminToken', data.token)
+      } else {
+        setPasswordError(data.error || 'Wrong password')
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      setPasswordError('Login failed. Please try again.')
     }
+  }
+
+  // Get auth header for admin API requests
+  const getAuthHeaders = () => {
+    const token = sessionStorage.getItem('adminToken')
+    return token ? { 'Authorization': `Bearer ${token}` } : {}
   }
 
   // Check for existing session on mount
   useEffect(() => {
-    if (sessionStorage.getItem('adminAuth') === 'true') {
-      setIsAuthenticated(true)
+    const validateSession = async () => {
+      const token = sessionStorage.getItem('adminToken')
+      if (!token) return
+
+      try {
+        const response = await fetch('/api/admin/auth', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+
+        if (response.ok) {
+          setIsAuthenticated(true)
+        } else {
+          sessionStorage.removeItem('adminToken')
+        }
+      } catch (error) {
+        sessionStorage.removeItem('adminToken')
+      }
     }
+
+    validateSession()
   }, [])
 
   // Update booking status
@@ -77,6 +114,7 @@ export default function AdminPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({ status: newStatus }),
       })

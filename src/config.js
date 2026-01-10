@@ -288,7 +288,7 @@ export const config = {
   // ============================================
   seo: {
     title: "King City Disposal | Dumpster Rental in Mount Vernon, IL & Southern Illinois",
-    description: "Fast, affordable dumpster rentals in Mount Vernon and Southern Illinois. 14, 20, and 30 yard roll-off dumpsters. Online booking, transparent pricing, same-day delivery available.",
+    description: "Fast, affordable dumpster rentals in Mount Vernon and Southern Illinois. 20 and 30 yard roll-off dumpsters. Online booking, transparent pricing, same-day delivery available.",
     keywords: [
       "dumpster rental Mount Vernon IL",
       "roll-off dumpster Southern Illinois",
@@ -335,9 +335,11 @@ export const config = {
   // ============================================
   // 🔐 ADMIN SETTINGS
   // ============================================
-  // REQUIRED: Set NEXT_PUBLIC_ADMIN_PASSWORD in Vercel environment variables
+  // REQUIRED: Set ADMIN_PASSWORD in Vercel environment variables (NOT NEXT_PUBLIC_)
+  // The password is validated server-side only for security
   admin: {
-    password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "",
+    // Password is intentionally NOT exposed here - validated server-side only
+    // Set ADMIN_PASSWORD environment variable in Vercel
   },
 };
 
