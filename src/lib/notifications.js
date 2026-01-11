@@ -8,6 +8,19 @@
 import { Resend } from 'resend';
 import { config } from '../config';
 
+// ============================================
+// HTML Escape Utility (XSS Prevention)
+// ============================================
+function escapeHtml(unsafe) {
+  if (unsafe === null || unsafe === undefined) return '';
+  return String(unsafe)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Initialize Resend (email)
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -185,30 +198,30 @@ export function bookingConfirmationEmail(booking) {
   </div>
 
   <div class="content">
-    <p>Hi ${booking.customer_name?.split(' ')[0] || 'there'},</p>
-    <p>Thank you for booking with ${config.businessName}! Here are your rental details:</p>
+    <p>Hi ${escapeHtml(booking.customer_name?.split(' ')[0]) || 'there'},</p>
+    <p>Thank you for booking with ${escapeHtml(config.businessName)}! Here are your rental details:</p>
 
     <div class="details">
       <div class="details-row">
         <span class="label">Dumpster Size:</span>
-        <span class="value">${dumpsterName}</span>
+        <span class="value">${escapeHtml(dumpsterName)}</span>
       </div>
       <div class="details-row">
         <span class="label">Delivery Date:</span>
-        <span class="value">${booking.delivery_date}</span>
+        <span class="value">${escapeHtml(booking.delivery_date)}</span>
       </div>
       <div class="details-row">
         <span class="label">Rental Period:</span>
-        <span class="value">${booking.rental_duration}</span>
+        <span class="value">${escapeHtml(booking.rental_duration)}</span>
       </div>
       <div class="details-row">
         <span class="label">Delivery Address:</span>
-        <span class="value">${booking.address}</span>
+        <span class="value">${escapeHtml(booking.address)}</span>
       </div>
       ${booking.placement_notes ? `
       <div class="details-row">
         <span class="label">Placement Notes:</span>
-        <span class="value">${booking.placement_notes}</span>
+        <span class="value">${escapeHtml(booking.placement_notes)}</span>
       </div>
       ` : ''}
       ${booking.price_cents ? `
@@ -230,9 +243,9 @@ export function bookingConfirmationEmail(booking) {
   </div>
 
   <div class="footer">
-    <p>${config.businessName}<br>
-    ${config.phone}<br>
-    ${config.address?.city || 'Southern Illinois'}</p>
+    <p>${escapeHtml(config.businessName)}<br>
+    ${escapeHtml(config.phone)}<br>
+    ${escapeHtml(config.address?.city) || 'Southern Illinois'}</p>
   </div>
 </body>
 </html>
@@ -290,22 +303,22 @@ export function invoiceEmail(invoice) {
   </div>
 
   <div class="content">
-    <p>Hi ${invoice.customer_name?.split(' ')[0] || 'there'},</p>
-    <p>Here's your invoice from ${config.businessName}:</p>
+    <p>Hi ${escapeHtml(invoice.customer_name?.split(' ')[0]) || 'there'},</p>
+    <p>Here's your invoice from ${escapeHtml(config.businessName)}:</p>
 
-    <div class="amount">${amount}</div>
+    <div class="amount">${escapeHtml(amount)}</div>
 
     ${invoice.due_date ? `<p style="text-align: center;">Due: ${new Date(invoice.due_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>` : ''}
 
     <p style="text-align: center;">
-      <a href="${invoiceUrl}" class="btn">View & Pay Invoice</a>
+      <a href="${escapeHtml(invoiceUrl)}" class="btn">View & Pay Invoice</a>
     </p>
 
-    <p>Questions? Call us at <a href="tel:${config.phoneRaw}">${config.phone}</a></p>
+    <p>Questions? Call us at <a href="tel:${config.phoneRaw}">${escapeHtml(config.phone)}</a></p>
   </div>
 
   <div class="footer">
-    <p>${config.businessName}</p>
+    <p>${escapeHtml(config.businessName)}</p>
   </div>
 </body>
 </html>
@@ -357,25 +370,25 @@ export function receiptEmail(transaction) {
   </div>
 
   <div class="content">
-    <p>Hi ${transaction.customer_name?.split(' ')[0] || 'there'},</p>
+    <p>Hi ${escapeHtml(transaction.customer_name?.split(' ')[0]) || 'there'},</p>
     <p>We've received your payment of:</p>
 
-    <div class="amount">${amount}</div>
+    <div class="amount">${escapeHtml(amount)}</div>
 
     <p style="text-align: center; color: #666;">
-      Receipt #${transaction.receipt_number}<br>
+      Receipt #${escapeHtml(transaction.receipt_number)}<br>
       ${new Date(transaction.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
     </p>
 
     <p style="text-align: center;">
-      <a href="${receiptUrl}" class="btn">View Receipt</a>
+      <a href="${escapeHtml(receiptUrl)}" class="btn">View Receipt</a>
     </p>
 
-    <p>Thank you for choosing ${config.businessName}!</p>
+    <p>Thank you for choosing ${escapeHtml(config.businessName)}!</p>
   </div>
 
   <div class="footer">
-    <p>${config.businessName}<br>${config.phone}</p>
+    <p>${escapeHtml(config.businessName)}<br>${escapeHtml(config.phone)}</p>
   </div>
 </body>
 </html>
@@ -424,14 +437,14 @@ export function deliveryReminderEmail(booking) {
   </div>
 
   <div class="content">
-    <p>Hi ${booking.customer_name?.split(' ')[0] || 'there'},</p>
+    <p>Hi ${escapeHtml(booking.customer_name?.split(' ')[0]) || 'there'},</p>
 
-    <p>Just a reminder - your <strong>${dumpsterName}</strong> is scheduled for delivery <strong>TOMORROW</strong> between 8am-12pm.</p>
+    <p>Just a reminder - your <strong>${escapeHtml(dumpsterName)}</strong> is scheduled for delivery <strong>TOMORROW</strong> between 8am-12pm.</p>
 
     <div class="highlight">
       <strong>Delivery Address:</strong><br>
-      ${booking.address}
-      ${booking.placement_notes ? `<br><br><strong>Placement:</strong> ${booking.placement_notes}` : ''}
+      ${escapeHtml(booking.address)}
+      ${booking.placement_notes ? `<br><br><strong>Placement:</strong> ${escapeHtml(booking.placement_notes)}` : ''}
     </div>
 
     <p><strong>Please make sure:</strong></p>
@@ -441,11 +454,11 @@ export function deliveryReminderEmail(booking) {
       <li>Any gates that need to be opened are accessible</li>
     </ul>
 
-    <p>Questions? Call us at <a href="tel:${config.phoneRaw}">${config.phone}</a></p>
+    <p>Questions? Call us at <a href="tel:${config.phoneRaw}">${escapeHtml(config.phone)}</a></p>
   </div>
 
   <div class="footer">
-    <p>${config.businessName}</p>
+    <p>${escapeHtml(config.businessName)}</p>
   </div>
 </body>
 </html>

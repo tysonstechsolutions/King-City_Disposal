@@ -6,10 +6,25 @@ import {
   invalidateSession,
   extractToken,
 } from '../../../../lib/adminAuth'
+import { authRateLimit } from '../../../../lib/rateLimit'
 
 // POST - Login with password
 export async function POST(request) {
   try {
+    // Get IP for rate limiting
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
+               request.headers.get('x-real-ip') ||
+               'unknown';
+
+    // Check rate limit (5 attempts per 15 minutes)
+    const rateLimitResult = authRateLimit(ip);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: `Too many login attempts. Try again in ${rateLimitResult.retryAfter} seconds.` },
+        { status: 429 }
+      );
+    }
+
     const { password } = await request.json()
 
     if (!validatePassword(password)) {

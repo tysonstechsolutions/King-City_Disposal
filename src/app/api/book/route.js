@@ -3,6 +3,7 @@ import { config } from '../../../config';
 import { notifyCustomer, notifyOwner, bookingConfirmationEmail } from '../../../lib/notifications';
 import { bookingSchema, validateInput } from '../../../lib/validations';
 import { logger } from '../../../lib/logger';
+import { bookingRateLimit } from '../../../lib/rateLimit';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -13,16 +14,25 @@ const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.sup
 async function findOrCreateCustomer({ name, phone, email, address, city, zip }) {
   if (!name || !phone) return null;
 
-  // Clean phone number for matching
+  // Clean phone number for matching - only allow digits
   const cleanPhone = phone.replace(/\D/g, '');
+
+  // Validate phone contains only digits after cleaning (SQL injection prevention)
+  if (!/^\d+$/.test(cleanPhone)) {
+    console.error('Invalid phone number format after cleaning');
+    return null;
+  }
+
+  // Sanitize email for query (basic validation)
+  const sanitizedEmail = email ? email.replace(/['"\\;]/g, '').trim() : null;
 
   // Try to find existing customer by phone or email
   const conditions = [];
   if (cleanPhone.length >= 10) {
     conditions.push(`phone.ilike.%${cleanPhone.slice(-10)}%`);
   }
-  if (email) {
-    conditions.push(`email.ilike.${email}`);
+  if (sanitizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+    conditions.push(`email.ilike.${encodeURIComponent(sanitizedEmail)}`);
   }
 
   if (conditions.length > 0) {
@@ -174,6 +184,19 @@ function parseDeliveryDate(dateStr) {
 
 export async function POST(request) {
   try {
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
+               request.headers.get('x-real-ip') ||
+               'unknown';
+    const rateLimitResult = bookingRateLimit(ip);
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded for booking', { ip });
+      return NextResponse.json(
+        { error: 'Too many booking attempts. Please wait a moment and try again.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate input with Zod

@@ -27,6 +27,10 @@ import Anthropic from '@anthropic-ai/sdk';
 // AI VISION - Extract data from weight tickets
 // ============================================
 
+// Max image size: 10MB
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
 async function extractFromImage(imageUrl) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -50,9 +54,29 @@ async function extractFromImage(imageUrl) {
       return null;
     }
 
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    // Validate content type
     const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    if (!ALLOWED_IMAGE_TYPES.includes(contentType.split(';')[0])) {
+      console.error(`Invalid image type: ${contentType}`);
+      return { type: 'error', message: 'Invalid image format. Please send a JPEG or PNG.' };
+    }
+
+    // Validate content length if available
+    const contentLength = imageResponse.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_IMAGE_SIZE) {
+      console.error(`Image too large: ${contentLength} bytes`);
+      return { type: 'error', message: 'Image too large. Max 10MB.' };
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer();
+
+    // Double-check size after download
+    if (imageBuffer.byteLength > MAX_IMAGE_SIZE) {
+      console.error(`Image too large after download: ${imageBuffer.byteLength} bytes`);
+      return { type: 'error', message: 'Image too large. Max 10MB.' };
+    }
+
+    const base64Image = Buffer.from(imageBuffer).toString('base64');
 
     // Call Claude Vision API
     const client = new Anthropic({ apiKey });
@@ -105,10 +129,15 @@ Respond in JSON format only:
 
     const text = response.content[0]?.text || '';
 
-    // Parse JSON from response
+    // Parse JSON from response with error handling
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error('Failed to parse AI response as JSON:', parseError.message);
+        return { type: 'other', raw_text: text, parse_error: true };
+      }
     }
 
     return { type: 'other', raw_text: text };
