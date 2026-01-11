@@ -248,6 +248,127 @@ function WebsiteSchema() {
   )
 }
 
+// ============================================
+// FAQ SCHEMA - Shows expandable Q&As in Google search results (rich snippets)
+// ============================================
+function FAQSchema() {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How much does a dumpster rental cost in Mount Vernon IL?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": `Dumpster rentals in Mount Vernon and Southern Illinois start at $${config.dumpsters[0]?.pricing['10-day']} for a 10-day rental. This includes delivery, pickup, and disposal up to ${config.dumpsters[0]?.weightIncluded}. Call King City Disposal at ${config.phone} for a quote.`
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I get same-day dumpster delivery?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes! King City Disposal offers same-day dumpster delivery in Mount Vernon and surrounding areas for orders placed before noon (subject to availability). Next-day delivery is almost always available. Call us at " + config.phone + " for rush delivery."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What size dumpster do I need for a home cleanout?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "For most garage, basement, or single-room cleanouts, a 20-yard dumpster is perfect. It holds about 8 pickup truck loads of debris. For whole-house cleanouts or major renovations, consider a 30-yard dumpster."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How long can I keep the dumpster?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Our standard rental period is 10 days, which is longer than most competitors. Need more time? Extensions are available at $" + (config.dumpsters[0]?.extensionRate || 100) + " per week. Fill it up early? Just call and we'll pick it up!"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What can't go in a dumpster?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Prohibited items include hazardous materials, paint, chemicals, batteries, tires, appliances with Freon (refrigerators, AC units), electronics, and yard waste. These items are banned by Illinois law. See our FAQ page for the complete list."
+        }
+      }
+    ]
+  }
+
+  return (
+    <Script
+      id="faq-schema"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  )
+}
+
+// ============================================
+// SERVICE SCHEMA - For dumpster rental services
+// ============================================
+function ServiceSchema() {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Dumpster Rental",
+    "name": "Roll-Off Dumpster Rental Service",
+    "description": "Professional roll-off dumpster rental service for residential and commercial projects in Southern Illinois. Available in 20 and 30 yard sizes.",
+    "provider": {
+      "@type": "LocalBusiness",
+      "name": config.businessName,
+      "telephone": config.phoneRaw,
+      "url": config.websiteUrl
+    },
+    "areaServed": {
+      "@type": "GeoCircle",
+      "geoMidpoint": {
+        "@type": "GeoCoordinates",
+        "latitude": config.serviceAreaCenter.lat,
+        "longitude": config.serviceAreaCenter.lng
+      },
+      "geoRadius": `${config.serviceRadius} mi`
+    },
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Dumpster Rental Services",
+      "itemListElement": [
+        {
+          "@type": "OfferCatalog",
+          "name": "Residential Dumpster Rental",
+          "itemListElement": [
+            "Home Cleanout Dumpsters",
+            "Renovation Dumpsters",
+            "Roofing Project Dumpsters",
+            "Estate Cleanout Dumpsters"
+          ]
+        },
+        {
+          "@type": "OfferCatalog",
+          "name": "Commercial Dumpster Rental",
+          "itemListElement": [
+            "Construction Debris Dumpsters",
+            "Demolition Dumpsters",
+            "Commercial Cleanout Dumpsters"
+          ]
+        }
+      ]
+    }
+  }
+
+  return (
+    <Script
+      id="service-schema"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  )
+}
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" translate="no">
@@ -269,6 +390,8 @@ export default function RootLayout({ children }) {
         <LocalBusinessSchema />
         <OrganizationSchema />
         <WebsiteSchema />
+        <ServiceSchema />
+        <FAQSchema />
       </head>
       <body className="min-h-screen flex flex-col bg-white text-neutral-900">
         <Header />

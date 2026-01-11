@@ -83,6 +83,16 @@ export default function Footer() {
                 </li>
               ))}
               <li>
+                <Link href="/guides/dumpster-sizes" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                  Size Guide
+                </Link>
+              </li>
+              <li>
+                <Link href="/guides/dumpster-rental-cost" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                  Pricing Guide
+                </Link>
+              </li>
+              <li>
                 <Link href="/book" className="text-primary-400 hover:text-primary-300 text-sm font-medium transition-colors">
                   Book Online →
                 </Link>

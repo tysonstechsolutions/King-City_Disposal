@@ -287,14 +287,38 @@ export const config = {
   // 🔍 SEO SETTINGS
   // ============================================
   seo: {
-    title: "King City Disposal | Dumpster Rental in Mount Vernon, IL & Southern Illinois",
-    description: "Fast, affordable dumpster rentals in Mount Vernon and Southern Illinois. 20 and 30 yard roll-off dumpsters. Online booking, transparent pricing, same-day delivery available.",
+    title: "Dumpster Rental Mount Vernon IL | From $475 | Same-Day Delivery",
+    description: "Need a dumpster TODAY? Get same-day delivery in Mount Vernon & Southern IL! 20 & 30 yard roll-offs from $475. No hidden fees, 10-day rental included. Family owned, 5-star service. Call (618) 231-8481!",
     keywords: [
+      // Primary location keywords
       "dumpster rental Mount Vernon IL",
-      "roll-off dumpster Southern Illinois",
-      "dumpster rental near me",
+      "dumpster rental Fairfield IL",
+      "dumpster rental Centralia IL",
+      "dumpster rental Southern Illinois",
+      "roll-off dumpster rental near me",
+      // Service keywords
+      "20 yard dumpster rental",
+      "30 yard dumpster rental",
       "construction dumpster rental",
-      "junk removal Mount Vernon Illinois"
+      "demolition dumpster",
+      "renovation dumpster rental",
+      // Project-specific keywords
+      "dumpster for roofing project",
+      "dumpster for home cleanout",
+      "estate cleanout dumpster",
+      "garage cleanout dumpster",
+      "remodel dumpster rental",
+      // Commercial intent keywords
+      "cheap dumpster rental Illinois",
+      "affordable dumpster rental",
+      "same day dumpster delivery",
+      "rent a dumpster today",
+      // Long-tail keywords
+      "how much does a dumpster rental cost",
+      "dumpster rental prices near me",
+      "best dumpster rental company Southern Illinois",
+      "local dumpster rental service",
+      "residential dumpster rental"
     ]
   },
   

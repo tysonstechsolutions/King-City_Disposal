@@ -61,17 +61,17 @@ export default function HomePage() {
               {/* Trust indicator */}
               <div className="flex items-center gap-2 text-primary-400 mb-6">
                 <Shield className="w-5 h-5" />
-                <span className="text-sm font-medium">Family Owned & Operated</span>
+                <span className="text-sm font-medium">Southern Illinois&apos; Trusted Dumpster Rental Company</span>
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-                Dumpster Rentals in<br />
-                <span className="text-primary-400">Southern Illinois</span>
+                Get a Dumpster<br />
+                <span className="text-primary-400">Delivered TODAY</span>
               </h1>
 
               <p className="text-xl text-neutral-300 mb-8 max-w-2xl">
-                Easy online booking, transparent pricing, and reliable service.
-                Get a dumpster delivered to your driveway as soon as tomorrow.
+                Same-day delivery available in Mount Vernon & Southern IL.
+                From $475 with no hidden fees. 10-day rental, 3 tons included.
               </p>
 
               {/* CTA Buttons */}
@@ -92,19 +92,23 @@ export default function HomePage() {
                 </a>
               </div>
 
-              {/* Quick benefits */}
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-neutral-400 text-sm">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-primary-400" />
-                  <span>Same-Day Delivery Available</span>
+              {/* Trust stats - like Pinpoint Parking */}
+              <div className="flex flex-wrap gap-6 text-center mt-8">
+                <div className="bg-white/10 rounded-lg px-4 py-3">
+                  <span className="block text-2xl font-bold text-primary-400">$475</span>
+                  <span className="text-neutral-400 text-xs">Starting Price</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-primary-400" />
-                  <span>No Hidden Fees</span>
+                <div className="bg-white/10 rounded-lg px-4 py-3">
+                  <span className="block text-2xl font-bold text-primary-400">10 Day</span>
+                  <span className="text-neutral-400 text-xs">Rental Period</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-primary-400" />
-                  <span>Serving {config.serviceRadius}+ Mile Radius</span>
+                <div className="bg-white/10 rounded-lg px-4 py-3">
+                  <span className="block text-2xl font-bold text-primary-400">$0</span>
+                  <span className="text-neutral-400 text-xs">Hidden Fees</span>
+                </div>
+                <div className="bg-white/10 rounded-lg px-4 py-3">
+                  <span className="block text-2xl font-bold text-primary-400">Same Day</span>
+                  <span className="text-neutral-400 text-xs">Delivery Available</span>
                 </div>
               </div>
             </div>
@@ -427,6 +431,54 @@ export default function HomePage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Helpful Guides - Internal Links for SEO */}
+      <section className="section bg-neutral-50">
+        <div className="container-custom">
+          <div className="text-center mb-10">
+            <h2 className="heading-2 mb-4">Helpful Dumpster Rental Guides</h2>
+            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
+              Not sure where to start? Our guides answer common questions about dumpster rentals.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <Link
+              href="/guides/dumpster-sizes"
+              className="bg-white rounded-xl p-6 border border-neutral-200 hover:shadow-lg hover:border-primary-300 transition-all group"
+            >
+              <h3 className="text-xl font-semibold text-neutral-900 mb-2 group-hover:text-primary-600 transition-colors">
+                What Size Dumpster Do I Need?
+              </h3>
+              <p className="text-neutral-600 mb-4">
+                Compare 20 and 30 yard dumpsters. Find the right size for your home cleanout,
+                renovation, roofing project, or construction job.
+              </p>
+              <span className="text-primary-600 font-semibold inline-flex items-center gap-2">
+                Read the Guide
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </Link>
+
+            <Link
+              href="/guides/dumpster-rental-cost"
+              className="bg-white rounded-xl p-6 border border-neutral-200 hover:shadow-lg hover:border-primary-300 transition-all group"
+            >
+              <h3 className="text-xl font-semibold text-neutral-900 mb-2 group-hover:text-primary-600 transition-colors">
+                How Much Does a Dumpster Cost?
+              </h3>
+              <p className="text-neutral-600 mb-4">
+                Understand dumpster rental pricing, what&apos;s included, and how to avoid
+                hidden fees. Transparent pricing guide from a local company.
+              </p>
+              <span className="text-primary-600 font-semibold inline-flex items-center gap-2">
+                Read the Guide
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </Link>
           </div>
         </div>
       </section>

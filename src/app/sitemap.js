@@ -94,11 +94,30 @@ export default async function sitemap() {
   }))
 
   // ============================================
+  // GUIDE PAGES - Informational content for SEO
+  // ============================================
+  const guidePages = [
+    {
+      url: `${baseUrl}/guides/dumpster-sizes`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/guides/dumpster-rental-cost`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+  ]
+
+  // ============================================
   // COMBINE ALL PAGES
   // ============================================
   return [
     ...staticPages,
     ...locationPages,
     ...dumpsterPages,
+    ...guidePages,
   ]
 }
