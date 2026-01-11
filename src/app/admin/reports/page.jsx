@@ -30,7 +30,7 @@ export default function ReportsPage() {
 
   // Check auth
   useEffect(() => {
-    if (sessionStorage.getItem('adminAuth') !== 'true') {
+    if (!sessionStorage.getItem('adminToken')) {
       router.push('/admin')
     }
   }, [router])

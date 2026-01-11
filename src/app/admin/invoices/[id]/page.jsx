@@ -73,6 +73,10 @@ export default function InvoiceDetailPage() {
   }, [params.id])
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
+      window.location.href = '/admin'
+      return
+    }
     fetchInvoice()
   }, [fetchInvoice])
 

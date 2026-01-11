@@ -98,6 +98,10 @@ export default function CustomerDetailPage() {
   }, [params.id])
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
+      window.location.href = '/admin'
+      return
+    }
     fetchCustomer()
   }, [fetchCustomer])
 

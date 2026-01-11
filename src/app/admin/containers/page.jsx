@@ -96,12 +96,12 @@ export default function ContainerBoardPage() {
 
   useEffect(() => {
     // Check auth
-    if (typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') !== 'true') {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
       window.location.href = '/admin'
       return
     }
     fetchContainers()
-    
+
     // Auto-refresh every 5 minutes
     const interval = setInterval(fetchContainers, 5 * 60 * 1000)
     return () => clearInterval(interval)

@@ -29,6 +29,10 @@ export default function CustomersPage() {
   const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
+      window.location.href = '/admin'
+      return
+    }
     fetchCustomers()
   }, [])
 

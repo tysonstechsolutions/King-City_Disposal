@@ -257,7 +257,7 @@ async function runInvoiceReminders() {
   if (!response.ok) return { invoice_reminders: 0 };
 
   const invoices = await response.json();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kingcitydisposal.com';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kingcitydisposal.com';
   let sent = 0;
 
   for (const invoice of invoices) {

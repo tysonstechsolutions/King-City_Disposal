@@ -47,7 +47,7 @@ export default function ExpensesPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') !== 'true') {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
       window.location.href = '/admin'
       return
     }

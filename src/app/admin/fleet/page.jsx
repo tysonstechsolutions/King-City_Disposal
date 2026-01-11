@@ -15,7 +15,7 @@ export default function FleetPage() {
 
   useEffect(() => {
     setIsClient(true)
-    if (typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') !== 'true') {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
       window.location.href = '/admin'
     }
   }, [])

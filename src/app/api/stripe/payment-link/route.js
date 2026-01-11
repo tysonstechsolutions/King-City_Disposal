@@ -164,7 +164,7 @@ export async function POST(request) {
         'metadata[booking_id]': metadata.booking_id || '',
         'metadata[source]': metadata.source,
         'after_completion[type]': 'redirect',
-        'after_completion[redirect][url]': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://kingcitydisposal.com'}/payment-success?booking=${bookingId || ''}`,
+        'after_completion[redirect][url]': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kingcitydisposal.com'}/payment-success?booking=${bookingId || ''}`,
         'phone_number_collection[enabled]': 'true',
       }),
     });

@@ -56,6 +56,10 @@ function CreateInvoiceContent() {
   })
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
+      window.location.href = '/admin'
+      return
+    }
     fetchCustomers()
     if (bookingId) {
       fetchBooking(bookingId)

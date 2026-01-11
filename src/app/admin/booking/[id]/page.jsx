@@ -76,6 +76,10 @@ export default function BookingDetailPage() {
   }, [params.id])
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
+      window.location.href = '/admin'
+      return
+    }
     fetchBooking()
   }, [fetchBooking])
 

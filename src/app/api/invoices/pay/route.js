@@ -57,7 +57,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No balance due' }, { status: 400 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kingcitydisposal.com';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kingcitydisposal.com';
 
     // Build description from line items
     let lineItems;

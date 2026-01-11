@@ -35,6 +35,10 @@ export default function InvoicesPage() {
   const [showActions, setShowActions] = useState(null)
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
+      window.location.href = '/admin'
+      return
+    }
     fetchInvoices()
   }, [statusFilter])
 
