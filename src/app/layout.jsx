@@ -24,8 +24,8 @@ export const metadata = {
     address: true,
   },
   openGraph: {
-    title: config.seo.title,
-    description: config.seo.description,
+    title: "Dumpster Rental Mount Vernon IL | From $475 | Same-Day Delivery",
+    description: "Need a dumpster TODAY? Same-day delivery in Mount Vernon & Southern IL! 20 & 30 yard roll-offs from $475. No hidden fees. Family owned. Call (618) 231-8481!",
     url: config.websiteUrl,
     siteName: config.businessName,
     locale: 'en_US',
@@ -41,8 +41,8 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: config.seo.title,
-    description: config.seo.description,
+    title: "Dumpster Rental Mount Vernon IL | From $475 | Same-Day",
+    description: "Need a dumpster TODAY? Same-day delivery in Southern IL! From $475, no hidden fees. Call (618) 231-8481!",
     images: ['/og-image.jpg'],
   },
   robots: {
