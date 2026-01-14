@@ -26,6 +26,7 @@ export default function ReportsPage() {
   const [bookings, setBookings] = useState([])
   const [invoices, setInvoices] = useState([])
   const [expenses, setExpenses] = useState([])
+  const [documents, setDocuments] = useState([])
   const [selectedMonth, setSelectedMonth] = useState(new Date())
 
   // Check auth
@@ -45,15 +46,18 @@ export default function ReportsPage() {
           'Authorization': `Bearer ${config.supabase.anonKey}`,
         }
 
-        const [bookingsRes, invoicesRes, expensesRes] = await Promise.all([
+        const [bookingsRes, invoicesRes, expensesRes, documentsRes] = await Promise.all([
           fetch(`${config.supabase.url}/rest/v1/bookings?order=created_at.desc`, { headers }),
           fetch(`${config.supabase.url}/rest/v1/invoices?order=created_at.desc`, { headers }),
           fetch(`${config.supabase.url}/rest/v1/expenses?order=date.desc`, { headers }),
+          // Fetch parsed documents with amounts (vendor expenses from uploaded receipts)
+          fetch(`${config.supabase.url}/rest/v1/documents?amount_cents=not.is.null&order=document_date.desc`, { headers }),
         ])
 
         if (bookingsRes.ok) setBookings(await bookingsRes.json())
         if (invoicesRes.ok) setInvoices(await invoicesRes.json())
         if (expensesRes.ok) setExpenses(await expensesRes.json())
+        if (documentsRes.ok) setDocuments(await documentsRes.json())
       } catch (error) {
         console.error('Error fetching data:', error)
       }
@@ -77,6 +81,7 @@ export default function ReportsPage() {
   const monthlyBookings = filterByMonth(bookings, 'created_at')
   const monthlyInvoices = filterByMonth(invoices, 'created_at')
   const monthlyExpenses = filterByMonth(expenses, 'date')
+  const monthlyDocuments = filterByMonth(documents, 'document_date')
 
   // Calculate metrics
   const calculateRevenue = () => {
@@ -94,7 +99,17 @@ export default function ReportsPage() {
   }
 
   const calculateExpenses = () => {
-    return monthlyExpenses.reduce((sum, e) => sum + (e.amount_cents || 0), 0) / 100
+    // From expenses table
+    const expenseTotal = monthlyExpenses.reduce((sum, e) => sum + (e.amount_cents || 0), 0)
+
+    // From parsed documents (uploaded receipts with vendor_expense type)
+    // Only count documents that are vendor expenses (fuel, landfill, maintenance, etc.)
+    const docExpenseCategories = ['weight_ticket', 'fuel_receipt', 'maintenance', 'receipt']
+    const docTotal = monthlyDocuments
+      .filter(d => docExpenseCategories.includes(d.category))
+      .reduce((sum, d) => sum + (d.amount_cents || 0), 0)
+
+    return (expenseTotal + docTotal) / 100
   }
 
   const revenue = calculateRevenue()

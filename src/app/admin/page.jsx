@@ -32,6 +32,7 @@ import {
 export default function AdminPage() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [password, setPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [filter, setFilter] = useState('all')
@@ -86,7 +87,10 @@ export default function AdminPage() {
   useEffect(() => {
     const validateSession = async () => {
       const token = sessionStorage.getItem('adminToken')
-      if (!token) return
+      if (!token) {
+        setCheckingAuth(false)
+        return
+      }
 
       try {
         const response = await fetch('/api/admin/auth', {
@@ -101,6 +105,7 @@ export default function AdminPage() {
       } catch (error) {
         sessionStorage.removeItem('adminToken')
       }
+      setCheckingAuth(false)
     }
 
     validateSession()
@@ -222,6 +227,17 @@ export default function AdminPage() {
   }
 
   const monthName = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  // ============================================
+  // LOADING STATE - Checking auth
+  // ============================================
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+      </div>
+    )
+  }
 
   // ============================================
   // LOGIN SCREEN
