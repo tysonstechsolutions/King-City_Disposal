@@ -127,7 +127,7 @@ export default function CustomerInvoicePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
+      <div className="min-h-screen bg-dark-800 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
@@ -135,11 +135,11 @@ export default function CustomerInvoicePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
+      <div className="min-h-screen bg-dark-800 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-neutral-900 mb-2">{error}</h1>
-          <p className="text-neutral-600">Please check the link and try again.</p>
+          <h1 className="text-xl font-semibold text-white mb-2">{error}</h1>
+          <p className="text-dark-300">Please check the link and try again.</p>
         </div>
       </div>
     )
@@ -148,7 +148,7 @@ export default function CustomerInvoicePage() {
   const lineItems = invoice.line_items || []
 
   return (
-    <div className="min-h-screen bg-neutral-100 py-8 print:bg-white print:py-0">
+    <div className="min-h-screen bg-dark-800 py-8 print:bg-dark-900 print:py-0">
       <div className="max-w-3xl mx-auto px-4">
         {/* Action Buttons - Hidden on print */}
         <div className="flex justify-between items-center mb-4 print:hidden">
@@ -168,7 +168,7 @@ export default function CustomerInvoicePage() {
           </div>
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50"
+            className="flex items-center gap-2 px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg hover:bg-dark-800"
           >
             <Printer className="w-4 h-4" />
             Print
@@ -176,17 +176,17 @@ export default function CustomerInvoicePage() {
         </div>
 
         {/* Invoice Card */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden print:shadow-none print:rounded-none">
+        <div className="bg-dark-900 rounded-xl shadow-lg overflow-hidden print:shadow-none print:rounded-none">
           {/* Header */}
-          <div className="bg-primary text-white p-6 print:bg-white print:text-black print:border-b-2 print:border-black">
+          <div className="bg-primary text-white p-6 print:bg-dark-900 print:text-black print:border-b-2 print:border-black">
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-2xl font-bold">{config.businessName}</h1>
-                <p className="text-white/80 print:text-neutral-600">{config.phone}</p>
-                {config.email && <p className="text-white/80 print:text-neutral-600">{config.email}</p>}
+                <p className="text-white/80 print:text-dark-300">{config.phone}</p>
+                {config.email && <p className="text-white/80 print:text-dark-300">{config.email}</p>}
               </div>
               <div className="text-right">
-                <p className="text-white/60 print:text-neutral-500 text-sm">INVOICE</p>
+                <p className="text-white/60 print:text-dark-400 text-sm">INVOICE</p>
                 <p className="text-xl font-bold font-mono">{invoice.invoice_number}</p>
               </div>
             </div>
@@ -217,16 +217,16 @@ export default function CustomerInvoicePage() {
             {/* Bill To & Invoice Details */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               <div>
-                <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Bill To</h2>
+                <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wide mb-2">Bill To</h2>
                 <p className="font-semibold text-lg">{invoice.customer_name}</p>
-                {invoice.customer_address && <p className="text-neutral-600">{invoice.customer_address}</p>}
+                {invoice.customer_address && <p className="text-dark-300">{invoice.customer_address}</p>}
                 {invoice.customer_phone && (
-                  <p className="text-neutral-600 flex items-center gap-1 mt-1">
+                  <p className="text-dark-300 flex items-center gap-1 mt-1">
                     <Phone className="w-4 h-4" /> {invoice.customer_phone}
                   </p>
                 )}
                 {invoice.customer_email && (
-                  <p className="text-neutral-600 flex items-center gap-1">
+                  <p className="text-dark-300 flex items-center gap-1">
                     <Mail className="w-4 h-4" /> {invoice.customer_email}
                   </p>
                 )}
@@ -234,11 +234,11 @@ export default function CustomerInvoicePage() {
               <div className="md:text-right">
                 <div className="space-y-1">
                   <div className="flex md:justify-end gap-2">
-                    <span className="text-neutral-500">Invoice Date:</span>
+                    <span className="text-dark-400">Invoice Date:</span>
                     <span className="font-medium">{formatDate(invoice.invoice_date || invoice.created_at)}</span>
                   </div>
                   <div className="flex md:justify-end gap-2">
-                    <span className="text-neutral-500">Due Date:</span>
+                    <span className="text-dark-400">Due Date:</span>
                     <span className={`font-medium ${isOverdue ? 'text-red-600' : ''}`}>
                       {formatDate(invoice.due_date)}
                     </span>
@@ -249,25 +249,25 @@ export default function CustomerInvoicePage() {
 
             {/* Service Details */}
             {(invoice.service_address || invoice.dumpster_size) && (
-              <div className="bg-neutral-50 rounded-lg p-4 mb-6">
-                <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Service Details</h2>
+              <div className="bg-dark-800 rounded-lg p-4 mb-6">
+                <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wide mb-3">Service Details</h2>
                 <div className="grid md:grid-cols-2 gap-4">
                   {invoice.service_address && (
                     <div className="flex items-start gap-2">
-                      <MapPin className="w-5 h-5 text-neutral-400 flex-shrink-0 mt-0.5" />
+                      <MapPin className="w-5 h-5 text-dark-500 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm text-neutral-500">Service Address</p>
+                        <p className="text-sm text-dark-400">Service Address</p>
                         <p className="font-medium">{invoice.service_address}</p>
                       </div>
                     </div>
                   )}
                   {invoice.dumpster_size && (
                     <div className="flex items-start gap-2">
-                      <Truck className="w-5 h-5 text-neutral-400 flex-shrink-0 mt-0.5" />
+                      <Truck className="w-5 h-5 text-dark-500 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm text-neutral-500">Dumpster</p>
+                        <p className="text-sm text-dark-400">Dumpster</p>
                         <p className="font-medium">{invoice.dumpster_size}</p>
-                        {invoice.rental_duration && <p className="text-sm text-neutral-500">{invoice.rental_duration}</p>}
+                        {invoice.rental_duration && <p className="text-sm text-dark-400">{invoice.rental_duration}</p>}
                       </div>
                     </div>
                   )}
@@ -279,9 +279,9 @@ export default function CustomerInvoicePage() {
             <div className="mb-6">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-neutral-200">
-                    <th className="text-left py-3 text-sm font-semibold text-neutral-500">Description</th>
-                    <th className="text-right py-3 text-sm font-semibold text-neutral-500 w-32">Amount</th>
+                  <tr className="border-b-2 border-dark-700">
+                    <th className="text-left py-3 text-sm font-semibold text-dark-400">Description</th>
+                    <th className="text-right py-3 text-sm font-semibold text-dark-400 w-32">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
@@ -296,11 +296,11 @@ export default function CustomerInvoicePage() {
             </div>
 
             {/* Totals */}
-            <div className="border-t-2 border-neutral-200 pt-4">
+            <div className="border-t-2 border-dark-700 pt-4">
               <div className="flex justify-end">
                 <div className="w-64 space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-neutral-600">Subtotal</span>
+                    <span className="text-dark-300">Subtotal</span>
                     <span className="font-medium">{formatCurrency(invoice.subtotal_cents)}</span>
                   </div>
                   {invoice.discount_cents > 0 && (
@@ -311,11 +311,11 @@ export default function CustomerInvoicePage() {
                   )}
                   {invoice.tax_cents > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-neutral-600">Tax</span>
+                      <span className="text-dark-300">Tax</span>
                       <span className="font-medium">{formatCurrency(invoice.tax_cents)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-neutral-200">
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-dark-700">
                     <span>Total</span>
                     <span>{formatCurrency(invoice.total_cents)}</span>
                   </div>
@@ -337,9 +337,9 @@ export default function CustomerInvoicePage() {
 
             {/* Notes */}
             {invoice.notes && (
-              <div className="mt-6 p-4 bg-neutral-50 rounded-lg">
-                <p className="text-sm text-neutral-500 mb-1">Notes</p>
-                <p className="text-neutral-700">{invoice.notes}</p>
+              <div className="mt-6 p-4 bg-dark-800 rounded-lg">
+                <p className="text-sm text-dark-400 mb-1">Notes</p>
+                <p className="text-dark-200">{invoice.notes}</p>
               </div>
             )}
 
@@ -363,14 +363,14 @@ export default function CustomerInvoicePage() {
                     </>
                   )}
                 </button>
-                <p className="text-center text-sm text-neutral-500 mt-2">
+                <p className="text-center text-sm text-dark-400 mt-2">
                   Secure payment via Stripe
                 </p>
               </div>
             )}
 
             {/* Footer */}
-            <div className="mt-8 pt-6 border-t border-neutral-200 text-center text-sm text-neutral-500">
+            <div className="mt-8 pt-6 border-t border-dark-700 text-center text-sm text-dark-400">
               <p>Thank you for your business!</p>
               <p className="mt-1">{config.businessName} • {config.phone}</p>
             </div>
@@ -378,7 +378,7 @@ export default function CustomerInvoicePage() {
         </div>
 
         {/* Questions - Hidden on print */}
-        <div className="mt-6 text-center text-neutral-600 print:hidden">
+        <div className="mt-6 text-center text-dark-300 print:hidden">
           <p>Questions about this invoice?</p>
           <a href={`tel:${config.phone}`} className="text-primary font-medium hover:underline">
             Call {config.phone}

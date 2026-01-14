@@ -198,7 +198,7 @@ export default function DriverChecklistPage() {
               {stops.length > 0 && (
                 <button
                   onClick={openAllInMaps}
-                  className="p-3 bg-primary-500/20 rounded-xl"
+                  className="p-3 bg-primary/20 rounded-xl"
                 >
                   <Navigation className="w-5 h-5 text-primary-400" />
                 </button>
@@ -242,7 +242,7 @@ export default function DriverChecklistPage() {
                     ? 'bg-red-500/10' 
                     : stop.isPickup 
                     ? 'bg-orange-500/10' 
-                    : 'bg-primary-500/10'
+                    : 'bg-primary/10'
                 }`}>
                   <div className="flex items-center gap-3">
                     <span className="text-2xl font-bold text-white">{index + 1}</span>

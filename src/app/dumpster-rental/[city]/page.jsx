@@ -197,7 +197,7 @@ export default function CityPage({ params }) {
         <div className="container-custom">
           <div className="max-w-4xl">
             {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-sm text-neutral-400 mb-6">
+            <nav className="flex items-center gap-2 text-sm text-dark-500 mb-6">
               <Link href="/" className="hover:text-white">Home</Link>
               <span>/</span>
               <Link href="/service-area" className="hover:text-white">Service Area</Link>
@@ -207,7 +207,7 @@ export default function CityPage({ params }) {
 
             <div className="flex items-center gap-3 mb-4">
               <MapPin className="w-8 h-8 text-primary-400" />
-              <span className="bg-primary-600/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
+              <span className="bg-primary/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
                 {isBaseCity ? 'Our Home Base' : `${distance} miles from base`}
               </span>
             </div>
@@ -226,25 +226,25 @@ export default function CityPage({ params }) {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white/10 rounded-xl p-4 text-center">
+              <div className="bg-dark-900/10 rounded-xl p-4 text-center">
                 <Truck className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">Same-Day</p>
-                <p className="text-neutral-400 text-sm">Delivery Available</p>
+                <p className="text-dark-500 text-sm">Delivery Available</p>
               </div>
-              <div className="bg-white/10 rounded-xl p-4 text-center">
+              <div className="bg-dark-900/10 rounded-xl p-4 text-center">
                 <DollarSign className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">${config.dumpsters[0]?.pricing['10-day']}</p>
-                <p className="text-neutral-400 text-sm">Starting Price</p>
+                <p className="text-dark-500 text-sm">Starting Price</p>
               </div>
-              <div className="bg-white/10 rounded-xl p-4 text-center">
+              <div className="bg-dark-900/10 rounded-xl p-4 text-center">
                 <Clock className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">10 Days</p>
-                <p className="text-neutral-400 text-sm">Standard Rental</p>
+                <p className="text-dark-500 text-sm">Standard Rental</p>
               </div>
-              <div className="bg-white/10 rounded-xl p-4 text-center">
+              <div className="bg-dark-900/10 rounded-xl p-4 text-center">
                 <Star className="w-6 h-6 text-primary-400 mx-auto mb-2" />
                 <p className="text-white font-bold">5-Star</p>
-                <p className="text-neutral-400 text-sm">Rated Service</p>
+                <p className="text-dark-500 text-sm">Rated Service</p>
               </div>
             </div>
 
@@ -259,7 +259,7 @@ export default function CityPage({ params }) {
               </Link>
               <a
                 href={`tel:${config.phoneRaw}`}
-                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold py-4 px-8 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 bg-dark-900/10 hover:bg-dark-900/20 text-white font-semibold py-4 px-8 rounded-lg transition-colors"
               >
                 <Phone className="w-5 h-5" />
                 {config.phone}
@@ -270,12 +270,12 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Dumpster Sizes Available */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
-          <h2 className="text-3xl font-bold text-neutral-900 mb-4 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4 text-center">
             Dumpster Sizes Available in {townName}
           </h2>
-          <p className="text-neutral-600 text-center mb-12 max-w-2xl mx-auto">
+          <p className="text-dark-300 text-center mb-12 max-w-2xl mx-auto">
             We deliver all dumpster sizes to {townName}, IL. Not sure which size you need?
             Give us a call and we&apos;ll help you choose.
           </p>
@@ -284,34 +284,34 @@ export default function CityPage({ params }) {
             {config.dumpsters.map((dumpster) => (
               <div
                 key={dumpster.id}
-                className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-lg transition-shadow"
+                className="bg-dark-900 rounded-xl border border-dark-700 p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center">
-                    <Truck className="w-6 h-6 text-primary-600" />
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <Truck className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-neutral-900">{dumpster.name}</h3>
-                    <p className="text-neutral-500 text-sm">{dumpster.dimensions.display}</p>
+                    <h3 className="text-xl font-bold text-white">{dumpster.name}</h3>
+                    <p className="text-dark-400 text-sm">{dumpster.dimensions.display}</p>
                   </div>
                 </div>
 
-                <p className="text-neutral-600 text-sm mb-4">{dumpster.description}</p>
+                <p className="text-dark-300 text-sm mb-4">{dumpster.description}</p>
 
                 <div className="space-y-2 mb-6">
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500">10-Day Rental</span>
-                    <span className="text-neutral-900 font-bold">${dumpster.pricing['10-day']}</span>
+                    <span className="text-dark-400">10-Day Rental</span>
+                    <span className="text-white font-bold">${dumpster.pricing['10-day']}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500">Weight Included</span>
-                    <span className="text-primary-600">{dumpster.weightIncluded}</span>
+                    <span className="text-dark-400">Weight Included</span>
+                    <span className="text-primary">{dumpster.weightIncluded}</span>
                   </div>
                 </div>
 
                 <Link
                   href={`/book?size=${dumpster.id}`}
-                  className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition-colors"
+                  className="block w-full text-center bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition-colors"
                 >
                   Book This Size
                 </Link>
@@ -322,11 +322,11 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Why Choose Us for This City */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
             <div>
-              <h2 className="text-3xl font-bold text-neutral-900 mb-6">
+              <h2 className="text-3xl font-bold text-white mb-6">
                 Why {townName} Chooses {config.businessName}
               </h2>
 
@@ -352,10 +352,10 @@ export default function CityPage({ params }) {
                   },
                 ].map((item, index) => (
                   <div key={index} className="flex gap-4">
-                    <CheckCircle2 className="w-6 h-6 text-primary-600 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="font-semibold text-neutral-900 mb-1">{item.title}</h3>
-                      <p className="text-neutral-500 text-sm">{item.description}</p>
+                      <h3 className="font-semibold text-white mb-1">{item.title}</h3>
+                      <p className="text-dark-400 text-sm">{item.description}</p>
                     </div>
                   </div>
                 ))}
@@ -363,33 +363,33 @@ export default function CityPage({ params }) {
             </div>
 
             {/* Service Info Card */}
-            <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-200">
-              <h3 className="text-2xl font-bold text-neutral-900 mb-6">
+            <div className="bg-dark-800 rounded-xl p-8 border border-dark-700">
+              <h3 className="text-2xl font-bold text-white mb-6">
                 Service Details for {townName}
               </h3>
 
               <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
-                  <span className="text-neutral-600">Distance from Base</span>
-                  <span className="text-neutral-900 font-semibold">{distance} miles</span>
+                <div className="flex justify-between items-center py-3 border-b border-dark-700">
+                  <span className="text-dark-300">Distance from Base</span>
+                  <span className="text-white font-semibold">{distance} miles</span>
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
-                  <span className="text-neutral-600">Same-Day Delivery</span>
-                  <span className="text-primary-600 font-semibold">Available</span>
+                <div className="flex justify-between items-center py-3 border-b border-dark-700">
+                  <span className="text-dark-300">Same-Day Delivery</span>
+                  <span className="text-primary font-semibold">Available</span>
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
-                  <span className="text-neutral-600">Delivery Fee</span>
-                  <span className="text-neutral-900 font-semibold">Included</span>
+                <div className="flex justify-between items-center py-3 border-b border-dark-700">
+                  <span className="text-dark-300">Delivery Fee</span>
+                  <span className="text-white font-semibold">Included</span>
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-neutral-200">
-                  <span className="text-neutral-600">Service Hours</span>
-                  <span className="text-neutral-900 font-semibold">Mon-Sat</span>
+                <div className="flex justify-between items-center py-3 border-b border-dark-700">
+                  <span className="text-dark-300">Service Hours</span>
+                  <span className="text-white font-semibold">Mon-Sat</span>
                 </div>
               </div>
 
               <a
                 href={`tel:${config.phoneRaw}`}
-                className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition-colors"
+                className="block w-full text-center bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition-colors"
               >
                 <Phone className="w-5 h-5 inline mr-2" />
                 Call Now: {config.phone}
@@ -400,9 +400,9 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Common Projects in This Area */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
-          <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">
             Common Dumpster Projects in {townName}
           </h2>
 
@@ -441,11 +441,11 @@ export default function CityPage({ params }) {
             ].map((project, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl p-6 border border-neutral-200"
+                className="bg-dark-900 rounded-xl p-6 border border-dark-700"
               >
-                <h3 className="font-semibold text-neutral-900 mb-2">{project.title}</h3>
-                <p className="text-neutral-500 text-sm mb-4">{project.description}</p>
-                <span className="inline-block bg-primary-50 text-primary-600 px-3 py-1 rounded-full text-sm font-medium">
+                <h3 className="font-semibold text-white mb-2">{project.title}</h3>
+                <p className="text-dark-400 text-sm mb-4">{project.description}</p>
+                <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
                   Recommended: {project.size}
                 </span>
               </div>
@@ -455,12 +455,12 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Nearby Service Areas */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
-          <h2 className="text-3xl font-bold text-neutral-900 mb-4 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4 text-center">
             Also Serving Near {townName}
           </h2>
-          <p className="text-neutral-600 text-center mb-8">
+          <p className="text-dark-300 text-center mb-8">
             We deliver dumpsters throughout Southern Illinois. Click a city to learn more.
           </p>
 
@@ -469,10 +469,10 @@ export default function CityPage({ params }) {
               <Link
                 key={town}
                 href={`/dumpster-rental/${slugify(town)}-il`}
-                className="bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 hover:border-primary-300 rounded-xl p-4 text-center transition-all"
+                className="bg-dark-800 hover:bg-dark-800 border border-dark-700 hover:border-primary-300 rounded-xl p-4 text-center transition-all"
               >
-                <p className="text-neutral-900 font-medium">{town}, IL</p>
-                <p className="text-neutral-500 text-sm">Dumpster Rental</p>
+                <p className="text-white font-medium">{town}, IL</p>
+                <p className="text-dark-400 text-sm">Dumpster Rental</p>
               </Link>
             ))}
           </div>
@@ -480,7 +480,7 @@ export default function CityPage({ params }) {
           <div className="text-center mt-8">
             <Link
               href="/service-area"
-              className="text-primary-600 hover:text-primary-700 inline-flex items-center gap-2 font-medium"
+              className="text-primary hover:text-primary-700 inline-flex items-center gap-2 font-medium"
             >
               View All Service Areas
               <ArrowRight className="w-4 h-4" />
@@ -490,7 +490,7 @@ export default function CityPage({ params }) {
       </section>
 
       {/* Final CTA */}
-      <section className="section bg-primary-600">
+      <section className="section bg-primary">
         <div className="container-custom text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to Rent a Dumpster in {townName}?
@@ -502,7 +502,7 @@ export default function CityPage({ params }) {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
               href="/book"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-dark-900 hover:bg-dark-800 text-primary font-semibold py-4 px-8 rounded-lg transition-colors"
             >
               Get {townName} Pricing
               <ArrowRight className="w-5 h-5" />

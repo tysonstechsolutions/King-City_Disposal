@@ -60,7 +60,7 @@ export default function SizeConfirmStep() {
               onClick={() => handleSizeSelect(dumpster.id)}
               className={`w-full rounded-xl p-4 flex items-center justify-between transition-colors text-left ${
                 isSelected
-                  ? 'bg-primary-500/20 border-2 border-primary-500'
+                  ? 'bg-primary/20 border-2 border-primary-500'
                   : isRecommended
                   ? 'bg-green-500/10 border border-green-500/50 hover:border-green-500'
                   : 'bg-dark-700 hover:bg-dark-600 border border-transparent'

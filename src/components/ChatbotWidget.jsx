@@ -636,9 +636,9 @@ export default function ChatbotWidget() {
         <div className={`fixed bottom-4 right-4 left-4 md:left-auto ${chatSize} bg-neutral-900 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-neutral-700`}>
 
           {/* Header */}
-          <div className="bg-primary-600 p-4 flex items-center justify-between flex-shrink-0">
+          <div className="bg-primary p-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/20 rounded-full flex items-center justify-center">
+              <div className="w-11 h-11 bg-dark-900/20 rounded-full flex items-center justify-center">
                 <Truck className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -648,7 +648,7 @@ export default function ChatbotWidget() {
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="text-white/80 hover:text-white p-2 hover:bg-dark-900/10 rounded-lg transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -683,7 +683,7 @@ export default function ChatbotWidget() {
               <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                   msg.type === 'user'
-                    ? 'bg-primary-500 text-white rounded-br-md'
+                    ? 'bg-primary text-white rounded-br-md'
                     : 'bg-dark-700 text-white rounded-bl-md'
                 }`}>
                   <p className="whitespace-pre-line text-sm leading-relaxed">{msg.text}</p>
@@ -716,7 +716,7 @@ export default function ChatbotWidget() {
                         onClick={() => handleProjectType(project.id)}
                         className="bg-dark-700 hover:bg-dark-600 active:bg-dark-500 rounded-xl p-3 flex items-center gap-3 transition-colors text-left"
                       >
-                        <div className="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Icon className="w-5 h-5 text-primary-400" />
                         </div>
                         <div className="min-w-0">
@@ -754,7 +754,7 @@ export default function ChatbotWidget() {
                         onClick={() => handleSizeSelect(dumpster.id)}
                         className={`w-full rounded-xl p-4 flex items-center justify-between transition-colors text-left ${
                           isSelected
-                            ? 'bg-primary-500/20 border-2 border-primary-500'
+                            ? 'bg-primary/20 border-2 border-primary-500'
                             : isRecommended
                             ? 'bg-green-500/10 border border-green-500/50 hover:border-green-500'
                             : 'bg-dark-700 hover:bg-dark-600 border border-transparent'
@@ -796,7 +796,7 @@ export default function ChatbotWidget() {
 
                         {!mapLoaded && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-dark-600">
-                            <div className="w-14 h-14 bg-primary-500/20 rounded-xl flex items-center justify-center mb-3 animate-pulse">
+                            <div className="w-14 h-14 bg-primary/20 rounded-xl flex items-center justify-center mb-3 animate-pulse">
                               <MapPin className="w-7 h-7 text-primary-400" />
                             </div>
                             <p className="text-white font-medium">Loading satellite view...</p>
@@ -807,7 +807,7 @@ export default function ChatbotWidget() {
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                             <button
                               onClick={placeDumpster}
-                              className="bg-primary-500 hover:bg-primary-600 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
+                              className="bg-primary hover:bg-primary text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
                             >
                               <Plus className="w-5 h-5" />
                               Place Dumpster Here
@@ -835,7 +835,7 @@ export default function ChatbotWidget() {
 
                       <div className="p-3 bg-dark-800 border-t border-dark-600 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-5 h-3 bg-primary-500/60 border-2 border-primary-500 rounded-sm"></div>
+                          <div className="w-5 h-3 bg-primary/60 border-2 border-primary-500 rounded-sm"></div>
                           <span className="text-sm text-dark-300">{selectedDumpster?.dimensions?.display || '22ft × 8ft'}</span>
                         </div>
                         {dumpsterPlaced && <span className="text-primary-400 text-sm font-medium">Pan map to move</span>}
@@ -888,7 +888,7 @@ export default function ChatbotWidget() {
                   <div className="space-y-4">
                     <div className="bg-dark-700 rounded-xl p-4">
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
                           <MapPin className="w-5 h-5 text-primary-400" />
                         </div>
                         <div>
@@ -936,7 +936,7 @@ export default function ChatbotWidget() {
                       <p className="text-dark-400 text-sm mb-2">Or prefer to talk to someone?</p>
                       <a
                         href={`tel:${config.phoneRaw}`}
-                        className="inline-flex items-center gap-2 bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 px-4 py-2 rounded-xl transition-colors"
+                        className="inline-flex items-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary-400 px-4 py-2 rounded-xl transition-colors"
                       >
                         <Phone className="w-4 h-4" />
                         Call {config.phone}
@@ -966,7 +966,7 @@ export default function ChatbotWidget() {
                         }}
                         className={`rounded-xl p-3 text-center transition-colors ${
                           bookingData.deliveryDateRaw === date.value
-                            ? 'bg-primary-500/20 border-2 border-primary-500'
+                            ? 'bg-primary/20 border-2 border-primary-500'
                             : 'bg-dark-700 hover:bg-dark-600 border-2 border-transparent'
                         }`}
                       >
@@ -1006,7 +1006,7 @@ export default function ChatbotWidget() {
 
                 <div>
                   <p className="text-dark-400 text-sm mb-2">Rental period</p>
-                  <div className="bg-primary-500/20 border-2 border-primary-500 rounded-xl p-4 text-center">
+                  <div className="bg-primary/20 border-2 border-primary-500 rounded-xl p-4 text-center">
                     <p className="font-bold text-white text-lg">10 Days</p>
                     <p className="text-primary-400 font-semibold">${selectedDumpster?.pricing['10-day']}</p>
                     <p className="text-dark-400 text-xs mt-1">Standard rental • Extensions available</p>
@@ -1182,7 +1182,7 @@ export default function ChatbotWidget() {
                 </div>
 
                 {/* Total */}
-                <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl p-4">
+                <div className="bg-primary/10 border border-primary-500/30 rounded-xl p-4">
                   <div className="flex justify-between items-center">
                     <span className="text-white font-bold text-lg">Total</span>
                     <span className="text-primary-400 font-bold text-2xl">
@@ -1233,7 +1233,7 @@ export default function ChatbotWidget() {
                 )}
                 <button
                   type="submit"
-                  className="bg-primary-500 hover:bg-primary-600 text-white p-3 rounded-xl"
+                  className="bg-primary hover:bg-primary text-white p-3 rounded-xl"
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -1276,7 +1276,7 @@ export default function ChatbotWidget() {
             setIsOpen(true)
             if (!hasAutoOpened) setHasAutoOpened(true)
           }}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 rounded-full shadow-lg flex items-center justify-center z-50 transition-colors duration-200"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary/90 rounded-full shadow-lg flex items-center justify-center z-50 transition-colors duration-200"
         >
           <MessageCircle className="w-8 h-8 text-white" />
         </button>

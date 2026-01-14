@@ -129,11 +129,11 @@ export default function HomePage() {
       </section>
 
       {/* Dumpster Sizes Section */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="heading-2 mb-4">Choose Your Dumpster Size</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
+            <h2 className="heading-2 mb-4 text-white">Choose Your Dumpster Size</h2>
+            <p className="text-dark-300 text-lg max-w-2xl mx-auto">
               We offer two popular sizes to fit most residential and commercial projects.
             </p>
           </div>
@@ -142,60 +142,60 @@ export default function HomePage() {
             {config.dumpsters.map((dumpster) => (
               <div
                 key={dumpster.id}
-                className="bg-white rounded-xl border border-neutral-200 overflow-hidden hover:shadow-xl transition-shadow duration-300"
+                className="bg-dark-700 rounded-xl border border-dark-600 overflow-hidden hover:border-dark-500 transition-all duration-300"
               >
                 {/* Dumpster Image */}
-                <div className="h-48 bg-neutral-100 relative overflow-hidden">
+                <div className="h-48 bg-dark-600 relative overflow-hidden">
                   <Image
                     src="/images/dumpster.jpg"
                     alt={dumpster.name}
                     fill
                     className="object-cover"
                   />
-                  <div className="absolute top-4 right-4 bg-primary-600 text-white text-sm font-bold px-3 py-1 rounded">
+                  <div className="absolute top-4 right-4 bg-primary text-white text-sm font-bold px-3 py-1 rounded">
                     {dumpster.shortName}
                   </div>
                 </div>
 
                 <div className="p-6">
-                  <h3 className="text-2xl font-bold text-neutral-900 mb-2">
+                  <h3 className="text-2xl font-bold text-white mb-2">
                     {dumpster.name}
                   </h3>
 
-                  <p className="text-neutral-600 mb-4">
+                  <p className="text-dark-300 mb-4">
                     {dumpster.description}
                   </p>
 
                   {/* Specs */}
                   <div className="space-y-2 mb-6 text-sm">
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
-                      <span className="text-neutral-500">Dimensions</span>
-                      <span className="font-medium text-neutral-900">{dumpster.dimensions.display}</span>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Dimensions</span>
+                      <span className="font-medium text-white">{dumpster.dimensions.display}</span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
-                      <span className="text-neutral-500">Rental Period</span>
-                      <span className="font-medium text-neutral-900">10 Days</span>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Rental Period</span>
+                      <span className="font-medium text-white">10 Days</span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
-                      <span className="text-neutral-500">Weight Included</span>
-                      <span className="font-medium text-neutral-900">{dumpster.weightIncluded}</span>
+                    <div className="flex justify-between py-2 border-b border-dark-600">
+                      <span className="text-dark-400">Weight Included</span>
+                      <span className="font-medium text-white">{dumpster.weightIncluded}</span>
                     </div>
                   </div>
 
                   {/* Price */}
                   <div className="flex items-end justify-between mb-6">
                     <div>
-                      <span className="text-sm text-neutral-500">Starting at</span>
-                      <div className="text-3xl font-bold text-primary-600">
+                      <span className="text-sm text-dark-400">Starting at</span>
+                      <div className="text-3xl font-bold text-primary">
                         ${dumpster.pricing['10-day']}
                       </div>
                     </div>
-                    <span className="text-sm text-neutral-500">10-day rental</span>
+                    <span className="text-sm text-dark-400">10-day rental</span>
                   </div>
 
                   <Link
                     href={`/book?size=${dumpster.id}`}
-                    className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                    className="block w-full text-center bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
                   >
                     Book Now
                   </Link>
@@ -206,9 +206,9 @@ export default function HomePage() {
 
           {/* Need help choosing? */}
           <div className="text-center mt-8">
-            <p className="text-neutral-600">
+            <p className="text-dark-300">
               Not sure which size you need?{' '}
-              <a href={`tel:${config.phoneRaw}`} className="text-primary-600 font-semibold hover:underline">
+              <a href={`tel:${config.phoneRaw}`} className="text-primary font-semibold hover:underline">
                 Call us at {config.phone}
               </a>
               {' '}and we&apos;ll help you choose.
@@ -218,11 +218,11 @@ export default function HomePage() {
       </section>
 
       {/* How It Works - Simple */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="heading-2 mb-4">How It Works</h2>
-            <p className="text-neutral-600 text-lg">
+            <h2 className="heading-2 mb-4 text-white">How It Works</h2>
+            <p className="text-dark-300 text-lg">
               Getting a dumpster is easy. Here&apos;s what to expect.
             </p>
           </div>
@@ -246,11 +246,11 @@ export default function HomePage() {
               }
             ].map((item) => (
               <div key={item.step} className="text-center">
-                <div className="w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                <div className="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
                   {item.step}
                 </div>
-                <h3 className="text-lg font-semibold text-neutral-900 mb-2">{item.title}</h3>
-                <p className="text-neutral-600">{item.description}</p>
+                <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+                <p className="text-dark-300">{item.description}</p>
               </div>
             ))}
           </div>
@@ -258,11 +258,11 @@ export default function HomePage() {
       </section>
 
       {/* What We Haul */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="heading-2 mb-4">What We Haul</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
+            <h2 className="heading-2 mb-4 text-white">What We Haul</h2>
+            <p className="text-dark-300 text-lg max-w-2xl mx-auto">
               Our dumpsters can handle most household and construction waste.
             </p>
           </div>
@@ -271,31 +271,31 @@ export default function HomePage() {
             {haulItems.map((item) => (
               <div
                 key={item.label}
-                className="bg-white rounded-lg p-4 text-center border border-neutral-200"
+                className="bg-dark-700 rounded-lg p-4 text-center border border-dark-600"
               >
-                <item.icon className="w-8 h-8 text-primary-600 mx-auto mb-2" />
-                <span className="text-sm font-medium text-neutral-700">{item.label}</span>
+                <item.icon className="w-8 h-8 text-primary mx-auto mb-2" />
+                <span className="text-sm font-medium text-dark-200">{item.label}</span>
               </div>
             ))}
           </div>
 
           <div className="text-center mt-8">
-            <p className="text-neutral-500 text-sm">
-              <strong>Not accepted:</strong> Hazardous materials, chemicals, paint, batteries, tires, and appliances with Freon.
+            <p className="text-dark-400 text-sm">
+              <strong className="text-dark-300">Not accepted:</strong> Hazardous materials, chemicals, paint, batteries, tires, and appliances with Freon.
             </p>
           </div>
         </div>
       </section>
 
       {/* Why Choose Us */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="heading-2 mb-6">
+              <h2 className="heading-2 mb-6 text-white">
                 Why Choose {config.businessName}?
               </h2>
-              <p className="text-neutral-600 text-lg mb-8">
+              <p className="text-dark-300 text-lg mb-8">
                 We&apos;re a local business serving Southern Illinois. When you call us,
                 you talk to a real person who knows the area.
               </p>
@@ -324,12 +324,12 @@ export default function HomePage() {
                   }
                 ].map((item) => (
                   <div key={item.title} className="flex gap-4">
-                    <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <item.icon className="w-5 h-5 text-primary-600" />
+                    <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <item.icon className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-neutral-900">{item.title}</h3>
-                      <p className="text-neutral-600 text-sm">{item.description}</p>
+                      <h3 className="font-semibold text-white">{item.title}</h3>
+                      <p className="text-dark-400 text-sm">{item.description}</p>
                     </div>
                   </div>
                 ))}
@@ -338,7 +338,7 @@ export default function HomePage() {
 
             <div className="space-y-6">
               {/* Meet the Owners */}
-              <div className="bg-neutral-50 rounded-xl overflow-hidden border border-neutral-200">
+              <div className="bg-dark-800 rounded-xl overflow-hidden border border-dark-700">
                 <Image
                   src="/images/fam.jpg"
                   alt="King City Disposal owners"
@@ -347,10 +347,10 @@ export default function HomePage() {
                   className="w-full h-48 object-cover object-top"
                 />
                 <div className="p-6">
-                  <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+                  <h3 className="text-xl font-semibold text-white mb-2">
                     Meet the Owners
                   </h3>
-                  <p className="text-neutral-600">
+                  <p className="text-dark-300">
                     We&apos;re a family-owned business dedicated to providing reliable,
                     honest service to our Southern Illinois neighbors.
                   </p>
@@ -358,11 +358,11 @@ export default function HomePage() {
               </div>
 
               {/* Service Area */}
-              <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
-                <h3 className="text-lg font-semibold text-neutral-900 mb-3">
+              <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
+                <h3 className="text-lg font-semibold text-white mb-3">
                   Service Area
                 </h3>
-                <p className="text-neutral-600 text-sm mb-4">
+                <p className="text-dark-400 text-sm mb-4">
                   Serving {config.address.city} and surrounding communities within
                   a {config.serviceRadius}-mile radius.
                 </p>
@@ -371,13 +371,13 @@ export default function HomePage() {
                   {config.serviceTowns.slice(0, 8).map((town) => (
                     <span
                       key={town}
-                      className="bg-white px-2 py-1 rounded-full text-xs text-neutral-600 border border-neutral-200"
+                      className="bg-dark-700 px-2 py-1 rounded-full text-xs text-dark-300 border border-dark-600"
                     >
                       {town}
                     </span>
                   ))}
                   {config.serviceTowns.length > 8 && (
-                    <span className="bg-primary-50 px-2 py-1 rounded-full text-xs text-primary-600 font-medium">
+                    <span className="bg-primary/20 px-2 py-1 rounded-full text-xs text-primary font-medium">
                       +{config.serviceTowns.length - 8} more
                     </span>
                   )}
@@ -385,7 +385,7 @@ export default function HomePage() {
 
                 <Link
                   href="/service-area"
-                  className="text-primary-600 font-semibold hover:underline inline-flex items-center gap-1 text-sm"
+                  className="text-primary font-semibold hover:underline inline-flex items-center gap-1 text-sm"
                 >
                   View full service area
                   <ArrowRight className="w-4 h-4" />
@@ -436,11 +436,11 @@ export default function HomePage() {
       </section>
 
       {/* Helpful Guides - Internal Links for SEO */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
           <div className="text-center mb-10">
-            <h2 className="heading-2 mb-4">Helpful Dumpster Rental Guides</h2>
-            <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
+            <h2 className="heading-2 mb-4 text-white">Helpful Dumpster Rental Guides</h2>
+            <p className="text-dark-300 text-lg max-w-2xl mx-auto">
               Not sure where to start? Our guides answer common questions about dumpster rentals.
             </p>
           </div>
@@ -448,16 +448,16 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             <Link
               href="/guides/dumpster-sizes"
-              className="bg-white rounded-xl p-6 border border-neutral-200 hover:shadow-lg hover:border-primary-300 transition-all group"
+              className="bg-dark-700 rounded-xl p-6 border border-dark-600 hover:border-primary/50 transition-all group"
             >
-              <h3 className="text-xl font-semibold text-neutral-900 mb-2 group-hover:text-primary-600 transition-colors">
+              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-primary transition-colors">
                 What Size Dumpster Do I Need?
               </h3>
-              <p className="text-neutral-600 mb-4">
+              <p className="text-dark-300 mb-4">
                 Compare 20 and 30 yard dumpsters. Find the right size for your home cleanout,
                 renovation, roofing project, or construction job.
               </p>
-              <span className="text-primary-600 font-semibold inline-flex items-center gap-2">
+              <span className="text-primary font-semibold inline-flex items-center gap-2">
                 Read the Guide
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
@@ -465,16 +465,16 @@ export default function HomePage() {
 
             <Link
               href="/guides/dumpster-rental-cost"
-              className="bg-white rounded-xl p-6 border border-neutral-200 hover:shadow-lg hover:border-primary-300 transition-all group"
+              className="bg-dark-700 rounded-xl p-6 border border-dark-600 hover:border-primary/50 transition-all group"
             >
-              <h3 className="text-xl font-semibold text-neutral-900 mb-2 group-hover:text-primary-600 transition-colors">
+              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-primary transition-colors">
                 How Much Does a Dumpster Cost?
               </h3>
-              <p className="text-neutral-600 mb-4">
+              <p className="text-dark-300 mb-4">
                 Understand dumpster rental pricing, what&apos;s included, and how to avoid
                 hidden fees. Transparent pricing guide from a local company.
               </p>
-              <span className="text-primary-600 font-semibold inline-flex items-center gap-2">
+              <span className="text-primary font-semibold inline-flex items-center gap-2">
                 Read the Guide
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
@@ -484,12 +484,12 @@ export default function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="section bg-primary-600">
+      <section className="section bg-primary">
         <div className="container-custom text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
           </h2>
-          <p className="text-primary-100 text-lg mb-8 max-w-2xl mx-auto">
+          <p className="text-white/80 text-lg mb-8 max-w-2xl mx-auto">
             Book your dumpster online in minutes, or give us a call.
             We&apos;re here to help.
           </p>
@@ -497,14 +497,14 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
               href="/book"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
             >
               Book Online Now
               <ArrowRight className="w-5 h-5" />
             </Link>
             <a
               href={`tel:${config.phoneRaw}`}
-              className="inline-flex items-center justify-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors border border-primary-500"
+              className="inline-flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors border border-white/30"
             >
               <Phone className="w-5 h-5" />
               Call {config.phone}

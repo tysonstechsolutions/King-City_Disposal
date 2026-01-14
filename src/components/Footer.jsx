@@ -133,14 +133,14 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-neutral-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-neutral-500 text-sm">
+          <p className="text-dark-400 text-sm">
             © {currentYear} {config.businessName}. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <Link href="/privacy" className="text-neutral-500 hover:text-neutral-300 text-sm transition-colors">
+            <Link href="/privacy" className="text-dark-400 hover:text-neutral-300 text-sm transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/terms" className="text-neutral-500 hover:text-neutral-300 text-sm transition-colors">
+            <Link href="/terms" className="text-dark-400 hover:text-neutral-300 text-sm transition-colors">
               Terms of Service
             </Link>
           </div>

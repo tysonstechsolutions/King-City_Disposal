@@ -393,7 +393,7 @@ export default function RootLayout({ children }) {
         <ServiceSchema />
         <FAQSchema />
       </head>
-      <body className="min-h-screen flex flex-col bg-white text-neutral-900">
+      <body className="min-h-screen flex flex-col bg-dark-900 text-white">
         <Header />
         <main className="flex-grow">
           {children}

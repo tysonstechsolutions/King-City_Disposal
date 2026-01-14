@@ -109,7 +109,7 @@ export default function MyRentalsPage() {
       case 'cancelled':
         return { color: 'bg-red-500/20 text-red-400', icon: AlertCircle, label: 'Cancelled' }
       default:
-        return { color: 'bg-gray-500/20 text-gray-400', icon: Clock, label: status }
+        return { color: 'bg-dark-8000/20 text-gray-400', icon: Clock, label: status }
     }
   }
 
@@ -143,7 +143,7 @@ export default function MyRentalsPage() {
 
         <div className="max-w-md mx-auto px-4 py-12">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Package className="w-8 h-8 text-primary-400" />
             </div>
             <h1 className="text-2xl font-bold text-white">My Rentals</h1>
@@ -162,7 +162,7 @@ export default function MyRentalsPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="(555) 123-4567"
-                  className="w-full bg-dark-800 border border-dark-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-dark-500 focus:outline-none focus:border-primary-500"
+                  className="w-full bg-dark-800 border border-dark-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-dark-500 focus:outline-none focus:border-primary"
                   required
                 />
               </div>
@@ -396,7 +396,7 @@ export default function MyRentalsPage() {
                 requestModal.type === 'extension' ? "How many extra days do you need?" :
                 "Describe the issue..."
               }
-              className="w-full bg-dark-700 border border-dark-600 rounded-xl px-4 py-3 text-white placeholder-dark-500 focus:outline-none focus:border-primary-500 h-24 resize-none"
+              className="w-full bg-dark-700 border border-dark-600 rounded-xl px-4 py-3 text-white placeholder-dark-500 focus:outline-none focus:border-primary h-24 resize-none"
             />
 
             <div className="flex gap-3 mt-4">

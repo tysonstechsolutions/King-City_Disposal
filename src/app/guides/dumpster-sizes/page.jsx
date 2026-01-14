@@ -145,7 +145,7 @@ export default function DumpsterSizesGuide() {
       {/* Hero */}
       <section className="bg-neutral-900 text-white py-16">
         <div className="container-custom">
-          <nav className="flex items-center gap-2 text-sm text-neutral-400 mb-6">
+          <nav className="flex items-center gap-2 text-sm text-dark-500 mb-6">
             <Link href="/" className="hover:text-white">Home</Link>
             <span>/</span>
             <Link href="/guides/dumpster-sizes" className="text-white">Dumpster Size Guide</Link>
@@ -154,7 +154,7 @@ export default function DumpsterSizesGuide() {
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-4">
               <Ruler className="w-8 h-8 text-primary-400" />
-              <span className="bg-primary-600/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
+              <span className="bg-primary/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
                 Complete Guide
               </span>
             </div>
@@ -172,42 +172,42 @@ export default function DumpsterSizesGuide() {
       </section>
 
       {/* Quick Answer */}
-      <section className="section bg-primary-50">
+      <section className="section bg-primary/10">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-neutral-900 mb-6 text-center">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
               Quick Answer: Which Size Do You Need?
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl p-6 border-2 border-primary-200">
+              <div className="bg-dark-900 rounded-xl p-6 border-2 border-primary-200">
                 <div className="text-center mb-4">
-                  <span className="inline-block bg-primary-600 text-white text-2xl font-bold px-4 py-2 rounded-lg">
+                  <span className="inline-block bg-primary text-white text-2xl font-bold px-4 py-2 rounded-lg">
                     20 Yard
                   </span>
                 </div>
-                <p className="text-neutral-600 mb-4 text-center">Best for most residential projects</p>
+                <p className="text-dark-300 mb-4 text-center">Best for most residential projects</p>
                 <ul className="space-y-2">
                   {['Garage/basement cleanout', 'Single room renovation', 'Small roofing job', 'Deck removal'].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-primary-600" />
+                      <CheckCircle className="w-4 h-4 text-primary" />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-4 pt-4 border-t border-neutral-200 text-center">
-                  <p className="text-2xl font-bold text-primary-600">${config.dumpsters[0]?.pricing['10-day']}</p>
-                  <p className="text-sm text-neutral-500">10-day rental</p>
+                <div className="mt-4 pt-4 border-t border-dark-700 text-center">
+                  <p className="text-2xl font-bold text-primary">${config.dumpsters[0]?.pricing['10-day']}</p>
+                  <p className="text-sm text-dark-400">10-day rental</p>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border-2 border-amber-200">
+              <div className="bg-dark-900 rounded-xl p-6 border-2 border-amber-200">
                 <div className="text-center mb-4">
                   <span className="inline-block bg-amber-500 text-white text-2xl font-bold px-4 py-2 rounded-lg">
                     30 Yard
                   </span>
                 </div>
-                <p className="text-neutral-600 mb-4 text-center">Best for large or commercial projects</p>
+                <p className="text-dark-300 mb-4 text-center">Best for large or commercial projects</p>
                 <ul className="space-y-2">
                   {['Whole house cleanout', 'Major renovation', 'New construction', 'Storm cleanup'].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm">
@@ -216,9 +216,9 @@ export default function DumpsterSizesGuide() {
                     </li>
                   ))}
                 </ul>
-                <div className="mt-4 pt-4 border-t border-neutral-200 text-center">
+                <div className="mt-4 pt-4 border-t border-dark-700 text-center">
                   <p className="text-2xl font-bold text-amber-600">${config.dumpsters[1]?.pricing['10-day']}</p>
-                  <p className="text-sm text-neutral-500">10-day rental</p>
+                  <p className="text-sm text-dark-400">10-day rental</p>
                 </div>
               </div>
             </div>
@@ -227,50 +227,50 @@ export default function DumpsterSizesGuide() {
       </section>
 
       {/* Size Comparison */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
               Dumpster Size Comparison
             </h2>
 
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-neutral-100">
-                    <th className="p-4 text-left font-semibold text-neutral-900">Feature</th>
-                    <th className="p-4 text-center font-semibold text-neutral-900">20 Yard</th>
-                    <th className="p-4 text-center font-semibold text-neutral-900">30 Yard</th>
+                  <tr className="bg-dark-800">
+                    <th className="p-4 text-left font-semibold text-white">Feature</th>
+                    <th className="p-4 text-center font-semibold text-white">20 Yard</th>
+                    <th className="p-4 text-center font-semibold text-white">30 Yard</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-neutral-200">
-                    <td className="p-4 text-neutral-600">Dimensions</td>
+                  <tr className="border-b border-dark-700">
+                    <td className="p-4 text-dark-300">Dimensions</td>
                     <td className="p-4 text-center font-medium">22ft x 8ft x 4ft</td>
                     <td className="p-4 text-center font-medium">22ft x 8ft x 6ft</td>
                   </tr>
-                  <tr className="border-b border-neutral-200 bg-neutral-50">
-                    <td className="p-4 text-neutral-600">Capacity</td>
+                  <tr className="border-b border-dark-700 bg-dark-800">
+                    <td className="p-4 text-dark-300">Capacity</td>
                     <td className="p-4 text-center font-medium">20 cubic yards</td>
                     <td className="p-4 text-center font-medium">30 cubic yards</td>
                   </tr>
-                  <tr className="border-b border-neutral-200">
-                    <td className="p-4 text-neutral-600">Pickup Truck Loads</td>
+                  <tr className="border-b border-dark-700">
+                    <td className="p-4 text-dark-300">Pickup Truck Loads</td>
                     <td className="p-4 text-center font-medium">~8 loads</td>
                     <td className="p-4 text-center font-medium">~12 loads</td>
                   </tr>
-                  <tr className="border-b border-neutral-200 bg-neutral-50">
-                    <td className="p-4 text-neutral-600">Weight Included</td>
+                  <tr className="border-b border-dark-700 bg-dark-800">
+                    <td className="p-4 text-dark-300">Weight Included</td>
                     <td className="p-4 text-center font-medium">{config.dumpsters[0]?.weightIncluded}</td>
                     <td className="p-4 text-center font-medium">{config.dumpsters[1]?.weightIncluded}</td>
                   </tr>
-                  <tr className="border-b border-neutral-200">
-                    <td className="p-4 text-neutral-600">10-Day Price</td>
-                    <td className="p-4 text-center font-bold text-primary-600">${config.dumpsters[0]?.pricing['10-day']}</td>
-                    <td className="p-4 text-center font-bold text-primary-600">${config.dumpsters[1]?.pricing['10-day']}</td>
+                  <tr className="border-b border-dark-700">
+                    <td className="p-4 text-dark-300">10-Day Price</td>
+                    <td className="p-4 text-center font-bold text-primary">${config.dumpsters[0]?.pricing['10-day']}</td>
+                    <td className="p-4 text-center font-bold text-primary">${config.dumpsters[1]?.pricing['10-day']}</td>
                   </tr>
-                  <tr className="bg-neutral-50">
-                    <td className="p-4 text-neutral-600">Best For</td>
+                  <tr className="bg-dark-800">
+                    <td className="p-4 text-dark-300">Best For</td>
                     <td className="p-4 text-center text-sm">Cleanouts, small renovations</td>
                     <td className="p-4 text-center text-sm">Construction, large projects</td>
                   </tr>
@@ -282,13 +282,13 @@ export default function DumpsterSizesGuide() {
       </section>
 
       {/* Project Guide */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-4 text-center">
+            <h2 className="text-3xl font-bold text-white mb-4 text-center">
               Dumpster Size by Project Type
             </h2>
-            <p className="text-neutral-600 text-center mb-12 max-w-2xl mx-auto">
+            <p className="text-dark-300 text-center mb-12 max-w-2xl mx-auto">
               Find your project below to see our recommended dumpster size.
             </p>
 
@@ -296,25 +296,25 @@ export default function DumpsterSizesGuide() {
               {projectGuide.map((item, index) => (
                 <div
                   key={index}
-                  className="bg-white rounded-xl p-6 border border-neutral-200 hover:shadow-lg transition-shadow"
+                  className="bg-dark-900 rounded-xl p-6 border border-dark-700 hover:shadow-lg transition-shadow"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <item.icon className="w-6 h-6 text-primary-600" />
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <item.icon className="w-6 h-6 text-primary" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-neutral-900">{item.project}</h3>
+                        <h3 className="font-semibold text-white">{item.project}</h3>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                           item.recommendedSize === '20 Yard'
-                            ? 'bg-primary-100 text-primary-700'
+                            ? 'bg-primary/20 text-primary-700'
                             : 'bg-amber-100 text-amber-700'
                         }`}>
                           {item.recommendedSize}
                         </span>
                       </div>
-                      <p className="text-neutral-600 text-sm mb-3">{item.description}</p>
-                      <p className="text-neutral-500 text-xs italic">{item.tips}</p>
+                      <p className="text-dark-300 text-sm mb-3">{item.description}</p>
+                      <p className="text-dark-400 text-xs italic">{item.tips}</p>
                     </div>
                   </div>
                 </div>
@@ -325,22 +325,22 @@ export default function DumpsterSizesGuide() {
       </section>
 
       {/* Tips Section */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
               Tips for Choosing the Right Size
             </h2>
 
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <div className="flex gap-4">
-                  <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                  <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
                     1
                   </div>
                   <div>
-                    <h3 className="font-semibold text-neutral-900 mb-1">When in Doubt, Size Up</h3>
-                    <p className="text-neutral-600 text-sm">
+                    <h3 className="font-semibold text-white mb-1">When in Doubt, Size Up</h3>
+                    <p className="text-dark-300 text-sm">
                       It's better to have extra space than to need a second dumpster. The price difference
                       between sizes is small compared to ordering an additional container.
                     </p>
@@ -348,12 +348,12 @@ export default function DumpsterSizesGuide() {
                 </div>
 
                 <div className="flex gap-4">
-                  <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                  <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
                     2
                   </div>
                   <div>
-                    <h3 className="font-semibold text-neutral-900 mb-1">Consider the Weight</h3>
-                    <p className="text-neutral-600 text-sm">
+                    <h3 className="font-semibold text-white mb-1">Consider the Weight</h3>
+                    <p className="text-dark-300 text-sm">
                       Heavy materials like concrete, roofing shingles, and dirt fill up weight limits fast.
                       A half-full dumpster of heavy debris can exceed the weight limit.
                     </p>
@@ -361,12 +361,12 @@ export default function DumpsterSizesGuide() {
                 </div>
 
                 <div className="flex gap-4">
-                  <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                  <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
                     3
                   </div>
                   <div>
-                    <h3 className="font-semibold text-neutral-900 mb-1">Think About Access</h3>
-                    <p className="text-neutral-600 text-sm">
+                    <h3 className="font-semibold text-white mb-1">Think About Access</h3>
+                    <p className="text-dark-300 text-sm">
                       Both sizes are 22 feet long but the 30-yard is taller. Make sure you have room
                       and can easily toss items over the side.
                     </p>
@@ -374,16 +374,16 @@ export default function DumpsterSizesGuide() {
                 </div>
               </div>
 
-              <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
-                <Scale className="w-8 h-8 text-primary-600 mb-4" />
-                <h3 className="font-semibold text-neutral-900 mb-4">Still Not Sure?</h3>
-                <p className="text-neutral-600 mb-6">
+              <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
+                <Scale className="w-8 h-8 text-primary mb-4" />
+                <h3 className="font-semibold text-white mb-4">Still Not Sure?</h3>
+                <p className="text-dark-300 mb-6">
                   Give us a call and describe your project. We've helped hundreds of customers choose
                   the right size and we're happy to help you too.
                 </p>
                 <a
                   href={`tel:${config.phoneRaw}`}
-                  className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
                 >
                   <Phone className="w-5 h-5" />
                   {config.phone}
@@ -395,7 +395,7 @@ export default function DumpsterSizesGuide() {
       </section>
 
       {/* CTA */}
-      <section className="section bg-primary-600">
+      <section className="section bg-primary">
         <div className="container-custom text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to Rent Your Dumpster?
@@ -407,7 +407,7 @@ export default function DumpsterSizesGuide() {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
               href="/book"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-dark-900 hover:bg-dark-800 text-primary font-semibold py-4 px-8 rounded-lg transition-colors"
             >
               Book Online Now
               <ArrowRight className="w-5 h-5" />

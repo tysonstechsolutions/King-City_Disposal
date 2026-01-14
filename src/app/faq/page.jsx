@@ -207,16 +207,16 @@ export default function FAQPage() {
       </section>
 
       {/* FAQ Categories */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
             {faqCategories.map((category, catIndex) => (
               <div key={catIndex} className="mb-12">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-                    <category.icon className="w-5 h-5 text-primary-600" />
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <category.icon className="w-5 h-5 text-primary" />
                   </div>
-                  <h2 className="text-2xl font-bold text-neutral-900">{category.name}</h2>
+                  <h2 className="text-2xl font-bold text-white">{category.name}</h2>
                 </div>
 
                 <div className="space-y-4">
@@ -235,15 +235,15 @@ export default function FAQPage() {
       </section>
 
       {/* Prohibited Items Section */}
-      <section id="prohibited" className="section bg-white scroll-mt-24">
+      <section id="prohibited" className="section bg-dark-900 scroll-mt-24">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
-              <h2 className="text-3xl font-bold text-neutral-900">Prohibited Items</h2>
+              <h2 className="text-3xl font-bold text-white">Prohibited Items</h2>
             </div>
 
-            <p className="text-neutral-600 mb-8">
+            <p className="text-dark-300 mb-8">
               Illinois law and landfill regulations prohibit certain items from being disposed of in dumpsters.
               Please review this list before loading your dumpster.
             </p>
@@ -252,13 +252,13 @@ export default function FAQPage() {
               {config.prohibitedItems?.map((item, index) => (
                 <div
                   key={index}
-                  className="bg-neutral-50 rounded-xl p-4 border border-neutral-200"
+                  className="bg-dark-800 rounded-xl p-4 border border-dark-700"
                 >
                   <div className="flex items-start gap-3">
                     <Ban className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-neutral-900 font-medium">{item.item}</p>
-                      <p className="text-neutral-500 text-sm">{item.reason}</p>
+                      <p className="text-white font-medium">{item.item}</p>
+                      <p className="text-dark-400 text-sm">{item.reason}</p>
                     </div>
                   </div>
                 </div>
@@ -270,34 +270,34 @@ export default function FAQPage() {
 
       {/* Surcharge Items */}
       {config.surchargeItems && config.surchargeItems.length > 0 && (
-        <section className="section bg-neutral-50">
+        <section className="section bg-dark-800">
           <div className="container-custom">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-3xl font-bold text-neutral-900 mb-6">
+              <h2 className="text-3xl font-bold text-white mb-6">
                 Items with Surcharges
               </h2>
 
-              <p className="text-neutral-600 mb-8">
+              <p className="text-dark-300 mb-8">
                 These items can go in the dumpster but require an additional fee due to special disposal requirements.
               </p>
 
-              <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+              <div className="bg-dark-900 rounded-xl border border-dark-700 overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-neutral-200 bg-neutral-50">
-                      <th className="text-left p-4 text-neutral-600 font-medium">Item</th>
-                      <th className="text-right p-4 text-neutral-600 font-medium">Fee</th>
+                    <tr className="border-b border-dark-700 bg-dark-800">
+                      <th className="text-left p-4 text-dark-300 font-medium">Item</th>
+                      <th className="text-right p-4 text-dark-300 font-medium">Fee</th>
                     </tr>
                   </thead>
                   <tbody>
                     {config.surchargeItems.map((item, index) => (
-                      <tr key={index} className="border-b border-neutral-100 last:border-0">
-                        <td className="p-4 text-neutral-900">{item.item}</td>
+                      <tr key={index} className="border-b border-dark-700 last:border-0">
+                        <td className="p-4 text-white">{item.item}</td>
                         <td className="p-4 text-right">
                           {item.fee ? (
                             <span className="text-amber-600 font-semibold">${item.fee}/{item.unit}</span>
                           ) : (
-                            <span className="text-neutral-500">{item.unit}</span>
+                            <span className="text-dark-400">{item.unit}</span>
                           )}
                         </td>
                       </tr>
@@ -311,7 +311,7 @@ export default function FAQPage() {
       )}
 
       {/* CTA */}
-      <section className="section bg-primary-600">
+      <section className="section bg-primary">
         <div className="container-custom text-center">
           <HelpCircle className="w-12 h-12 text-white mx-auto mb-4" />
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -324,7 +324,7 @@ export default function FAQPage() {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a
               href={`tel:${config.phoneRaw}`}
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-dark-900 hover:bg-dark-800 text-primary font-semibold py-4 px-8 rounded-lg transition-colors"
             >
               <Phone className="w-5 h-5" />
               {config.phone}

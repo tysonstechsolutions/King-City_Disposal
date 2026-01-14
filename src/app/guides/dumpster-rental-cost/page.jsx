@@ -83,7 +83,7 @@ export default function DumpsterCostGuide() {
       {/* Hero */}
       <section className="bg-neutral-900 text-white py-16">
         <div className="container-custom">
-          <nav className="flex items-center gap-2 text-sm text-neutral-400 mb-6">
+          <nav className="flex items-center gap-2 text-sm text-dark-500 mb-6">
             <Link href="/" className="hover:text-white">Home</Link>
             <span>/</span>
             <Link href="/guides/dumpster-rental-cost" className="text-white">Dumpster Rental Cost</Link>
@@ -92,7 +92,7 @@ export default function DumpsterCostGuide() {
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-4">
               <DollarSign className="w-8 h-8 text-primary-400" />
-              <span className="bg-primary-600/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
+              <span className="bg-primary/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
                 2025 Pricing Guide
               </span>
             </div>
@@ -110,24 +110,24 @@ export default function DumpsterCostGuide() {
       </section>
 
       {/* Quick Pricing */}
-      <section className="section bg-primary-50">
+      <section className="section bg-primary/10">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-neutral-900 mb-6 text-center">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
               Our Dumpster Rental Prices
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {config.dumpsters.map((dumpster) => (
-                <div key={dumpster.id} className="bg-white rounded-xl p-6 border-2 border-primary-200">
-                  <h3 className="text-xl font-bold text-neutral-900 mb-2">{dumpster.name}</h3>
-                  <p className="text-neutral-600 text-sm mb-4">{dumpster.dimensions.display}</p>
+                <div key={dumpster.id} className="bg-dark-900 rounded-xl p-6 border-2 border-primary-200">
+                  <h3 className="text-xl font-bold text-white mb-2">{dumpster.name}</h3>
+                  <p className="text-dark-300 text-sm mb-4">{dumpster.dimensions.display}</p>
 
                   <div className="flex items-end gap-2 mb-4">
-                    <span className="text-4xl font-bold text-primary-600">
+                    <span className="text-4xl font-bold text-primary">
                       ${dumpster.pricing['10-day']}
                     </span>
-                    <span className="text-neutral-500 mb-1">/ 10 days</span>
+                    <span className="text-dark-400 mb-1">/ 10 days</span>
                   </div>
 
                   <ul className="space-y-2 mb-6">
@@ -151,7 +151,7 @@ export default function DumpsterCostGuide() {
 
                   <Link
                     href={`/book?size=${dumpster.id}`}
-                    className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition-colors"
+                    className="block w-full text-center bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition-colors"
                   >
                     Book This Size
                   </Link>
@@ -159,7 +159,7 @@ export default function DumpsterCostGuide() {
               ))}
             </div>
 
-            <p className="text-center text-neutral-600">
+            <p className="text-center text-dark-300">
               Prices valid for {config.address.city} and surrounding areas within {config.serviceRadius} miles.
             </p>
           </div>
@@ -167,10 +167,10 @@ export default function DumpsterCostGuide() {
       </section>
 
       {/* What's Included */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
               What's Included in the Price?
             </h2>
 
@@ -190,7 +190,7 @@ export default function DumpsterCostGuide() {
                     'Weight allowance (3 tons)',
                     'Customer support'
                   ].map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-neutral-700">
+                    <li key={item} className="flex items-start gap-3 text-dark-200">
                       <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                       <span>{item}</span>
                     </li>
@@ -211,11 +211,11 @@ export default function DumpsterCostGuide() {
                     { item: 'Couches/sofas', detail: `$${config.surchargeItems?.find(i => i.item === 'Couch/Sofa')?.fee || 25} each` },
                     { item: 'Heavy materials', detail: 'Call for concrete/dirt pricing' },
                   ].map((item) => (
-                    <li key={item.item} className="flex items-start gap-3 text-neutral-700">
+                    <li key={item.item} className="flex items-start gap-3 text-dark-200">
                       <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                       <div>
                         <span className="font-medium">{item.item}</span>
-                        <span className="text-neutral-500 text-sm ml-2">{item.detail}</span>
+                        <span className="text-dark-400 text-sm ml-2">{item.detail}</span>
                       </div>
                     </li>
                   ))}
@@ -227,10 +227,10 @@ export default function DumpsterCostGuide() {
       </section>
 
       {/* Cost Factors */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
               What Affects Dumpster Rental Cost?
             </h2>
 
@@ -262,14 +262,14 @@ export default function DumpsterCostGuide() {
                   icon: AlertTriangle
                 }
               ].map((factor, index) => (
-                <div key={index} className="bg-white rounded-xl p-6 border border-neutral-200">
+                <div key={index} className="bg-dark-900 rounded-xl p-6 border border-dark-700">
                   <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <factor.icon className="w-6 h-6 text-primary-600" />
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <factor.icon className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-neutral-900 mb-2">{factor.title}</h3>
-                      <p className="text-neutral-600">{factor.description}</p>
+                      <h3 className="font-semibold text-white mb-2">{factor.title}</h3>
+                      <p className="text-dark-300">{factor.description}</p>
                     </div>
                   </div>
                 </div>
@@ -280,10 +280,10 @@ export default function DumpsterCostGuide() {
       </section>
 
       {/* Avoid Hidden Fees */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-8 text-center">
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
               How to Avoid Hidden Dumpster Fees
             </h2>
 
@@ -331,13 +331,13 @@ export default function DumpsterCostGuide() {
       </section>
 
       {/* Local Comparison */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-4">
+            <h2 className="text-3xl font-bold text-white mb-4">
               Why Choose a Local Dumpster Company?
             </h2>
-            <p className="text-neutral-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-dark-300 mb-8 max-w-2xl mx-auto">
               National chains often have hidden fees and slow service. As a local Southern Illinois
               company, we offer better prices and faster delivery because we're right here in your community.
             </p>
@@ -348,9 +348,9 @@ export default function DumpsterCostGuide() {
                 { title: 'Local Knowledge', description: 'We know the area, the regulations, and the best way to serve you.' },
                 { title: 'Real People', description: 'Call us and talk to a real person who can answer your questions.' }
               ].map((item, index) => (
-                <div key={index} className="bg-white rounded-xl p-6 border border-neutral-200">
-                  <h3 className="font-semibold text-neutral-900 mb-2">{item.title}</h3>
-                  <p className="text-neutral-600 text-sm">{item.description}</p>
+                <div key={index} className="bg-dark-900 rounded-xl p-6 border border-dark-700">
+                  <h3 className="font-semibold text-white mb-2">{item.title}</h3>
+                  <p className="text-dark-300 text-sm">{item.description}</p>
                 </div>
               ))}
             </div>
@@ -359,7 +359,7 @@ export default function DumpsterCostGuide() {
       </section>
 
       {/* CTA */}
-      <section className="section bg-primary-600">
+      <section className="section bg-primary">
         <div className="container-custom text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Get Your Dumpster Today
@@ -372,7 +372,7 @@ export default function DumpsterCostGuide() {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
               href="/book"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-dark-900 hover:bg-dark-800 text-primary font-semibold py-4 px-8 rounded-lg transition-colors"
             >
               Book Online Now
               <ArrowRight className="w-5 h-5" />

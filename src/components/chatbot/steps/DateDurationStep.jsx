@@ -54,7 +54,7 @@ export default function DateDurationStep() {
               }}
               className={`rounded-xl p-3 text-center transition-colors ${
                 bookingData.deliveryDateRaw === date.value
-                  ? 'bg-primary-500/20 border-2 border-primary-500'
+                  ? 'bg-primary/20 border-2 border-primary-500'
                   : 'bg-dark-700 hover:bg-dark-600 border-2 border-transparent'
               }`}
             >
@@ -94,7 +94,7 @@ export default function DateDurationStep() {
 
       <div>
         <p className="text-dark-400 text-sm mb-2">Rental period</p>
-        <div className="bg-primary-500/20 border-2 border-primary-500 rounded-xl p-4 text-center">
+        <div className="bg-primary/20 border-2 border-primary-500 rounded-xl p-4 text-center">
           <p className="font-bold text-white text-lg">10 Days</p>
           <p className="text-primary-400 font-semibold">${selectedDumpster?.pricing['10-day']}</p>
           <p className="text-dark-400 text-xs mt-1">Standard rental - Extensions available</p>

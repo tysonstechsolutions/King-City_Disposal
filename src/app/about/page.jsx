@@ -35,14 +35,14 @@ export default function AboutPage() {
       </section>
 
       {/* Our Story */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
             <div>
-              <h2 className="text-3xl font-bold text-neutral-900 mb-6">
+              <h2 className="text-3xl font-bold text-white mb-6">
                 Southern Illinois Roots
               </h2>
-              <div className="space-y-4 text-neutral-600">
+              <div className="space-y-4 text-dark-300">
                 <p>
                   {config.businessName} was founded with a simple idea: dumpster rental
                   shouldn&apos;t be complicated. No hidden fees, no surprise charges, no
@@ -63,33 +63,33 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-200">
+            <div className="bg-dark-800 rounded-xl p-8 border border-dark-700">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-primary-100 rounded-xl flex items-center justify-center">
-                  <MapPin className="w-8 h-8 text-primary-600" />
+                <div className="w-16 h-16 bg-primary/20 rounded-xl flex items-center justify-center">
+                  <MapPin className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-neutral-900">Based in {config.address.city}</h3>
-                  <p className="text-neutral-500">Serving Southern Illinois</p>
+                  <h3 className="text-xl font-bold text-white">Based in {config.address.city}</h3>
+                  <p className="text-dark-400">Serving Southern Illinois</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary-600 flex-shrink-0" />
-                  <span className="text-neutral-700">Locally owned & operated</span>
+                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                  <span className="text-dark-200">Locally owned & operated</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary-600 flex-shrink-0" />
-                  <span className="text-neutral-700">Same-day delivery available</span>
+                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                  <span className="text-dark-200">Same-day delivery available</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary-600 flex-shrink-0" />
-                  <span className="text-neutral-700">Transparent, upfront pricing</span>
+                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                  <span className="text-dark-200">Transparent, upfront pricing</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary-600 flex-shrink-0" />
-                  <span className="text-neutral-700">Serving {config.serviceTowns.length}+ communities</span>
+                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                  <span className="text-dark-200">Serving {config.serviceTowns.length}+ communities</span>
                 </div>
               </div>
             </div>
@@ -98,52 +98,52 @@ export default function AboutPage() {
       </section>
 
       {/* Values */}
-      <section className="section bg-neutral-50">
+      <section className="section bg-dark-800">
         <div className="container-custom">
-          <h2 className="text-3xl font-bold text-neutral-900 mb-4 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4 text-center">
             How We Do Business
           </h2>
-          <p className="text-neutral-600 text-center mb-12 max-w-2xl mx-auto">
+          <p className="text-dark-300 text-center mb-12 max-w-2xl mx-auto">
             We believe in doing things the right way. Here&apos;s what that means to us.
           </p>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-            <div className="bg-white rounded-xl p-6 border border-neutral-200 text-center">
-              <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-6 h-6 text-primary-600" />
+            <div className="bg-dark-900 rounded-xl p-6 border border-dark-700 text-center">
+              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-neutral-900 mb-2">Honest Pricing</h3>
-              <p className="text-neutral-500 text-sm">
+              <h3 className="font-semibold text-white mb-2">Honest Pricing</h3>
+              <p className="text-dark-400 text-sm">
                 The price we quote is the price you pay. No hidden fees or surprise charges.
               </p>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-neutral-200 text-center">
-              <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-6 h-6 text-primary-600" />
+            <div className="bg-dark-900 rounded-xl p-6 border border-dark-700 text-center">
+              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-neutral-900 mb-2">Reliable Service</h3>
-              <p className="text-neutral-500 text-sm">
+              <h3 className="font-semibold text-white mb-2">Reliable Service</h3>
+              <p className="text-dark-400 text-sm">
                 When we say we&apos;ll be there, we&apos;ll be there. On time, every time.
               </p>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-neutral-200 text-center">
-              <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-6 h-6 text-primary-600" />
+            <div className="bg-dark-900 rounded-xl p-6 border border-dark-700 text-center">
+              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Users className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-neutral-900 mb-2">Local Support</h3>
-              <p className="text-neutral-500 text-sm">
+              <h3 className="font-semibold text-white mb-2">Local Support</h3>
+              <p className="text-dark-400 text-sm">
                 Talk to real people who know the area and care about doing a good job.
               </p>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-neutral-200 text-center">
-              <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-6 h-6 text-primary-600" />
+            <div className="bg-dark-900 rounded-xl p-6 border border-dark-700 text-center">
+              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-neutral-900 mb-2">Community First</h3>
-              <p className="text-neutral-500 text-sm">
+              <h3 className="font-semibold text-white mb-2">Community First</h3>
+              <p className="text-dark-400 text-sm">
                 We live here too. Supporting our neighbors is what we do.
               </p>
             </div>
@@ -152,13 +152,13 @@ export default function AboutPage() {
       </section>
 
       {/* Service Area */}
-      <section className="section bg-white">
+      <section className="section bg-dark-900">
         <div className="container-custom">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-4">
+            <h2 className="text-3xl font-bold text-white mb-4">
               Serving Southern Illinois
             </h2>
-            <p className="text-neutral-600 mb-8">
+            <p className="text-dark-300 mb-8">
               We deliver dumpsters throughout the region, including these communities
               and everywhere in between.
             </p>
@@ -167,13 +167,13 @@ export default function AboutPage() {
               {config.serviceTowns.slice(0, 20).map((town) => (
                 <span
                   key={town}
-                  className="bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full text-sm"
+                  className="bg-dark-800 text-dark-200 px-3 py-1 rounded-full text-sm"
                 >
                   {town}
                 </span>
               ))}
               {config.serviceTowns.length > 20 && (
-                <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm font-medium">
+                <span className="bg-primary/20 text-primary-700 px-3 py-1 rounded-full text-sm font-medium">
                   +{config.serviceTowns.length - 20} more
                 </span>
               )}
@@ -181,7 +181,7 @@ export default function AboutPage() {
 
             <Link
               href="/service-area"
-              className="text-primary-600 hover:text-primary-700 inline-flex items-center gap-2 font-medium"
+              className="text-primary hover:text-primary-700 inline-flex items-center gap-2 font-medium"
             >
               View Full Service Area
               <ArrowRight className="w-4 h-4" />
@@ -191,7 +191,7 @@ export default function AboutPage() {
       </section>
 
       {/* Contact CTA */}
-      <section className="section bg-primary-600">
+      <section className="section bg-primary">
         <div className="container-custom text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
@@ -204,7 +204,7 @@ export default function AboutPage() {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
               href="/book"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-dark-900 hover:bg-dark-800 text-primary font-semibold py-4 px-8 rounded-lg transition-colors"
             >
               Book a Dumpster
               <ArrowRight className="w-5 h-5" />
