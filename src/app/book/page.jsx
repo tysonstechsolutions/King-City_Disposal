@@ -1134,8 +1134,13 @@ function BookingPageContent() {
           )}
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex gap-4">
+        {/* Spacer for fixed bottom nav */}
+        <div className="h-24"></div>
+      </div>
+
+      {/* Fixed Navigation Buttons - Always visible at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-dark-900 border-t border-dark-700 p-4 z-50">
+        <div className="max-w-2xl mx-auto flex gap-4">
           {currentStep > 1 && (
             <button
               onClick={prevStep}
@@ -1178,16 +1183,6 @@ function BookingPageContent() {
               )}
             </button>
           )}
-        </div>
-
-        {/* Call us */}
-        <div className="text-center mt-6">
-          <p className="text-dark-400 text-sm">
-            Need help? Call us at{' '}
-            <a href={`tel:${config.phoneRaw}`} className="text-primary hover:underline font-medium">
-              {config.phone}
-            </a>
-          </p>
         </div>
       </div>
     </div>
