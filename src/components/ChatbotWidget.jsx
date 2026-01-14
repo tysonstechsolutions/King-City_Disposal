@@ -109,20 +109,20 @@ export default function ChatbotWidget() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-open chatbot after 2 seconds, but not on booking page or admin pages
-  useEffect(() => {
-    const isAdminPage = pathname?.startsWith('/admin') || pathname?.startsWith('/driver')
-    const isBookingPage = pathname === '/book'
-
-    // Don't auto-open on admin pages or booking page (user is already in booking flow)
-    if (!hasAutoOpened && !isOpen && !isAdminPage && !isBookingPage) {
-      const openTimer = setTimeout(() => {
-        setIsOpen(true)
-        setHasAutoOpened(true)
-      }, 2000)
-      return () => clearTimeout(openTimer)
-    }
-  }, [hasAutoOpened, isOpen, pathname])
+  // Auto-open chatbot - DISABLED while under construction
+  // useEffect(() => {
+  //   const isAdminPage = pathname?.startsWith('/admin') || pathname?.startsWith('/driver')
+  //   const isBookingPage = pathname === '/book'
+  //
+  //   // Don't auto-open on admin pages or booking page (user is already in booking flow)
+  //   if (!hasAutoOpened && !isOpen && !isAdminPage && !isBookingPage) {
+  //     const openTimer = setTimeout(() => {
+  //       setIsOpen(true)
+  //       setHasAutoOpened(true)
+  //     }, 2000)
+  //     return () => clearTimeout(openTimer)
+  //   }
+  // }, [hasAutoOpened, isOpen, pathname])
 
   // Initialize speech recognition
   useEffect(() => {
