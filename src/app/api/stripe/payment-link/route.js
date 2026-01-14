@@ -1,11 +1,15 @@
 // ============================================
 // STRIPE PAYMENT LINK GENERATOR
 // ============================================
-// 
+//
 // Creates instant Stripe payment links for:
 // - New bookings (from chatbot)
 // - Rental extensions (from SMS)
 // - Custom invoices
+//
+// Supports Stripe Connect:
+// - If STRIPE_CONNECT_ACCOUNT_ID is set, payments go to connected account
+// - Platform fee can be configured via STRIPE_PLATFORM_FEE_PERCENT
 //
 // Returns a URL the customer can tap to pay instantly.
 //
@@ -13,6 +17,9 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+
+// Platform fee percentage (e.g., 2.5 = 2.5%)
+const PLATFORM_FEE_PERCENT = parseFloat(process.env.STRIPE_PLATFORM_FEE_PERCENT || '0');
 
 // ============================================
 // CREATE PAYMENT LINK
@@ -146,27 +153,57 @@ export async function POST(request) {
     }
 
     // ========================================
-    // CREATE STRIPE PAYMENT LINK
+    // CREATE STRIPE CHECKOUT SESSION
     // ========================================
-    const stripeResponse = await fetch('https://api.stripe.com/v1/payment_links', {
+    // Using Checkout Sessions instead of Payment Links for Connect support
+
+    const connectedAccountId = process.env.STRIPE_CONNECT_ACCOUNT_ID;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kingcitydisposal.com';
+    const unitAmount = lineItems[0].price_data.unit_amount;
+
+    // Build request body
+    const requestBody = new URLSearchParams({
+      'line_items[0][price_data][currency]': lineItems[0].price_data.currency,
+      'line_items[0][price_data][product_data][name]': lineItems[0].price_data.product_data.name,
+      'line_items[0][price_data][unit_amount]': unitAmount.toString(),
+      'line_items[0][quantity]': '1',
+      'mode': 'payment',
+      'success_url': `${siteUrl}/payment-success?booking=${bookingId || ''}&session_id={CHECKOUT_SESSION_ID}`,
+      'cancel_url': `${siteUrl}/book?canceled=true`,
+      'metadata[type]': metadata.type,
+      'metadata[booking_id]': metadata.booking_id || '',
+      'metadata[source]': metadata.source,
+      'phone_number_collection[enabled]': 'true',
+    });
+
+    // Add description if present
+    if (lineItems[0].price_data.product_data.description) {
+      requestBody.append('line_items[0][price_data][product_data][description]', lineItems[0].price_data.product_data.description);
+    }
+
+    // If using Stripe Connect, add payment_intent_data for transfers
+    if (connectedAccountId) {
+      // Calculate platform fee
+      const platformFee = PLATFORM_FEE_PERCENT > 0
+        ? Math.round(unitAmount * (PLATFORM_FEE_PERCENT / 100))
+        : 0;
+
+      requestBody.append('payment_intent_data[transfer_data][destination]', connectedAccountId);
+
+      if (platformFee > 0) {
+        requestBody.append('payment_intent_data[application_fee_amount]', platformFee.toString());
+      }
+
+      console.log(`Stripe Connect: Payment to ${connectedAccountId}, platform fee: $${(platformFee / 100).toFixed(2)}`);
+    }
+
+    const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        'line_items[0][price_data][currency]': lineItems[0].price_data.currency,
-        'line_items[0][price_data][product_data][name]': lineItems[0].price_data.product_data.name,
-        'line_items[0][price_data][product_data][description]': lineItems[0].price_data.product_data.description || '',
-        'line_items[0][price_data][unit_amount]': lineItems[0].price_data.unit_amount.toString(),
-        'line_items[0][quantity]': '1',
-        'metadata[type]': metadata.type,
-        'metadata[booking_id]': metadata.booking_id || '',
-        'metadata[source]': metadata.source,
-        'after_completion[type]': 'redirect',
-        'after_completion[redirect][url]': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kingcitydisposal.com'}/payment-success?booking=${bookingId || ''}`,
-        'phone_number_collection[enabled]': 'true',
-      }),
+      body: requestBody,
     });
 
     const stripeData = await stripeResponse.json();
