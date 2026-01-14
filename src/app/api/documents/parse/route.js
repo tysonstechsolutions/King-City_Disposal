@@ -559,8 +559,14 @@ export async function POST(request) {
       amount_cents: amountCents,
       // Weight (for weight tickets)
       weight_lbs: weightLbs,
-      // Better title from parsed data
-      title: document.title || parsedData.invoice_number || `${parsedData.from?.name || 'Document'} - ${parsedData.invoice_date || 'Unknown date'}`,
+      // Generate smart title from parsed data (always overwrite the filename)
+      title: parsedData.invoice_number
+        ? `${parsedData.from?.name || 'Invoice'} #${parsedData.invoice_number}`
+        : parsedData.from?.name && parsedData.invoice_date
+          ? `${parsedData.from.name} - ${parsedData.invoice_date}`
+          : parsedData.from?.name
+            ? `${parsedData.from.name} - ${finalCategory}`
+            : document.title,
       // Description with summary
       description: parsedData.notes || (parsedData.line_items?.[0]?.description) || null,
     };

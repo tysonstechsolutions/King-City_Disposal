@@ -152,7 +152,8 @@ export default function DocumentsPage() {
       })
 
       if (response.ok) {
-        setSuccess('Document uploaded!')
+        const data = await response.json()
+        setSuccess('Uploaded! AI is analyzing...')
         setSelectedFile(null)
         setPreview(null)
         setUploadTitle('')
@@ -160,6 +161,26 @@ export default function DocumentsPage() {
         setUploadWeight('')
         setShowUploadForm(false)
         fetchDocuments()
+
+        // Auto-trigger AI parsing
+        if (data.document?.id) {
+          setParsing(prev => ({ ...prev, [data.document.id]: true }))
+          try {
+            const parseResponse = await fetch('/api/documents/parse', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ document_id: data.document.id }),
+            })
+            if (parseResponse.ok) {
+              setSuccess('Document analyzed! Title and details updated.')
+              fetchDocuments()
+            }
+          } catch (parseErr) {
+            console.error('Auto-parse error:', parseErr)
+          }
+          setParsing(prev => ({ ...prev, [data.document.id]: false }))
+        }
+
         setTimeout(() => setSuccess(null), 3000)
       } else {
         const err = await response.json()
@@ -342,22 +363,10 @@ export default function DocumentsPage() {
               </button>
             </div>
 
-            {/* Title (optional) */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-dark-200 mb-1">Title (optional)</label>
-              <input
-                type="text"
-                value={uploadTitle}
-                onChange={(e) => setUploadTitle(e.target.value)}
-                placeholder={selectedFile.name}
-                className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-dark-700 text-white"
-              />
-            </div>
-
             {/* AI Info */}
             <div className="mb-4 text-sm text-dark-400 flex items-center gap-2 bg-dark-700 p-3 rounded-lg">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>AI will automatically detect type, extract amounts, weights & vendor info</span>
+              <span>AI will automatically detect type, extract amounts, weights, vendor & set title</span>
             </div>
 
             {/* Upload Button */}
