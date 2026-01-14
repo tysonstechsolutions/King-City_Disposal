@@ -322,7 +322,7 @@ export default function DocumentsPage() {
           </div>
         )}
 
-        {/* Upload Form */}
+        {/* Upload Form - Simplified (AI extracts all details) */}
         {showUploadForm && selectedFile && (
           <div className="mb-6 bg-dark-800 rounded-xl border border-dark-700 p-4 shadow-sm">
             <div className="flex items-start gap-4 mb-4">
@@ -342,32 +342,7 @@ export default function DocumentsPage() {
               </button>
             </div>
 
-            {/* Category Selection */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-dark-200 mb-2">Type</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {DOCUMENT_CATEGORIES.slice(0, 6).map(cat => {
-                  const Icon = cat.icon
-                  const isSelected = uploadCategory === cat.id
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setUploadCategory(cat.id)}
-                      className={`p-3 rounded-lg border text-center transition-colors ${
-                        isSelected
-                          ? 'border-primary bg-primary/5 text-primary'
-                          : 'border-dark-700 hover:border-dark-600'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 mx-auto mb-1" />
-                      <span className="text-xs">{cat.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Title */}
+            {/* Title (optional) */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-dark-200 mb-1">Title (optional)</label>
               <input
@@ -375,38 +350,15 @@ export default function DocumentsPage() {
                 value={uploadTitle}
                 onChange={(e) => setUploadTitle(e.target.value)}
                 placeholder={selectedFile.name}
-                className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-dark-700 text-white"
               />
             </div>
 
-            {/* Weight (for weight tickets) */}
-            {uploadCategory === 'weight_ticket' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-dark-200 mb-1">Weight (lbs)</label>
-                <input
-                  type="number"
-                  value={uploadWeight}
-                  onChange={(e) => setUploadWeight(e.target.value)}
-                  placeholder="e.g., 4500"
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                />
-              </div>
-            )}
-
-            {/* Amount (for receipts) */}
-            {(uploadCategory === 'fuel_receipt' || uploadCategory === 'invoice' || uploadCategory === 'other') && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-dark-200 mb-1">Amount ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={uploadAmount}
-                  onChange={(e) => setUploadAmount(e.target.value)}
-                  placeholder="e.g., 125.50"
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                />
-              </div>
-            )}
+            {/* AI Info */}
+            <div className="mb-4 text-sm text-dark-400 flex items-center gap-2 bg-dark-700 p-3 rounded-lg">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>AI will automatically detect type, extract amounts, weights & vendor info</span>
+            </div>
 
             {/* Upload Button */}
             <div className="flex gap-3">
@@ -429,7 +381,7 @@ export default function DocumentsPage() {
                 ) : (
                   <>
                     <Upload className="w-5 h-5" />
-                    Upload
+                    Upload & Analyze
                   </>
                 )}
               </button>
