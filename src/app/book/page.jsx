@@ -27,6 +27,7 @@ import {
   Mail,
   Loader2,
   AlertCircle,
+  Shield,
 } from 'lucide-react'
 
 const STEPS = [
@@ -459,7 +460,8 @@ function BookingPageContent() {
         }
         return formData.projectType && formData.dumpsterSize
       case 2:
-        return formData.address && dumpsterPlaced
+        // Name, email, address, and dumpster placement required
+        return formData.customerName && formData.customerEmail && formData.address && dumpsterPlaced
       case 3:
         // Check availability for selected date and size
         if (formData.deliveryDate && formData.dumpsterSize) {
@@ -467,7 +469,7 @@ function BookingPageContent() {
         }
         return formData.deliveryDate
       case 4:
-        return formData.customerName && formData.customerPhone
+        return formData.customerPhone
       case 5:
         return true
       default:
@@ -715,9 +717,49 @@ function BookingPageContent() {
             </div>
           )}
 
-          {/* Step 2: Address & Placement */}
+          {/* Step 2: Address & Contact */}
           {currentStep === 2 && (
             <div className="space-y-6">
+              {/* Local company notice */}
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-start gap-3">
+                <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-white text-sm font-medium">You're booking directly with us</p>
+                  <p className="text-dark-300 text-xs">We're a local family-owned company in Southern IL - not a broker or middleman.</p>
+                </div>
+              </div>
+
+              {/* Name and Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-dark-300 mb-2 font-medium">Your Name *</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <input
+                      type="text"
+                      value={formData.customerName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
+                      placeholder="John Smith"
+                      className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-2 font-medium">Email *</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <input
+                      type="email"
+                      value={formData.customerEmail}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                      placeholder="john@example.com"
+                      className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Address */}
               <div>
                 <h2 className="text-xl font-semibold text-white mb-4">Delivery address</h2>
                 <div className="relative">
@@ -913,58 +955,36 @@ function BookingPageContent() {
             </div>
           )}
 
-          {/* Step 4: Contact Info */}
+          {/* Step 4: Phone Number */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-white mb-2">Your contact info</h2>
+                <h2 className="text-xl font-semibold text-white mb-2">Your phone number</h2>
                 <p className="text-dark-400 text-sm mb-4">
                   We'll text you delivery updates and confirmation.
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-dark-300 mb-2 font-medium">Full Name *</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                    <input
-                      type="text"
-                      value={formData.customerName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                      placeholder="John Smith"
-                      className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors"
-                    />
-                  </div>
+              <div>
+                <label className="block text-sm text-dark-300 mb-2 font-medium">Phone Number *</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                  <input
+                    type="tel"
+                    value={formData.customerPhone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
+                    placeholder="(618) 555-1234"
+                    className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors text-lg"
+                  />
                 </div>
+                <p className="text-xs text-dark-400 mt-2">We'll send delivery updates via text message</p>
+              </div>
 
-                <div>
-                  <label className="block text-sm text-dark-300 mb-2 font-medium">Phone Number *</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                    <input
-                      type="tel"
-                      value={formData.customerPhone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
-                      placeholder="(618) 555-1234"
-                      className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-dark-300 mb-2 font-medium">Email (optional)</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                    <input
-                      type="email"
-                      value={formData.customerEmail}
-                      onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                      placeholder="john@example.com"
-                      className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors"
-                    />
-                  </div>
-                </div>
+              {/* Show who they are */}
+              <div className="bg-dark-700 rounded-lg p-4 border border-dark-600">
+                <p className="text-dark-400 text-sm">Booking for:</p>
+                <p className="text-white font-medium">{formData.customerName}</p>
+                <p className="text-dark-300 text-sm">{formData.customerEmail}</p>
               </div>
             </div>
           )}

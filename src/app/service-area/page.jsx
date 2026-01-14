@@ -1,13 +1,98 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { config } from '../../config'
-import { MapPin, Phone, CheckCircle2, ArrowRight } from 'lucide-react'
+import { MapPin, Phone, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react'
 
-export const metadata = {
-  title: `Service Area - Dumpster Rental in Southern Illinois | ${config.businessName}`,
-  description: `${config.businessName} delivers dumpsters to ${config.serviceTowns.slice(0, 10).join(', ')} and more. Serving a ${config.serviceRadius}-mile radius from ${config.address.city}, IL.`,
-}
+// Service area center coordinates (Mount Vernon, IL)
+const SERVICE_CENTER = { lat: 38.3172, lng: -88.9031 }
+const SERVICE_RADIUS_MILES = config.serviceRadius || 30
 
 export default function ServiceAreaPage() {
+  const mapRef = useRef(null)
+  const mapContainerRef = useRef(null)
+  const [mapLoaded, setMapLoaded] = useState(false)
+
+  useEffect(() => {
+    // Load Google Maps
+    const loadMap = () => {
+      if (!window.google?.maps || !mapContainerRef.current) {
+        return
+      }
+
+      const map = new window.google.maps.Map(mapContainerRef.current, {
+        center: SERVICE_CENTER,
+        zoom: 9,
+        mapTypeId: 'roadmap',
+        styles: [
+          { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
+          { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
+          { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a9a' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a2a3e' }] },
+          { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6a6a7a' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e0e1a' }] },
+          { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+        ],
+        disableDefaultUI: true,
+        zoomControl: true,
+      })
+
+      mapRef.current = map
+
+      // Add service area circle
+      new window.google.maps.Circle({
+        map: map,
+        center: SERVICE_CENTER,
+        radius: SERVICE_RADIUS_MILES * 1609.34, // Convert miles to meters
+        fillColor: '#3d8b64',
+        fillOpacity: 0.15,
+        strokeColor: '#3d8b64',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+      })
+
+      // Add center marker
+      new window.google.maps.Marker({
+        position: SERVICE_CENTER,
+        map: map,
+        title: config.businessName,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: '#3d8b64',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+      })
+
+      setMapLoaded(true)
+    }
+
+    // Check if Google Maps is already loaded
+    if (window.google?.maps) {
+      loadMap()
+    } else {
+      // Wait for it to load
+      const checkGoogle = setInterval(() => {
+        if (window.google?.maps) {
+          clearInterval(checkGoogle)
+          loadMap()
+        }
+      }, 100)
+
+      // Load script if not present
+      if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
+        const script = document.createElement('script')
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps?.apiKey || ''}&libraries=places`
+        script.async = true
+        document.head.appendChild(script)
+      }
+
+      return () => clearInterval(checkGoogle)
+    }
+  }, [])
   // Group towns by first letter for easy scanning
   const groupedTowns = config.serviceTowns.reduce((acc, town) => {
     const letter = town[0].toUpperCase()
@@ -38,13 +123,20 @@ export default function ServiceAreaPage() {
         <div className="container-custom">
           <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
             {/* Map */}
-            <div className="bg-dark-900 rounded-xl p-8 h-96 flex items-center justify-center border border-dark-700">
-              <div className="text-center">
-                <MapPin className="w-16 h-16 text-primary mx-auto mb-4" />
-                <p className="text-dark-400">Interactive map coming soon</p>
-                <p className="text-dark-500 text-sm">
-                  {config.serviceRadius}-mile radius from {config.address.city}, IL
-                </p>
+            <div className="bg-dark-900 rounded-xl overflow-hidden h-96 border border-dark-700 relative">
+              <div ref={mapContainerRef} className="w-full h-full" />
+              {!mapLoaded && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-900">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin mb-3" />
+                  <p className="text-dark-400">Loading map...</p>
+                </div>
+              )}
+              {/* Legend */}
+              <div className="absolute bottom-3 left-3 bg-dark-900/90 rounded-lg px-3 py-2 border border-dark-700">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-primary/30 border-2 border-primary"></div>
+                  <span className="text-dark-300 text-sm">{config.serviceRadius}-mile service area</span>
+                </div>
               </div>
             </div>
 
