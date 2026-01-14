@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { config } from '../../../../../config'
 import { requireAdminAuth } from '../../../../../lib/adminAuth'
+import { logger } from '../../../../../lib/logger'
 
 // Get service role key for admin operations
 const getServiceKey = () => {
@@ -16,8 +17,8 @@ function validateBookingId(id) {
 // PATCH - Update booking (status, notes)
 export async function PATCH(request, { params }) {
   try {
-    // Check admin authentication
-    const auth = requireAdminAuth(request)
+    // Check admin authentication (now async)
+    const auth = await requireAdminAuth(request)
     if (!auth.authorized) {
       return NextResponse.json(
         { error: auth.error },
@@ -71,7 +72,7 @@ export async function PATCH(request, { params }) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Supabase update error:', errorText)
+      logger.error('Supabase update error', null, { error: errorText })
       return NextResponse.json(
         { error: 'Failed to update booking' },
         { status: response.status }
@@ -82,7 +83,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ success: true, booking: updated[0] })
 
   } catch (error) {
-    console.error('Update booking error:', error)
+    logger.error('Update booking error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -93,8 +94,8 @@ export async function PATCH(request, { params }) {
 // DELETE - Delete booking
 export async function DELETE(request, { params }) {
   try {
-    // Check admin authentication
-    const auth = requireAdminAuth(request)
+    // Check admin authentication (now async)
+    const auth = await requireAdminAuth(request)
     if (!auth.authorized) {
       return NextResponse.json(
         { error: auth.error },
@@ -126,7 +127,7 @@ export async function DELETE(request, { params }) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Supabase delete error:', errorText)
+      logger.error('Supabase delete error', null, { error: errorText })
       return NextResponse.json(
         { error: 'Failed to delete booking' },
         { status: response.status }
@@ -136,7 +137,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Delete booking error:', error)
+    logger.error('Delete booking error', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

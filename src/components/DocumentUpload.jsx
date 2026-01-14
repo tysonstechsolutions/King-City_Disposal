@@ -1,70 +1,60 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { config } from '../config'
 import {
   Upload,
   X,
   FileText,
   Image,
-  Camera,
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Scale,
-  Receipt,
-  Truck,
-  File
+  Sparkles
 } from 'lucide-react'
 
-const CATEGORIES = [
-  { id: 'weight_ticket', label: 'Weight/Landfill Ticket', icon: Scale },
-  { id: 'fuel_receipt', label: 'Fuel Receipt', icon: Receipt },
-  { id: 'photo', label: 'Job Photo', icon: Camera },
-  { id: 'contract', label: 'Contract/Agreement', icon: FileText },
-  { id: 'insurance', label: 'Insurance Document', icon: FileText },
-  { id: 'other', label: 'Other', icon: File },
-]
-
-export default function DocumentUpload({ 
-  bookingId = null, 
-  customerId = null, 
+export default function DocumentUpload({
+  bookingId = null,
+  customerId = null,
   invoiceId = null,
   onUploadComplete = () => {},
-  allowedCategories = null, // If null, show all
   compact = false,
 }) {
   const [uploading, setUploading] = useState(false)
+  const [parsing, setParsing] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
   const [selectedFile, setSelectedFile] = useState(null)
   const [preview, setPreview] = useState(null)
-  const [category, setCategory] = useState('other')
-  const [metadata, setMetadata] = useState({
-    title: '',
-    weight_lbs: '',
-    amount: '',
-  })
+  const [title, setTitle] = useState('')
   const fileInputRef = useRef(null)
 
-  const categories = allowedCategories 
-    ? CATEGORIES.filter(c => allowedCategories.includes(c.id))
-    : CATEGORIES
+  // Allowed file types for upload
+  const ALLOWED_TYPES = [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+    'application/vnd.ms-excel', // xls
+    'text/xml', 'application/xml',
+    'text/csv',
+  ]
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File too large. Maximum size is 10MB.')
+    // Validate file size (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File too large. Maximum size is 50MB.')
       return
     }
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
-    if (!allowedTypes.includes(file.type)) {
-      setError('Invalid file type. Please upload an image or PDF.')
+    const ext = file.name?.toLowerCase().split('.').pop()
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'pdf', 'xlsx', 'xls', 'xml', 'csv']
+
+    if (!ALLOWED_TYPES.includes(file.type) && !allowedExtensions.includes(ext)) {
+      setError('Invalid file type. Allowed: images, PDF, Excel, XML, CSV')
       return
     }
 
@@ -79,14 +69,29 @@ export default function DocumentUpload({
     } else {
       setPreview(null)
     }
+  }
 
-    // Auto-set category based on file name
-    const fileName = file.name.toLowerCase()
-    if (fileName.includes('weight') || fileName.includes('landfill') || fileName.includes('ticket')) {
-      setCategory('weight_ticket')
-    } else if (fileName.includes('fuel') || fileName.includes('gas')) {
-      setCategory('fuel_receipt')
+  // Auto-detect document category from filename
+  const detectCategory = (filename) => {
+    const name = filename.toLowerCase()
+    if (name.includes('weight') || name.includes('landfill') || name.includes('ticket') || name.includes('dump')) {
+      return 'weight_ticket'
     }
+    if (name.includes('fuel') || name.includes('gas') || name.includes('diesel')) {
+      return 'fuel_receipt'
+    }
+    if (name.includes('tire') || name.includes('oil') || name.includes('maintenance') ||
+        name.includes('repair') || name.includes('service') || name.includes('brake') ||
+        name.includes('lube') || name.includes('tune')) {
+      return 'maintenance'
+    }
+    if (name.includes('invoice') || name.includes('bill')) {
+      return 'invoice'
+    }
+    if (name.includes('receipt')) {
+      return 'fuel_receipt'
+    }
+    return 'invoice' // Default to invoice for AI parsing
   }
 
   const handleUpload = async () => {
@@ -96,16 +101,17 @@ export default function DocumentUpload({
     setError(null)
 
     try {
+      // Auto-detect category from filename
+      const category = detectCategory(selectedFile.name)
+
       // Create form data
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('category', category)
-      formData.append('title', metadata.title || selectedFile.name)
+      formData.append('title', title || selectedFile.name)
       if (bookingId) formData.append('booking_id', bookingId)
       if (customerId) formData.append('customer_id', customerId)
       if (invoiceId) formData.append('invoice_id', invoiceId)
-      if (metadata.weight_lbs) formData.append('weight_lbs', metadata.weight_lbs)
-      if (metadata.amount) formData.append('amount_cents', Math.round(parseFloat(metadata.amount) * 100))
 
       const response = await fetch('/api/documents/upload', {
         method: 'POST',
@@ -114,20 +120,38 @@ export default function DocumentUpload({
 
       if (response.ok) {
         const data = await response.json()
-        setSuccess(true)
+
+        // Show upload success
+        setUploading(false)
+
+        // If parsing was triggered, show parsing status
+        if (data.parsing) {
+          setParsing(true)
+          setSuccessMessage('Uploaded! AI is analyzing the document...')
+          setSuccess(true)
+
+          // Poll for parsing completion (optional enhancement)
+          setTimeout(() => {
+            setParsing(false)
+            setSuccessMessage('Document uploaded and analyzed!')
+          }, 3000)
+        } else {
+          setSuccess(true)
+          setSuccessMessage('Document uploaded successfully!')
+        }
+
         setSelectedFile(null)
         setPreview(null)
-        setMetadata({ title: '', weight_lbs: '', amount: '' })
+        setTitle('')
         onUploadComplete(data.document)
 
-        // Reset success message after 3 seconds
-        setTimeout(() => setSuccess(false), 3000)
+        // Reset success message after 5 seconds
+        setTimeout(() => setSuccess(false), 5000)
       } else {
         const err = await response.json()
         setError(err.error || 'Upload failed')
       }
     } catch (err) {
-      console.error('Upload error:', err)
       setError('Failed to upload file')
     }
 
@@ -138,10 +162,14 @@ export default function DocumentUpload({
     setSelectedFile(null)
     setPreview(null)
     setError(null)
+    setTitle('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
   }
+
+  // Accept string for file input
+  const acceptTypes = "image/*,application/pdf,.xlsx,.xls,.xml,.csv"
 
   if (compact) {
     // Compact version - just a button that opens file picker
@@ -150,13 +178,13 @@ export default function DocumentUpload({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept={acceptTypes}
           onChange={handleFileSelect}
           className="hidden"
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || parsing}
           className="flex items-center gap-2 px-3 py-2 text-sm bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 disabled:opacity-50"
         >
           {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -196,8 +224,12 @@ export default function DocumentUpload({
       {/* Success Message */}
       {success && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
-          <CheckCircle2 className="w-5 h-5" />
-          Document uploaded successfully!
+          {parsing ? (
+            <Sparkles className="w-5 h-5 animate-pulse" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5" />
+          )}
+          {successMessage}
         </div>
       )}
 
@@ -213,15 +245,15 @@ export default function DocumentUpload({
       <div
         onClick={() => fileInputRef.current?.click()}
         className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-          selectedFile 
-            ? 'border-primary bg-primary/5' 
+          selectedFile
+            ? 'border-primary bg-primary/5'
             : 'border-neutral-300 hover:border-primary hover:bg-neutral-50'
         }`}
       >
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept={acceptTypes}
           onChange={handleFileSelect}
           className="hidden"
         />
@@ -235,7 +267,7 @@ export default function DocumentUpload({
             )}
             <p className="font-medium">{selectedFile.name}</p>
             <p className="text-sm text-neutral-500">
-              {(selectedFile.size / 1024).toFixed(1)} KB
+              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
             </p>
             <button
               onClick={(e) => { e.stopPropagation(); clearFile(); }}
@@ -254,87 +286,38 @@ export default function DocumentUpload({
               <span className="text-primary font-medium">Click to upload</span> or drag and drop
             </p>
             <p className="text-sm text-neutral-400 mt-1">
-              Images or PDF up to 10MB
+              Images, PDF, Excel, or XML up to 50MB
+            </p>
+            <p className="text-xs text-neutral-400 mt-2 flex items-center justify-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              AI automatically extracts invoice details
             </p>
           </div>
         )}
       </div>
 
-      {/* Document Details (shown when file selected) */}
+      {/* Document Details (shown when file selected) - Simplified! */}
       {selectedFile && (
         <div className="mt-4 space-y-4">
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Document Type
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {categories.map(cat => {
-                const Icon = cat.icon
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setCategory(cat.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
-                      category === cat.id
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-neutral-200 hover:border-neutral-300'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {cat.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Title */}
+          {/* Title (optional) */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
               Title (optional)
             </label>
             <input
               type="text"
-              value={metadata.title}
-              onChange={(e) => setMetadata({ ...metadata, title: e.target.value })}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder={selectedFile.name}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             />
           </div>
 
-          {/* Weight (for weight tickets) */}
-          {category === 'weight_ticket' && (
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Weight (lbs)
-              </label>
-              <input
-                type="number"
-                value={metadata.weight_lbs}
-                onChange={(e) => setMetadata({ ...metadata, weight_lbs: e.target.value })}
-                placeholder="e.g., 4500"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-              />
-            </div>
-          )}
-
-          {/* Amount (for receipts) */}
-          {(category === 'fuel_receipt' || category === 'other') && (
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Amount ($)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={metadata.amount}
-                onChange={(e) => setMetadata({ ...metadata, amount: e.target.value })}
-                placeholder="e.g., 125.50"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-              />
-            </div>
-          )}
+          {/* AI Info */}
+          <div className="text-sm text-neutral-500 flex items-center gap-2 bg-neutral-50 p-3 rounded-lg">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span>AI will automatically detect document type, extract amounts, weights, and vendor info</span>
+          </div>
 
           {/* Upload Button */}
           <button
@@ -350,7 +333,7 @@ export default function DocumentUpload({
             ) : (
               <>
                 <Upload className="w-5 h-5" />
-                Upload Document
+                Upload & Analyze
               </>
             )}
           </button>

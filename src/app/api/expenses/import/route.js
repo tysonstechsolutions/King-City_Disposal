@@ -1,11 +1,12 @@
 // ============================================
-// EXCEL IMPORT API - Multi-Sheet Invoice Import
+// EXCEL & XML IMPORT API - Multi-Format Invoice Import
 // ============================================
-// Parse Excel files with multiple sheets containing invoices
+// Parse Excel (XLSX) and XML files containing invoices
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import * as XLSX from 'xlsx';
+import { logger } from '../../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,7 @@ async function getVendorCorrections() {
       return await response.json();
     }
   } catch (e) {
-    console.error('Error fetching vendor corrections:', e);
+    logger.error('Error fetching vendor corrections', e);
   }
   return [];
 }
@@ -327,10 +328,12 @@ function detectCategory(vendorName, data) {
     return 'landfill';
   }
 
-  // Maintenance/Repairs
+  // Maintenance/Repairs (tires, oil changes, tune-ups, etc.)
   if (text.includes('repair') || text.includes('service') || text.includes('maint') ||
       text.includes('auto') || text.includes('truck') || text.includes('tire') ||
-      text.includes('parts') || text.includes('mechanic')) {
+      text.includes('parts') || text.includes('mechanic') || text.includes('oil change') ||
+      text.includes('lube') || text.includes('brake') || text.includes('transmission') ||
+      text.includes('alignment') || text.includes('inspection') || text.includes('tune')) {
     return 'maintenance';
   }
 
@@ -349,7 +352,204 @@ function detectCategory(vendorName, data) {
 }
 
 // ============================================
-// POST - Import Excel file with multiple sheets
+// XML Parsing Functions
+// ============================================
+
+// Simple XML parser without external dependencies
+function parseXML(xmlString) {
+  const result = {};
+
+  // Remove XML declaration and comments
+  const cleanXml = xmlString
+    .replace(/<\?xml[^?]*\?>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .trim();
+
+  // Parse recursively
+  return parseXMLNode(cleanXml);
+}
+
+function parseXMLNode(xml) {
+  const result = {};
+
+  // Match all tags
+  const tagRegex = /<(\w+)([^>]*)>([\s\S]*?)<\/\1>|<(\w+)([^>]*)\/>/g;
+  let match;
+
+  while ((match = tagRegex.exec(xml)) !== null) {
+    const tagName = match[1] || match[4];
+    const content = match[3] || '';
+
+    // Check if content contains more XML tags
+    if (/<\w+/.test(content)) {
+      // Recursive parse
+      const parsed = parseXMLNode(content);
+      if (result[tagName]) {
+        // Convert to array if multiple same-named elements
+        if (!Array.isArray(result[tagName])) {
+          result[tagName] = [result[tagName]];
+        }
+        result[tagName].push(parsed);
+      } else {
+        result[tagName] = parsed;
+      }
+    } else {
+      // Leaf node - store value
+      const value = content.trim();
+      if (result[tagName]) {
+        if (!Array.isArray(result[tagName])) {
+          result[tagName] = [result[tagName]];
+        }
+        result[tagName].push(value);
+      } else {
+        result[tagName] = value;
+      }
+    }
+  }
+
+  return result;
+}
+
+// Parse XML invoice data into standard format
+function parseXMLInvoice(xmlData, filename) {
+  const invoice = {
+    invoice_number: '',
+    invoice_date: null,
+    from_name: '',
+    from_phone: '',
+    from_address: '',
+    to_name: 'King City Disposal',
+    subtotal_cents: 0,
+    tax_cents: 0,
+    fees_cents: 0,
+    total_cents: 0,
+    expense_category: 'other',
+    line_items: [],
+    notes: `Imported from XML: ${filename}`,
+  };
+
+  // Common XML field names to look for (case-insensitive search)
+  const findValue = (obj, ...keys) => {
+    if (!obj || typeof obj !== 'object') return null;
+
+    for (const key of Object.keys(obj)) {
+      const lowerKey = key.toLowerCase();
+      for (const searchKey of keys) {
+        if (lowerKey.includes(searchKey.toLowerCase())) {
+          const val = obj[key];
+          return typeof val === 'object' ? findValue(val, ...keys) : val;
+        }
+      }
+      // Recurse into nested objects
+      if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+        const found = findValue(obj[key], ...keys);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Extract invoice number
+  invoice.invoice_number = findValue(xmlData, 'invoicenumber', 'invoice_number', 'invoiceno', 'invoice_no', 'billnumber', 'bill_number', 'documentnumber', 'id') || '';
+
+  // Extract date
+  const dateStr = findValue(xmlData, 'invoicedate', 'invoice_date', 'date', 'billdate', 'documentdate', 'issuedate');
+  if (dateStr) {
+    invoice.invoice_date = parseDate(dateStr);
+  }
+
+  // Extract vendor info
+  invoice.from_name = findValue(xmlData, 'vendorname', 'vendor_name', 'vendor', 'suppliername', 'supplier', 'company', 'from', 'sellername', 'seller') || '';
+  invoice.from_phone = findValue(xmlData, 'vendorphone', 'phone', 'telephone', 'tel', 'contact') || '';
+  invoice.from_address = findValue(xmlData, 'vendoraddress', 'address', 'street', 'location') || '';
+
+  // Extract amounts
+  const totalStr = findValue(xmlData, 'total', 'grandtotal', 'grand_total', 'amount', 'amountdue', 'balance', 'invoiceamount');
+  if (totalStr) {
+    invoice.total_cents = parseCurrency(totalStr);
+  }
+
+  const subtotalStr = findValue(xmlData, 'subtotal', 'sub_total', 'pretax', 'netamount');
+  if (subtotalStr) {
+    invoice.subtotal_cents = parseCurrency(subtotalStr);
+  }
+
+  const taxStr = findValue(xmlData, 'tax', 'salestax', 'vat', 'taxamount');
+  if (taxStr) {
+    invoice.tax_cents = parseCurrency(taxStr);
+  }
+
+  // If no subtotal, derive from total and tax
+  if (!invoice.subtotal_cents && invoice.total_cents) {
+    invoice.subtotal_cents = invoice.total_cents - invoice.tax_cents;
+  }
+
+  // Detect category
+  invoice.expense_category = detectCategory(invoice.from_name, JSON.stringify(xmlData));
+
+  // Try to extract line items
+  const items = findValue(xmlData, 'items', 'lineitems', 'line_items', 'details');
+  if (items && Array.isArray(items)) {
+    invoice.line_items = items.map(item => ({
+      description: findValue(item, 'description', 'desc', 'name', 'item') || '',
+      quantity: parseFloat(findValue(item, 'quantity', 'qty', 'count') || '1'),
+      unit_price: parseCurrency(findValue(item, 'price', 'unitprice', 'rate', 'cost') || '0'),
+      amount: parseCurrency(findValue(item, 'amount', 'total', 'linetotal', 'extended') || '0'),
+    }));
+  }
+
+  return invoice;
+}
+
+// Parse Excel XML format (SpreadsheetML)
+function parseExcelXML(xmlData, filename) {
+  const invoices = [];
+
+  // Look for Worksheet elements
+  const worksheets = xmlData.Worksheet || xmlData.ss_Worksheet || [];
+  const sheets = Array.isArray(worksheets) ? worksheets : [worksheets];
+
+  for (const sheet of sheets) {
+    if (!sheet) continue;
+
+    // Get sheet name
+    const sheetName = sheet['ss:Name'] || sheet.Name || 'Sheet';
+
+    // Get rows from Table
+    const table = sheet.Table || sheet.ss_Table || {};
+    const rows = table.Row || table.ss_Row || [];
+    const rowArray = Array.isArray(rows) ? rows : [rows];
+
+    // Convert to 2D array for existing parseSheet function
+    const data = [];
+    for (const row of rowArray) {
+      if (!row) continue;
+      const cells = row.Cell || row.ss_Cell || [];
+      const cellArray = Array.isArray(cells) ? cells : [cells];
+      const rowData = cellArray.map(cell => {
+        const dataNode = cell.Data || cell.ss_Data || {};
+        return typeof dataNode === 'string' ? dataNode : dataNode['#text'] || '';
+      });
+      data.push(rowData);
+    }
+
+    // Use existing parseSheet logic with converted data
+    if (data.length >= 2) {
+      // Create a mock sheet object
+      const mockSheet = {};
+      XLSX.utils.sheet_add_aoa(mockSheet, data);
+      const invoice = parseSheet(mockSheet, sheetName);
+      if (invoice) {
+        invoices.push(invoice);
+      }
+    }
+  }
+
+  return invoices;
+}
+
+// ============================================
+// POST - Import Excel or XML file
 // ============================================
 export async function POST(request) {
   try {
@@ -363,64 +563,127 @@ export async function POST(request) {
       );
     }
 
+    // Get file extension
+    const fileName = file.name || 'unknown';
+    const ext = fileName.toLowerCase().split('.').pop();
+
     // Read file buffer
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
 
     // Get vendor corrections for learning
     const vendorCorrections = await getVendorCorrections();
 
     const results = {
-      total_sheets: workbook.SheetNames.length,
+      total_sheets: 0,
       imported: 0,
       skipped: 0,
       errors: [],
       invoices: [],
+      format: ext,
     };
 
-    // Process each sheet
-    for (const sheetName of workbook.SheetNames) {
-      try {
-        const sheet = workbook.Sheets[sheetName];
-        let invoiceData = parseSheet(sheet, sheetName);
+    let invoicesToProcess = [];
 
-        if (!invoiceData) {
-          results.skipped++;
-          results.errors.push({ sheet: sheetName, error: 'Could not parse invoice data' });
-          continue;
+    // Handle XML files
+    if (ext === 'xml') {
+      try {
+        const xmlString = new TextDecoder().decode(arrayBuffer);
+        const xmlData = parseXML(xmlString);
+
+        // Check if it's Excel XML format (SpreadsheetML)
+        if (xmlData.Workbook || xmlData.ss_Workbook) {
+          const workbookData = xmlData.Workbook || xmlData.ss_Workbook;
+          invoicesToProcess = parseExcelXML(workbookData, fileName);
+          results.total_sheets = invoicesToProcess.length;
+        } else {
+          // Standard XML invoice format
+          const invoice = parseXMLInvoice(xmlData, fileName);
+          if (invoice && (invoice.from_name || invoice.total_cents || invoice.invoice_number)) {
+            invoicesToProcess = [invoice];
+            results.total_sheets = 1;
+          }
         }
 
+        if (invoicesToProcess.length === 0) {
+          return NextResponse.json({
+            success: false,
+            error: 'Could not parse XML file. Ensure it contains invoice data.',
+          }, { status: 400 });
+        }
+      } catch (xmlError) {
+        logger.error('XML parsing error', xmlError);
+        return NextResponse.json({
+          success: false,
+          error: `Failed to parse XML: ${xmlError.message}`,
+        }, { status: 400 });
+      }
+    }
+    // Handle Excel files (xlsx, xls)
+    else if (ext === 'xlsx' || ext === 'xls') {
+      const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+      results.total_sheets = workbook.SheetNames.length;
+
+      // Process each sheet
+      for (const sheetName of workbook.SheetNames) {
+        try {
+          const sheet = workbook.Sheets[sheetName];
+          const invoiceData = parseSheet(sheet, sheetName);
+
+          if (invoiceData) {
+            invoicesToProcess.push(invoiceData);
+          } else {
+            results.skipped++;
+            results.errors.push({ sheet: sheetName, error: 'Could not parse invoice data' });
+          }
+        } catch (sheetError) {
+          results.errors.push({ sheet: sheetName, error: sheetError.message });
+          results.skipped++;
+        }
+      }
+    } else {
+      return NextResponse.json({
+        success: false,
+        error: `Unsupported file format: .${ext}. Supported formats: .xlsx, .xls, .xml`,
+      }, { status: 400 });
+    }
+
+    // Process all parsed invoices
+    for (const invoiceData of invoicesToProcess) {
+      try {
         // Apply vendor corrections
-        invoiceData = applyVendorCorrections(invoiceData, vendorCorrections);
+        const correctedData = applyVendorCorrections(invoiceData, vendorCorrections);
 
         // Determine tax year
         let taxYear = new Date().getFullYear();
-        if (invoiceData.invoice_date) {
-          const date = new Date(invoiceData.invoice_date);
+        if (correctedData.invoice_date) {
+          const date = new Date(correctedData.invoice_date);
           if (!isNaN(date.getTime())) {
             taxYear = date.getFullYear();
           }
         }
 
+        // Generate a unique identifier for the import
+        const importId = `IMPORT-${Date.now()}-${results.imported}`;
+
         // Create parsed_invoice record
         const insertData = {
           invoice_type: 'vendor_expense',
           status: 'pending', // Requires review before confirmed
-          from_name: invoiceData.from_name || 'Unknown Vendor',
-          from_phone: invoiceData.from_phone || null,
-          from_address: invoiceData.from_address || null,
-          to_name: invoiceData.to_name,
-          invoice_number: invoiceData.invoice_number || `IMPORT-${sheetName}`,
-          invoice_date: invoiceData.invoice_date,
-          subtotal_cents: invoiceData.subtotal_cents,
-          tax_cents: invoiceData.tax_cents,
-          fees_cents: invoiceData.fees_cents,
-          total_cents: invoiceData.total_cents,
-          expense_category: invoiceData.expense_category,
+          from_name: correctedData.from_name || 'Unknown Vendor',
+          from_phone: correctedData.from_phone || null,
+          from_address: correctedData.from_address || null,
+          to_name: correctedData.to_name,
+          invoice_number: correctedData.invoice_number || importId,
+          invoice_date: correctedData.invoice_date,
+          subtotal_cents: correctedData.subtotal_cents,
+          tax_cents: correctedData.tax_cents,
+          fees_cents: correctedData.fees_cents,
+          total_cents: correctedData.total_cents,
+          expense_category: correctedData.expense_category,
           is_tax_deductible: true,
           tax_year: taxYear,
-          line_items: JSON.stringify(invoiceData.line_items),
-          notes: invoiceData.notes,
+          line_items: JSON.stringify(correctedData.line_items),
+          notes: correctedData.notes,
           parsed_at: new Date().toISOString(),
         };
 
@@ -443,32 +706,32 @@ export async function POST(request) {
           results.imported++;
           results.invoices.push({
             id: created.id,
-            sheet: sheetName,
-            vendor: invoiceData.from_name,
-            date: invoiceData.invoice_date,
-            total: invoiceData.total_cents / 100,
-            category: invoiceData.expense_category,
+            source: correctedData.notes || fileName,
+            vendor: correctedData.from_name,
+            date: correctedData.invoice_date,
+            total: correctedData.total_cents / 100,
+            category: correctedData.expense_category,
           });
         } else {
           const errorText = await response.text();
-          results.errors.push({ sheet: sheetName, error: errorText });
+          results.errors.push({ source: correctedData.notes || 'unknown', error: errorText });
           results.skipped++;
         }
 
-      } catch (sheetError) {
-        results.errors.push({ sheet: sheetName, error: sheetError.message });
+      } catch (itemError) {
+        results.errors.push({ source: invoiceData.notes || 'unknown', error: itemError.message });
         results.skipped++;
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Imported ${results.imported} of ${results.total_sheets} sheets`,
+      message: `Imported ${results.imported} of ${results.total_sheets} ${ext === 'xml' ? 'invoice(s)' : 'sheet(s)'}`,
       ...results,
     });
 
   } catch (error) {
-    console.error('Excel import error:', error);
+    logger.error('File import error', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

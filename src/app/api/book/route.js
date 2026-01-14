@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { config } from '../../../config';
+import { config, isInServiceArea } from '../../../config';
 import { notifyCustomer, notifyOwner, bookingConfirmationEmail } from '../../../lib/notifications';
 import { bookingSchema, validateInput } from '../../../lib/validations';
 import { logger } from '../../../lib/logger';
@@ -19,7 +19,7 @@ async function findOrCreateCustomer({ name, phone, email, address, city, zip }) 
 
   // Validate phone contains only digits after cleaning (SQL injection prevention)
   if (!/^\d+$/.test(cleanPhone)) {
-    console.error('Invalid phone number format after cleaning');
+    logger.warn('Invalid phone number format after cleaning');
     return null;
   }
 
@@ -49,7 +49,7 @@ async function findOrCreateCustomer({ name, phone, email, address, city, zip }) 
     if (searchResponse.ok) {
       const existing = await searchResponse.json();
       if (existing.length > 0) {
-        console.log(`Found existing customer: ${existing[0].name} (ID: ${existing[0].id})`);
+        logger.debug('Found existing customer', { name: existing[0].name, id: existing[0].id });
 
         // Update customer stats and city/zip if provided
         const updateData = {
@@ -121,11 +121,11 @@ async function findOrCreateCustomer({ name, phone, email, address, city, zip }) 
 
   if (createResponse.ok) {
     const [created] = await createResponse.json();
-    console.log(`✅ Created new customer: ${created.name} (ID: ${created.id})`);
+    logger.info('Created new customer', { name: created.name, id: created.id });
     return created;
   }
 
-  console.error('Failed to create customer');
+  logger.error('Failed to create customer');
   return null;
 }
 
@@ -228,6 +228,27 @@ export async function POST(request) {
     const zip = body.zip || null;
 
     // ============================================
+    // SERVICE AREA VALIDATION
+    // ============================================
+    // Check if placement coordinates are within service area
+    if (placementLat && placementLng) {
+      if (!isInServiceArea(placementLat, placementLng)) {
+        logger.warn('Booking attempted outside service area', {
+          lat: placementLat,
+          lng: placementLng,
+          address,
+        });
+        return NextResponse.json(
+          {
+            error: 'This location is outside our service area. Please call us to discuss options.',
+            outsideServiceArea: true,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ============================================
     // 1. FIND OR CREATE CUSTOMER
     // ============================================
     const customer = await findOrCreateCustomer({
@@ -273,7 +294,7 @@ export async function POST(request) {
 
     if (!dbResponse.ok) {
       const errorText = await dbResponse.text();
-      console.error('Supabase error:', errorText);
+      logger.error('Supabase booking save error', null, { error: errorText });
       return NextResponse.json(
         { error: 'Failed to save booking' },
         { status: 500 }

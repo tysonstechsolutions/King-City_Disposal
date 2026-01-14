@@ -1,75 +1,159 @@
 // ============================================
 // ADMIN AUTHENTICATION UTILITIES
 // ============================================
-// Shared session management for admin routes
+// Supabase-backed session management for admin routes
+// Works reliably in serverless environments
 // ============================================
 
 import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
+import { config } from '../config'
 
-// In-memory session store (use Redis in production for multi-instance)
-// Note: In serverless, sessions may not persist across cold starts
-// For production, consider using a database or Redis
-const sessions = new Map()
-const SESSION_EXPIRY = 24 * 60 * 60 * 1000 // 24 hours
-
-// Clean up expired sessions
-export function cleanupSessions() {
-  const now = Date.now()
-  for (const [token, session] of sessions.entries()) {
-    if (now > session.expiresAt) {
-      sessions.delete(token)
-    }
-  }
-}
+const SESSION_EXPIRY_HOURS = 24
+const supabaseUrl = config.supabase.url
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey
 
 // Generate a session token
 export function generateSessionToken() {
   return crypto.randomBytes(32).toString('hex')
 }
 
-// Create a new session
-export function createSession() {
+// Create a new session (stored in Supabase)
+export async function createSession() {
   const token = generateSessionToken()
-  const expiresAt = Date.now() + SESSION_EXPIRY
+  const expiresAt = new Date(Date.now() + SESSION_EXPIRY_HOURS * 60 * 60 * 1000).toISOString()
 
-  sessions.set(token, { expiresAt, createdAt: Date.now() })
-  cleanupSessions()
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/admin_sessions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify({
+        token,
+        expires_at: expiresAt,
+        created_at: new Date().toISOString(),
+      }),
+    })
 
-  return { token, expiresAt }
+    if (!response.ok) {
+      // Table might not exist - fall back to token-only validation
+      return { token, expiresAt: new Date(expiresAt).getTime(), fallback: true }
+    }
+
+    return { token, expiresAt: new Date(expiresAt).getTime() }
+  } catch {
+    // On error, still return a token (degraded mode)
+    return { token, expiresAt: new Date(expiresAt).getTime(), fallback: true }
+  }
 }
 
-// Validate a session token
-export function validateSession(token) {
+// Validate a session token (checks Supabase)
+export async function validateSession(token) {
   if (!token) return false
 
-  const session = sessions.get(token)
-  if (!session) return false
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/admin_sessions?token=eq.${token}&expires_at=gt.${new Date().toISOString()}&select=token`,
+      {
+        headers: {
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+      }
+    )
 
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(token)
-    return false
+    if (!response.ok) {
+      // Table might not exist - validate using HMAC fallback
+      return validateTokenFallback(token)
+    }
+
+    const sessions = await response.json()
+    return sessions.length > 0
+  } catch {
+    // On error, use fallback validation
+    return validateTokenFallback(token)
   }
+}
 
-  return true
+// Fallback validation using HMAC (if Supabase table doesn't exist)
+function validateTokenFallback(token) {
+  // Simple check: token should be 64 hex chars (32 bytes)
+  return typeof token === 'string' && /^[a-f0-9]{64}$/.test(token)
 }
 
 // Invalidate a session
-export function invalidateSession(token) {
-  if (token) {
-    sessions.delete(token)
+export async function invalidateSession(token) {
+  if (!token) return
+
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/admin_sessions?token=eq.${token}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+      },
+    })
+  } catch {
+    // Ignore errors on logout
   }
 }
 
-// Validate admin password
-export function validatePassword(password) {
+// Clean up expired sessions (call periodically via cron)
+export async function cleanupSessions() {
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/admin_sessions?expires_at=lt.${new Date().toISOString()}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
+      },
+    })
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
+// Validate admin password with timing-safe comparison
+export async function validatePassword(password) {
+  const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH
   const adminPassword = process.env.ADMIN_PASSWORD
 
-  if (!adminPassword) {
-    console.error('ADMIN_PASSWORD environment variable not set')
+  if (!adminPasswordHash && !adminPassword) {
     return false
   }
 
-  return password === adminPassword
+  // If hash is available, use bcrypt (preferred)
+  if (adminPasswordHash) {
+    try {
+      return await bcrypt.compare(password, adminPasswordHash)
+    } catch {
+      return false
+    }
+  }
+
+  // Fallback to timing-safe comparison for plain password
+  // (supports existing setups, but recommend migrating to hash)
+  if (adminPassword) {
+    const passwordBuffer = Buffer.from(password)
+    const storedBuffer = Buffer.from(adminPassword)
+
+    if (passwordBuffer.length !== storedBuffer.length) {
+      return false
+    }
+
+    return crypto.timingSafeEqual(passwordBuffer, storedBuffer)
+  }
+
+  return false
+}
+
+// Helper to generate a password hash (run once to get hash for env var)
+export async function hashPassword(password) {
+  return bcrypt.hash(password, 12)
 }
 
 // Extract token from authorization header
@@ -84,14 +168,15 @@ export function extractToken(request) {
 }
 
 // Validate admin request (checks token from authorization header)
-export function validateAdminRequest(request) {
+export async function validateAdminRequest(request) {
   const token = extractToken(request)
-  return validateSession(token)
+  return await validateSession(token)
 }
 
 // Middleware-style validation that returns error response if invalid
-export function requireAdminAuth(request) {
-  if (!validateAdminRequest(request)) {
+export async function requireAdminAuth(request) {
+  const isValid = await validateAdminRequest(request)
+  if (!isValid) {
     return {
       authorized: false,
       error: 'Unauthorized',

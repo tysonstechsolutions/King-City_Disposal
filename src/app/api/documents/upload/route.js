@@ -5,9 +5,23 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { logger } from '../../../../lib/logger';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+// Maximum file size: 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+// Allowed file types
+const ALLOWED_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+  'application/vnd.ms-excel', // xls
+  'text/xml', 'application/xml', // xml
+  'text/csv',
+];
 
 export async function POST(request) {
   try {
@@ -26,6 +40,29 @@ export async function POST(request) {
         { error: 'No file provided' },
         { status: 400 }
       );
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      logger.warn('File upload rejected - too large', { size: file.size, max: MAX_FILE_SIZE });
+      return NextResponse.json(
+        { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` },
+        { status: 400 }
+      );
+    }
+
+    // Validate file type (allow common document types)
+    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+      // Also allow by extension for files without proper MIME type
+      const ext = file.name?.toLowerCase().split('.').pop();
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'pdf', 'xlsx', 'xls', 'xml', 'csv'];
+      if (!allowedExtensions.includes(ext)) {
+        logger.warn('File upload rejected - invalid type', { type: file.type, name: file.name });
+        return NextResponse.json(
+          { error: 'Invalid file type. Allowed: images, PDF, Excel, XML, CSV' },
+          { status: 400 }
+        );
+      }
     }
 
     // Generate unique file path
@@ -50,8 +87,7 @@ export async function POST(request) {
 
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
-      console.error('Storage upload error:', errorText);
-      console.error('Upload status:', uploadResponse.status);
+      logger.error('Storage upload error', null, { error: errorText, status: uploadResponse.status });
 
       // Check if bucket doesn't exist
       if (errorText.includes('Bucket not found')) {
@@ -108,7 +144,7 @@ export async function POST(request) {
 
     if (!dbResponse.ok) {
       const errorText = await dbResponse.text();
-      console.error('Document record error:', errorText);
+      logger.error('Document record error', null, { error: errorText });
       return NextResponse.json(
         { error: 'Failed to save document record' },
         { status: 500 }
@@ -146,15 +182,15 @@ export async function POST(request) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ document_id: document.id, category }),
-        }).catch(err => console.error('Background parse error:', err));
+        }).catch(err => logger.error('Background parse error', err));
 
-        console.log(`🔍 ${category} parsing triggered for document ${document.id}`);
+        logger.info('Document parsing triggered', { category, document_id: document.id });
       } catch (parseError) {
-        console.error('Failed to trigger document parsing:', parseError);
+        logger.error('Failed to trigger document parsing', parseError);
       }
     }
 
-    console.log(`📄 Document uploaded: ${storagePath}`);
+    logger.info('Document uploaded', { path: storagePath, id: document.id });
 
     return NextResponse.json({
       success: true,
@@ -164,7 +200,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Document upload error:', error);
+    logger.error('Document upload error', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
@@ -219,7 +255,7 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 });
 
   } catch (error) {
-    console.error('Get documents error:', error);
+    logger.error('Get documents error', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

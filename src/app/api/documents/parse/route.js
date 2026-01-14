@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { logger } from '../../../../lib/logger';
 import * as XLSX from 'xlsx';
 
 // Force dynamic rendering (not static)
@@ -31,7 +32,7 @@ async function getVendorCorrections() {
       return await response.json();
     }
   } catch (e) {
-    console.error('Error fetching vendor corrections:', e);
+    logger.error('Error fetching vendor corrections', e);
   }
   return [];
 }
@@ -49,7 +50,7 @@ function applyVendorCorrections(parsedData, corrections) {
 
     // Match by partial vendor name (either contains the other)
     if (vendorName.includes(correctionVendor) || correctionVendor.includes(vendorName)) {
-      console.log(`Applying vendor correction for: ${parsedData.from.name} -> ${correction.corrected_name || parsedData.from.name}`);
+      logger.debug('Applying vendor correction', { from: parsedData.from.name, to: correction.corrected_name });
 
       // Apply corrections
       if (correction.corrected_name) {
@@ -206,7 +207,7 @@ Return a JSON object with this exact structure:
   "fees_cents": 0,
   "discount_cents": 0,
   "total_cents": 10000,
-  "expense_category": "landfill" or "fuel" or "parts" or "repairs" or "supplies" or "dumpster_rental" or "other",
+  "expense_category": "landfill" or "fuel" or "maintenance" or "parts" or "repairs" or "supplies" or "dumpster_rental" or "other",
   "notes": "Any additional notes, weight tickets, reference numbers, or important info",
   "confidence": 0.95
 }
@@ -223,7 +224,7 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
   * If "King City Disposal" appears in the TO/recipient/billing section, this is a "vendor_expense" (bill FROM a vendor)
 - All monetary amounts must be in cents (multiply dollars by 100). Example: $525.00 = 52500 cents
 - DATE FORMAT: Convert dates to YYYY-MM-DD. Example: 1/4/2026 becomes 2026-01-04
-- For expense_category: landfill (dump fees/waste disposal), fuel (gas/diesel), parts, repairs, supplies, dumpster_rental, or other
+- For expense_category: landfill (dump fees/waste disposal), fuel (gas/diesel), maintenance (oil changes, tires, tune-ups, inspections), parts, repairs, supplies, dumpster_rental, or other
 - Include weight/tonnage info in the notes field even if it appears elsewhere
 - Set confidence between 0 and 1 based on data clarity and your certainty
 - If a field is not visible or unclear, use null
@@ -384,8 +385,7 @@ export async function POST(request) {
 
     if (!claudeResponse.ok) {
       const errorText = await claudeResponse.text();
-      console.error('Claude API error:', errorText);
-      console.error('Claude API status:', claudeResponse.status);
+      logger.error('Claude API error', null, { error: errorText, status: claudeResponse.status });
       await updateDocumentStatus(document_id, 'failed');
 
       // Parse error for more detail
@@ -418,7 +418,7 @@ export async function POST(request) {
       }
       parsedData = JSON.parse(jsonStr.trim());
     } catch (parseError) {
-      console.error('Failed to parse AI response:', aiText);
+      logger.error('Failed to parse AI response', parseError, { response: aiText?.substring(0, 500) });
       await updateDocumentStatus(document_id, 'failed');
       return NextResponse.json(
         { error: 'Failed to parse AI response as JSON' },
@@ -503,7 +503,7 @@ export async function POST(request) {
 
     if (!insertResponse.ok) {
       const errorText = await insertResponse.text();
-      console.error('Failed to insert parsed invoice:', errorText);
+      logger.error('Failed to insert parsed invoice', null, { error: errorText });
       await updateDocumentStatus(document_id, 'failed');
       return NextResponse.json(
         { error: 'Failed to save parsed data' },
@@ -513,21 +513,64 @@ export async function POST(request) {
 
     const [parsedInvoice] = await insertResponse.json();
 
-    // 7. Update document with parse status, link, and customer
-    // Extract weight for weight tickets
+    // 7. Update document with ALL parsed info
+    // This makes the document searchable/filterable without joining parsed_invoices
+
+    // Extract weight (for any document with weight info)
     let weightLbs = null;
-    if (docCategory === 'weight_ticket' && parsedData.line_items?.length > 0) {
-      const weightItem = parsedData.line_items[0];
-      if (weightItem.weight_tons) {
+    if (parsedData.line_items?.length > 0) {
+      const weightItem = parsedData.line_items.find(item => item.weight_tons);
+      if (weightItem?.weight_tons) {
         weightLbs = Math.round(weightItem.weight_tons * 2000);
       }
     }
 
-    // Extract amount for fuel receipts
-    let amountCents = null;
-    if (docCategory === 'fuel_receipt') {
-      amountCents = parsedData.total_cents || null;
-    }
+    // Extract amount (total from any parsed document)
+    const amountCents = parsedData.total_cents || null;
+
+    // Determine the best category from parsed data
+    let finalCategory = parsedData.expense_category || docCategory;
+    // Map expense_category to document category format
+    const categoryMap = {
+      'landfill': 'weight_ticket',
+      'fuel': 'fuel_receipt',
+      'maintenance': 'maintenance',
+      'parts': 'maintenance',
+      'repairs': 'maintenance',
+      'supplies': 'receipt',
+      'insurance': 'insurance',
+      'dumpster_rental': 'invoice',
+      'other': docCategory || 'other',
+    };
+    finalCategory = categoryMap[finalCategory] || finalCategory;
+
+    // Build document update with all parsed info
+    const documentUpdate = {
+      parse_status: 'parsed',
+      parsed_invoice_id: parsedInvoice.id,
+      customer_id: customer?.id || null,
+      // Category from AI
+      category: finalCategory,
+      // Vendor/company name
+      vendor: parsedData.from?.name || null,
+      // Document date from the invoice
+      document_date: parsedData.invoice_date || null,
+      // Amount (for all document types)
+      amount_cents: amountCents,
+      // Weight (for weight tickets)
+      weight_lbs: weightLbs,
+      // Better title from parsed data
+      title: document.title || parsedData.invoice_number || `${parsedData.from?.name || 'Document'} - ${parsedData.invoice_date || 'Unknown date'}`,
+      // Description with summary
+      description: parsedData.notes || (parsedData.line_items?.[0]?.description) || null,
+    };
+
+    // Remove null values to avoid overwriting existing data
+    Object.keys(documentUpdate).forEach(key => {
+      if (documentUpdate[key] === null || documentUpdate[key] === undefined) {
+        delete documentUpdate[key];
+      }
+    });
 
     await fetch(
       `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
@@ -538,13 +581,7 @@ export async function POST(request) {
           'apikey': getSupabaseKey(),
           'Authorization': `Bearer ${getSupabaseKey()}`,
         },
-        body: JSON.stringify({
-          parse_status: 'parsed',
-          parsed_invoice_id: parsedInvoice.id,
-          customer_id: customer?.id || null,
-          ...(weightLbs && { weight_lbs: weightLbs }),
-          ...(amountCents && { amount_cents: amountCents }),
-        }),
+        body: JSON.stringify(documentUpdate),
       }
     );
 
@@ -571,7 +608,16 @@ export async function POST(request) {
     }
 
     const autoConfirmed = parsedData.confidence >= 0.95;
-    console.log(`✅ ${docCategory} parsed successfully: Document ${document_id} -> Parsed Invoice ${parsedInvoice.id}${autoConfirmed ? ' (AUTO-CONFIRMED)' : ''}${customer ? ` -> Customer ${customer.id} (${customer.name})` : ''}${weightLbs ? ` -> ${weightLbs} lbs` : ''}`);
+    logger.info('Document parsed successfully', {
+      document_id,
+      parsed_invoice_id: parsedInvoice.id,
+      category: finalCategory,
+      vendor: parsedData.from?.name,
+      amount_cents: amountCents,
+      weight_lbs: weightLbs,
+      auto_confirmed: autoConfirmed,
+      customer_id: customer?.id,
+    });
 
     return NextResponse.json({
       success: true,
@@ -592,7 +638,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Parse invoice error:', error);
+    logger.error('Parse invoice error', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
@@ -656,7 +702,7 @@ async function findOrCreateCustomer(customerData, isVendor = false) {
   if (searchResponse.ok) {
     const existing = await searchResponse.json();
     if (existing.length > 0) {
-      console.log(`Found existing customer: ${existing[0].name} (ID: ${existing[0].id})`);
+      logger.debug('Found existing customer', { name: existing[0].name, id: existing[0].id });
       return existing[0];
     }
   }
@@ -705,11 +751,11 @@ async function findOrCreateCustomer(customerData, isVendor = false) {
 
   if (createResponse.ok) {
     const [created] = await createResponse.json();
-    console.log(`Created new customer: ${created.name} (ID: ${created.id})`);
+    logger.info('Created new customer', { name: created.name, id: created.id });
     return created;
   }
 
-  console.error('Failed to create customer');
+  logger.error('Failed to create customer');
   return null;
 }
 
@@ -763,7 +809,7 @@ export async function GET(request) {
     );
 
   } catch (error) {
-    console.error('Get parsed invoices error:', error);
+    logger.error('Get parsed invoices error', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

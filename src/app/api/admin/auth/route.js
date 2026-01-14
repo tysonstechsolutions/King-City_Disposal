@@ -7,6 +7,7 @@ import {
   extractToken,
 } from '../../../../lib/adminAuth'
 import { authRateLimit } from '../../../../lib/rateLimit'
+import { logger } from '../../../../lib/logger'
 
 // POST - Login with password
 export async function POST(request) {
@@ -27,15 +28,17 @@ export async function POST(request) {
 
     const { password } = await request.json()
 
-    if (!validatePassword(password)) {
+    // validatePassword is now async
+    const isValid = await validatePassword(password)
+    if (!isValid) {
       return NextResponse.json(
         { error: 'Invalid password' },
         { status: 401 }
       )
     }
 
-    // Create session
-    const { token, expiresAt } = createSession()
+    // createSession is now async
+    const { token, expiresAt } = await createSession()
 
     return NextResponse.json({
       success: true,
@@ -44,7 +47,7 @@ export async function POST(request) {
     })
 
   } catch (error) {
-    console.error('Admin auth error:', error)
+    logger.error('Admin auth error', error)
     return NextResponse.json(
       { error: 'Authentication failed' },
       { status: 500 }
@@ -64,7 +67,9 @@ export async function GET(request) {
       )
     }
 
-    if (!validateSession(token)) {
+    // validateSession is now async
+    const isValid = await validateSession(token)
+    if (!isValid) {
       return NextResponse.json(
         { valid: false, error: 'Invalid or expired token' },
         { status: 401 }
@@ -74,7 +79,7 @@ export async function GET(request) {
     return NextResponse.json({ valid: true })
 
   } catch (error) {
-    console.error('Token validation error:', error)
+    logger.error('Token validation error', error)
     return NextResponse.json(
       { valid: false, error: 'Validation failed' },
       { status: 500 }
@@ -86,9 +91,9 @@ export async function GET(request) {
 export async function DELETE(request) {
   try {
     const token = extractToken(request)
-    invalidateSession(token)
+    await invalidateSession(token)
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: true })
   }
 }
