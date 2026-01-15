@@ -145,6 +145,11 @@ export default function Footer() {
             </Link>
           </div>
         </div>
+        <div className="text-center mt-6 pt-4 border-t border-neutral-800">
+          <p className="text-neutral-500 text-sm">
+            Website by <a href="https://tysonstechsolutions.com" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:text-primary-300 transition-colors">Tyson's Tech Solutions</a>
+          </p>
+        </div>
       </div>
     </footer>
   )
