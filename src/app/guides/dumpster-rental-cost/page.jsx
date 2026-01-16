@@ -16,7 +16,7 @@ import {
 // METADATA - Targeting "how much does a dumpster cost"
 // ============================================
 export const metadata = {
-  title: 'How Much Does a Dumpster Rental Cost? | 2025 Pricing Guide',
+  title: 'How Much Does a Dumpster Rental Cost? | 2026 Pricing Guide',
   description: `Dumpster rental costs in Southern Illinois start at $${config.dumpsters[0]?.pricing['10-day']} for a 10-day rental. Learn what affects pricing, what's included, and how to avoid hidden fees. Transparent pricing from King City Disposal.`,
   keywords: [
     'dumpster rental cost',
@@ -35,7 +35,7 @@ export const metadata = {
     canonical: `${config.websiteUrl}/guides/dumpster-rental-cost`,
   },
   openGraph: {
-    title: 'How Much Does a Dumpster Rental Cost? | 2025 Pricing Guide',
+    title: 'How Much Does a Dumpster Rental Cost? | 2026 Pricing Guide',
     description: `Dumpster rentals in Southern Illinois start at $${config.dumpsters[0]?.pricing['10-day']}. See what's included and how to get the best price.`,
     url: `${config.websiteUrl}/guides/dumpster-rental-cost`,
     type: 'article',
@@ -49,7 +49,7 @@ function ArticleSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "How Much Does a Dumpster Rental Cost? Complete 2025 Pricing Guide",
+    "headline": "How Much Does a Dumpster Rental Cost? Complete 2026 Pricing Guide",
     "description": `Learn about dumpster rental costs in Southern Illinois. Prices start at $${config.dumpsters[0]?.pricing['10-day']} for a 10-day rental.`,
     "author": {
       "@type": "Organization",
@@ -93,7 +93,7 @@ export default function DumpsterCostGuide() {
             <div className="flex items-center gap-3 mb-4">
               <DollarSign className="w-8 h-8 text-primary-400" />
               <span className="bg-primary/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
-                2025 Pricing Guide
+                2026 Pricing Guide
               </span>
             </div>
 
