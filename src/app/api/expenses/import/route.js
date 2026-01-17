@@ -85,6 +85,9 @@ function parseSheet(sheet, sheetName) {
     from_phone: '',
     from_address: '',
     to_name: 'King City Disposal',
+    to_address: '',
+    customer_name: '',
+    customer_id: '',
     subtotal_cents: 0,
     tax_cents: 0,
     fees_cents: 0,
@@ -94,142 +97,233 @@ function parseSheet(sheet, sheetName) {
     notes: `Imported from sheet: ${sheetName}`,
   };
 
-  // Common keywords to look for
-  const dateKeywords = ['date', 'invoice date', 'dated', 'bill date'];
-  const invoiceNumKeywords = ['invoice', 'invoice #', 'invoice no', 'inv #', 'bill #', 'receipt #', 'ticket'];
-  const vendorKeywords = ['from', 'vendor', 'company', 'sold by', 'billed from'];
-  const phoneKeywords = ['phone', 'tel', 'telephone', 'contact'];
-  const totalKeywords = ['total', 'amount due', 'balance due', 'grand total', 'amount', 'balance'];
-  const subtotalKeywords = ['subtotal', 'sub-total', 'sub total'];
-  const taxKeywords = ['tax', 'sales tax', 'vat'];
-  const descKeywords = ['description', 'item', 'service', 'product', 'material'];
-  const qtyKeywords = ['qty', 'quantity', 'units', 'count'];
-  const priceKeywords = ['price', 'rate', 'unit price', 'cost', 'each'];
-  const amountKeywords = ['amount', 'ext', 'extended', 'line total'];
+  // Helper: Extract value after colon/equals from a cell
+  const extractValueAfterDelimiter = (cellValue) => {
+    const str = String(cellValue || '');
+    // Match patterns like "Invoice No.: 4596" or "Date: 1/4/2026" or "Customer ID: MOOND"
+    const match = str.match(/[:.]\s*(.+)$/);
+    return match ? match[1].trim() : null;
+  };
 
-  // Scan through all cells
+  // First pass: Scan ALL cells and extract any colon-delimited values
+  const allText = [];
   for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
     const row = data[rowIdx];
+    for (let colIdx = 0; colIdx < row.length; colIdx++) {
+      const cellStr = String(row[colIdx] || '').trim();
+      if (cellStr) {
+        allText.push({ row: rowIdx, col: colIdx, value: cellStr, lower: cellStr.toLowerCase() });
+      }
+    }
+  }
 
+  // Extract invoice number - look for "Invoice No", "Invoice #", etc.
+  for (const cell of allText) {
+    if (!invoice.invoice_number) {
+      if (cell.lower.includes('invoice no') || cell.lower.includes('invoice #') ||
+          cell.lower.includes('invoice:') || cell.lower.match(/^invoice\s*[:#]/)) {
+        const extracted = extractValueAfterDelimiter(cell.value);
+        if (extracted) {
+          invoice.invoice_number = extracted;
+        } else {
+          // Check next cell in same row
+          const nextCell = data[cell.row]?.[cell.col + 1];
+          if (nextCell) invoice.invoice_number = String(nextCell).trim();
+        }
+      }
+    }
+  }
+
+  // Extract date - look for "Date:" pattern
+  for (const cell of allText) {
+    if (!invoice.invoice_date) {
+      if (cell.lower.includes('date') && !cell.lower.includes('due date')) {
+        const extracted = extractValueAfterDelimiter(cell.value);
+        if (extracted) {
+          const parsed = parseDate(extracted);
+          if (parsed) invoice.invoice_date = parsed;
+        } else {
+          // Check next cell
+          const nextCell = data[cell.row]?.[cell.col + 1];
+          if (nextCell) {
+            const parsed = parseDate(nextCell);
+            if (parsed) invoice.invoice_date = parsed;
+          }
+        }
+      }
+    }
+  }
+
+  // Extract Customer ID
+  for (const cell of allText) {
+    if (!invoice.customer_id) {
+      if (cell.lower.includes('customer id') || cell.lower.includes('customer #') || cell.lower.includes('cust id')) {
+        const extracted = extractValueAfterDelimiter(cell.value);
+        if (extracted) {
+          invoice.customer_id = extracted;
+        } else {
+          const nextCell = data[cell.row]?.[cell.col + 1];
+          if (nextCell) invoice.customer_id = String(nextCell).trim();
+        }
+      }
+    }
+  }
+
+  // Extract customer/recipient name - Look for company names in first ~10 rows that aren't King City
+  // Also look for "Job" field which often has customer info
+  for (const cell of allText) {
+    if (cell.row < 12) {
+      // Check for Job field (common in this invoice format)
+      if (cell.lower === 'job' || cell.lower.includes('job:')) {
+        const nextCell = data[cell.row]?.[cell.col + 1];
+        const belowCell = data[cell.row + 1]?.[cell.col];
+        if (nextCell && String(nextCell).trim().length > 2) {
+          invoice.customer_name = String(nextCell).trim();
+        } else if (belowCell && String(belowCell).trim().length > 2) {
+          invoice.customer_name = String(belowCell).trim();
+        }
+      }
+      // Look for company patterns - names followed by addresses
+      if (!invoice.from_name && cell.row >= 1 && cell.row <= 8) {
+        // Check if this looks like a company name (has address below it)
+        const belowCell = data[cell.row + 1]?.[cell.col];
+        const belowStr = String(belowCell || '').toLowerCase();
+        if (belowStr.match(/\d+\s+\w+|ave|street|st|rd|blvd|suite|ste/i)) {
+          // This cell is likely a company name
+          const companyName = cell.value;
+          if (!companyName.toLowerCase().includes('king city') &&
+              companyName.length > 3 &&
+              !companyName.toLowerCase().match(/^(invoice|date|email|phone|fax)/)) {
+            invoice.from_name = companyName;
+            // Get address from below
+            if (belowCell) invoice.from_address = String(belowCell).trim();
+            // Check for more address lines
+            const addr2 = data[cell.row + 2]?.[cell.col];
+            if (addr2 && String(addr2).match(/[a-z]{2}\s*\d{5}/i)) {
+              invoice.from_address += ', ' + String(addr2).trim();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Extract phone numbers - look for (XXX) XXX-XXXX or XXX-XXX-XXXX patterns anywhere
+  for (const cell of allText) {
+    if (!invoice.from_phone) {
+      const phoneMatch = cell.value.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+      if (phoneMatch) {
+        // Don't grab King City's phone
+        const isInKingCitySection = allText.some(c =>
+          c.row === cell.row && c.lower.includes('king city')
+        );
+        if (!isInKingCitySection && cell.row < 10) {
+          invoice.from_phone = phoneMatch[0].replace(/\D/g, '');
+        }
+      }
+    }
+  }
+
+  // Extract TOTAL - Look for "TOTAL" keyword and grab the dollar amount
+  // This format has TOTAL in one cell and $ amount in another
+  for (let rowIdx = data.length - 1; rowIdx >= 0; rowIdx--) {
+    const row = data[rowIdx];
     for (let colIdx = 0; colIdx < row.length; colIdx++) {
       const cell = String(row[colIdx] || '').toLowerCase().trim();
-      const nextCell = colIdx + 1 < row.length ? row[colIdx + 1] : null;
-      const nextRow = rowIdx + 1 < data.length ? data[rowIdx + 1] : null;
 
-      // Look for invoice number
-      if (invoiceNumKeywords.some(k => cell.includes(k)) && !invoice.invoice_number) {
-        if (nextCell) {
-          invoice.invoice_number = String(nextCell).trim();
-        } else if (nextRow && nextRow[colIdx]) {
-          invoice.invoice_number = String(nextRow[colIdx]).trim();
-        }
-        // Also check same cell after colon
-        const colonMatch = String(row[colIdx]).match(/[:#]\s*(.+)/);
-        if (colonMatch) {
-          invoice.invoice_number = colonMatch[1].trim();
-        }
-      }
-
-      // Look for date
-      if (dateKeywords.some(k => cell.includes(k)) && !invoice.invoice_date) {
-        let dateValue = nextCell || (nextRow && nextRow[colIdx]);
-        if (dateValue) {
-          const parsed = parseDate(dateValue);
-          if (parsed) {
-            invoice.invoice_date = parsed;
-          }
-        }
-        // Check same cell after colon
-        const colonMatch = String(row[colIdx]).match(/[:#]\s*(.+)/);
-        if (colonMatch) {
-          const parsed = parseDate(colonMatch[1]);
-          if (parsed) {
-            invoice.invoice_date = parsed;
+      // Look for "TOTAL" cell (not subtotal)
+      if (cell === 'total' && !invoice.total_cents) {
+        // Check cells to the right for dollar amount
+        for (let i = colIdx + 1; i < row.length; i++) {
+          const val = row[i];
+          if (val) {
+            const amount = parseCurrency(val);
+            if (amount > 0) {
+              invoice.total_cents = amount;
+              break;
+            }
           }
         }
       }
 
-      // Look for vendor name
-      if (vendorKeywords.some(k => cell.includes(k)) && !invoice.from_name) {
-        if (nextCell && typeof nextCell === 'string' && nextCell.length > 2) {
-          invoice.from_name = nextCell.trim();
-        } else if (nextRow && nextRow[colIdx]) {
-          invoice.from_name = String(nextRow[colIdx]).trim();
-        }
-      }
-
-      // Look for phone
-      if (phoneKeywords.some(k => cell.includes(k)) && !invoice.from_phone) {
-        let phoneValue = nextCell || (nextRow && nextRow[colIdx]);
-        if (phoneValue) {
-          const phoneStr = String(phoneValue).replace(/\D/g, '');
-          if (phoneStr.length >= 10) {
-            invoice.from_phone = phoneStr;
-          }
-        }
-      }
-
-      // Look for total
-      if (totalKeywords.some(k => cell === k || cell.endsWith(k))) {
-        let totalValue = nextCell || (nextRow && nextRow[colIdx]);
-        if (totalValue) {
-          const amount = parseCurrency(totalValue);
-          if (amount > 0) {
-            invoice.total_cents = amount;
-          }
-        }
-      }
-
-      // Look for subtotal
-      if (subtotalKeywords.some(k => cell.includes(k))) {
-        let subtotalValue = nextCell || (nextRow && nextRow[colIdx]);
-        if (subtotalValue) {
-          const amount = parseCurrency(subtotalValue);
-          if (amount > 0) {
-            invoice.subtotal_cents = amount;
-          }
-        }
-      }
-
-      // Look for tax
-      if (taxKeywords.some(k => cell.includes(k)) && !cell.includes('total')) {
-        let taxValue = nextCell || (nextRow && nextRow[colIdx]);
-        if (taxValue) {
-          const amount = parseCurrency(taxValue);
-          if (amount > 0) {
-            invoice.tax_cents = amount;
+      // Look for Subtotal
+      if (cell === 'subtotal' && !invoice.subtotal_cents) {
+        for (let i = colIdx + 1; i < row.length; i++) {
+          const val = row[i];
+          if (val) {
+            const amount = parseCurrency(val);
+            if (amount > 0) {
+              invoice.subtotal_cents = amount;
+              break;
+            }
           }
         }
       }
     }
   }
 
-  // If no vendor found, try to get from first non-empty cell
-  if (!invoice.from_name) {
-    for (let rowIdx = 0; rowIdx < Math.min(10, data.length); rowIdx++) {
-      for (let colIdx = 0; colIdx < data[rowIdx].length; colIdx++) {
-        const cell = String(data[rowIdx][colIdx] || '').trim();
-        if (cell.length > 3 && !cell.match(/^(date|invoice|total|amount|qty)/i)) {
-          invoice.from_name = cell;
-          break;
+  // Also scan for dollar amounts in "Line Total" column
+  let lineTotalColIdx = -1;
+  let unitPriceColIdx = -1;
+  for (const cell of allText) {
+    if (cell.lower.includes('line total')) lineTotalColIdx = cell.col;
+    if (cell.lower.includes('unit price')) unitPriceColIdx = cell.col;
+  }
+
+  // Extract line items if we found the columns
+  if (lineTotalColIdx >= 0) {
+    for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
+      const row = data[rowIdx];
+      const lineTotal = parseCurrency(row[lineTotalColIdx]);
+      if (lineTotal > 0) {
+        // Find description - usually in a column to the left
+        let description = '';
+        for (let c = 0; c < lineTotalColIdx; c++) {
+          const cellVal = String(row[c] || '').trim();
+          if (cellVal.length > 2 && !cellVal.match(/^\d+$/) && cellVal.toLowerCase() !== 'quantity') {
+            description = cellVal;
+          }
+        }
+        if (description && description.toLowerCase() !== 'description') {
+          invoice.line_items.push({
+            description,
+            amount_cents: lineTotal,
+            unit_price_cents: unitPriceColIdx >= 0 ? parseCurrency(row[unitPriceColIdx]) : lineTotal,
+          });
         }
       }
-      if (invoice.from_name) break;
     }
   }
 
-  // If no total, use subtotal
-  if (!invoice.total_cents && invoice.subtotal_cents) {
-    invoice.total_cents = invoice.subtotal_cents + invoice.tax_cents;
+  // If we still don't have a total, sum line items or use subtotal
+  if (!invoice.total_cents) {
+    if (invoice.line_items.length > 0) {
+      invoice.total_cents = invoice.line_items.reduce((sum, item) => sum + item.amount_cents, 0);
+    } else if (invoice.subtotal_cents) {
+      invoice.total_cents = invoice.subtotal_cents;
+    }
   }
 
-  // If no subtotal, derive from total
+  // If no subtotal, use total
   if (!invoice.subtotal_cents && invoice.total_cents) {
-    invoice.subtotal_cents = invoice.total_cents - invoice.tax_cents;
+    invoice.subtotal_cents = invoice.total_cents;
   }
 
   // Try to detect category from vendor name or content
   invoice.expense_category = detectCategory(invoice.from_name, data);
+
+  // If this looks like a King City outgoing invoice (to a customer), mark it differently
+  const isOutgoingInvoice = allText.some(c =>
+    c.lower.includes('king city disposal') && c.row < 5
+  );
+  if (isOutgoingInvoice) {
+    invoice.notes = `Customer Invoice from sheet: ${sheetName}`;
+    // Swap: the "from" is actually the customer being billed
+    if (invoice.from_name && !invoice.from_name.toLowerCase().includes('king city')) {
+      invoice.customer_name = invoice.from_name;
+    }
+    invoice.from_name = invoice.customer_name || invoice.customer_id || 'Customer';
+  }
 
   // Only return if we have at least some useful data
   if (!invoice.from_name && !invoice.total_cents && !invoice.invoice_number) {
