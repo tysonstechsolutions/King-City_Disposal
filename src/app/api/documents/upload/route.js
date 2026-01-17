@@ -34,6 +34,7 @@ export async function POST(request) {
     const invoiceId = formData.get('invoice_id');
     const weightLbs = formData.get('weight_lbs');
     const amountCents = formData.get('amount_cents');
+    const serviceDate = formData.get('service_date'); // Date on the receipt (when service occurred)
 
     if (!file) {
       return NextResponse.json(
@@ -113,6 +114,8 @@ export async function POST(request) {
     }
 
     // Create document record
+    // service_date = date on the receipt (when service occurred)
+    // created_at = automatically set by DB (when uploaded to system)
     const documentData = {
       booking_id: bookingId ? parseInt(bookingId) : null,
       customer_id: customerId ? parseInt(customerId) : null,
@@ -125,7 +128,8 @@ export async function POST(request) {
       title,
       weight_lbs: weightLbs ? parseInt(weightLbs) : null,
       amount_cents: amountCents ? parseInt(amountCents) : null,
-      document_date: new Date().toISOString().split('T')[0],
+      document_date: new Date().toISOString().split('T')[0], // Entry date (kept for backwards compatibility)
+      service_date: serviceDate || null, // Date on the receipt (when service occurred)
     };
 
     const dbResponse = await fetch(

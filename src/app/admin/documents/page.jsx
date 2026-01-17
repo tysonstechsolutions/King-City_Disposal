@@ -44,6 +44,7 @@ export default function DocumentsPage() {
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadAmount, setUploadAmount] = useState('')
   const [uploadWeight, setUploadWeight] = useState('')
+  const [uploadServiceDate, setUploadServiceDate] = useState('') // Date on the receipt
   const [showUploadForm, setShowUploadForm] = useState(false)
 
   // Invoice parsing state
@@ -145,6 +146,7 @@ export default function DocumentsPage() {
       formData.append('title', uploadTitle || selectedFile.name)
       if (uploadWeight) formData.append('weight_lbs', uploadWeight)
       if (uploadAmount) formData.append('amount_cents', Math.round(parseFloat(uploadAmount) * 100))
+      if (uploadServiceDate) formData.append('service_date', uploadServiceDate)
 
       const response = await fetch('/api/documents/upload', {
         method: 'POST',
@@ -159,6 +161,7 @@ export default function DocumentsPage() {
         setUploadTitle('')
         setUploadAmount('')
         setUploadWeight('')
+        setUploadServiceDate('')
         setShowUploadForm(false)
         fetchDocuments()
 
@@ -221,6 +224,7 @@ export default function DocumentsPage() {
     setUploadTitle('')
     setUploadAmount('')
     setUploadWeight('')
+    setUploadServiceDate('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -363,6 +367,23 @@ export default function DocumentsPage() {
               </button>
             </div>
 
+            {/* Service Date Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Service Date (date on receipt)
+              </label>
+              <input
+                type="date"
+                value={uploadServiceDate}
+                onChange={(e) => setUploadServiceDate(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              />
+              <p className="text-xs text-dark-500 mt-1">
+                When did this service/transaction occur? (Entry date is tracked automatically)
+              </p>
+            </div>
+
             {/* AI Info */}
             <div className="mb-4 text-sm text-dark-400 flex items-center gap-2 bg-dark-700 p-3 rounded-lg">
               <Sparkles className="w-4 h-4 text-amber-400" />
@@ -489,11 +510,19 @@ export default function DocumentsPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-white truncate">{doc.title || doc.file_name}</p>
-                    <div className="flex items-center gap-3 text-sm text-dark-400">
+                    <div className="flex items-center gap-3 text-sm text-dark-400 flex-wrap">
                       <span className={`px-2 py-0.5 rounded-full text-xs bg-${catInfo.color}-100 text-${catInfo.color}-700`}>
                         {catInfo.label}
                       </span>
-                      <span>{formatDate(doc.created_at)}</span>
+                      {doc.service_date && (
+                        <span title="Service date (on receipt)">
+                          <Calendar className="w-3 h-3 inline mr-1" />
+                          {formatDate(doc.service_date)}
+                        </span>
+                      )}
+                      <span className="text-dark-500" title="Uploaded on">
+                        Entered: {formatDate(doc.created_at)}
+                      </span>
                     </div>
                     {doc.weight_lbs && (
                       <p className="text-sm text-blue-600 mt-1">
