@@ -95,7 +95,7 @@ export async function generateMetadata({ params }) {
 function CitySchema({ townName }) {
   const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
 
-  const schema = {
+  const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
     "name": `Dumpster Rental in ${townName}, IL`,
@@ -103,6 +103,7 @@ function CitySchema({ townName }) {
     "provider": {
       "@type": "LocalBusiness",
       "name": config.businessName,
+      "@id": `${baseUrl}/#localbusiness`,
       "telephone": config.phoneRaw,
       "url": baseUrl,
       "address": {
@@ -137,12 +138,44 @@ function CitySchema({ townName }) {
     }
   }
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": baseUrl
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Service Area",
+        "item": `${baseUrl}/service-area`
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": `${townName}, IL`,
+        "item": `${baseUrl}/dumpster-rental/${slugify(townName)}-il`
+      }
+    ]
+  }
+
   return (
-    <Script
-      id={`city-schema-${slugify(townName)}`}
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
+    <>
+      <Script
+        id={`city-schema-${slugify(townName)}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
+      />
+      <Script
+        id={`breadcrumb-schema-${slugify(townName)}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+    </>
   )
 }
 

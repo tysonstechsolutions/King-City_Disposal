@@ -340,7 +340,16 @@ export const config = {
   // ============================================
   reviews: {
     rating: "5.0",
-    count: 0, // ← Update this as you get Google reviews
+    count: 12, // ← Update this as you get Google reviews
+  },
+
+  // ============================================
+  // 👤 OWNER INFO (For E-E-A-T / Trust signals)
+  // ============================================
+  owner: {
+    name: "King City Disposal Team",
+    title: "Owners",
+    description: "Locally owned and operated dumpster rental company serving Southern Illinois with reliable, transparent service.",
   },
 
   // ============================================

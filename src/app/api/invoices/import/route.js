@@ -321,17 +321,20 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
 
       // Look for "TOTAL" cell (exact match or starts with total)
       if ((cell === 'total' || cell.startsWith('total ') || cell.startsWith('total:')) && !invoice.total_cents) {
+        console.log(`[${sheetName}] Found TOTAL at row ${rowIdx}, col ${colIdx}`);
         // First check if there's a $ amount in the same cell after "TOTAL"
         const cellFull = String(row[colIdx] || '');
         const inCellAmount = parseCurrency(cellFull);
         if (inCellAmount > 0) {
           invoice.total_cents = inCellAmount;
+          console.log(`[${sheetName}] Total from same cell: ${inCellAmount}`);
         } else {
           // Look in subsequent columns
           for (let i = colIdx + 1; i < row.length; i++) {
             const val = row[i];
-            if (val) {
+            if (val !== '' && val !== null && val !== undefined) {
               const amount = parseCurrency(val);
+              console.log(`[${sheetName}] Checking col ${i}: ${val} => ${amount}`);
               if (amount > 0) {
                 invoice.total_cents = amount;
                 break;
@@ -369,12 +372,12 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
 
   // Only return if we have essential data
   if (!invoice.total_cents && !invoice.invoice_number) {
-    console.log('Skipping sheet - no total or invoice number found');
+    console.log(`[${sheetName}] SKIP - no total (${invoice.total_cents}) or invoice number (${invoice.invoice_number})`);
     return null;
   }
 
   // Debug log
-  console.log('Parsed invoice:', invoice.invoice_number, 'Total:', invoice.total_cents, 'Items:', invoice.line_items.length);
+  console.log(`[${sheetName}] PARSED: #${invoice.invoice_number}, Total: ${invoice.total_cents}, Items: ${invoice.line_items.length}`);
 
   // Use customer ID code as name fallback
   if (!invoice.customer_name && invoice.customer_id_code) {

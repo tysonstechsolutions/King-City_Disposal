@@ -309,6 +309,62 @@ function FAQSchema() {
 }
 
 // ============================================
+// HOWTO SCHEMA - For the booking process
+// ============================================
+function HowToSchema() {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to Rent a Dumpster in Southern Illinois",
+    "description": "Simple 4-step process to rent a roll-off dumpster from King City Disposal.",
+    "totalTime": "PT5M",
+    "estimatedCost": {
+      "@type": "MonetaryAmount",
+      "currency": "USD",
+      "value": config.dumpsters[0]?.pricing['10-day'] || 475
+    },
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Choose Your Size",
+        "text": "Select a 20-yard or 30-yard dumpster based on your project needs.",
+        "url": `${config.websiteUrl}/dumpsters`
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "Pick Delivery Location",
+        "text": "Enter your address and use our satellite map to show exactly where to place the dumpster.",
+        "url": `${config.websiteUrl}/book`
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Schedule Delivery",
+        "text": "Choose your delivery date. Same-day delivery often available for orders before noon.",
+        "url": `${config.websiteUrl}/book`
+      },
+      {
+        "@type": "HowToStep",
+        "position": 4,
+        "name": "Fill It Up",
+        "text": "Load your debris, then call us for pickup when you're done or at the end of your rental period.",
+        "url": `${config.websiteUrl}/contact`
+      }
+    ]
+  }
+
+  return (
+    <Script
+      id="howto-schema"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  )
+}
+
+// ============================================
 // SERVICE SCHEMA - For dumpster rental services
 // ============================================
 function ServiceSchema() {
@@ -392,6 +448,7 @@ export default function RootLayout({ children }) {
         <WebsiteSchema />
         <ServiceSchema />
         <FAQSchema />
+        <HowToSchema />
       </head>
       <body className="min-h-screen flex flex-col bg-dark-900 text-white">
         <Header />
