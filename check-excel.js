@@ -66,6 +66,26 @@ for (const sheetName of testSheets) {
         }
       }
 
+      // Look for company names with addresses below
+      if (!customer_name && cell.row >= 1 && cell.row <= 10) {
+        const belowCell = data[cell.row + 1]?.[cell.col];
+        const belowStr = String(belowCell || '').toLowerCase();
+        if (belowStr.match(/\d+\s+\w+|ave|street|st\b|rd\b|blvd|suite|ste\b|lane|ln\b|drive|dr\b|center/i)) {
+          const companyName = cell.value;
+          const isNumericOnly = /^\d+$/.test(companyName);
+          const isDateLike = /^\d{1,2}\/\d{1,2}\/\d{4}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(companyName);
+          const isEmail = /@/.test(companyName);
+          const isPhoneNumber = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(companyName);
+          if (!isNumericOnly && !isDateLike && !isEmail && !isPhoneNumber &&
+              !companyName.toLowerCase().includes('king city') &&
+              companyName.length > 3 &&
+              !companyName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family)/)) {
+            customer_name = companyName;
+            console.log(`Found customer name from address pattern: ${companyName}`);
+          }
+        }
+      }
+
       // Check for company suffixes
       if (!customer_name && cell.row >= 1 && cell.row <= 12) {
         if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals|Roofing|Plumbing|Electric|Excavating|Hauling|Landscaping|Dumpsters?)\b/i)) {

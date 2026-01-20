@@ -188,11 +188,18 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
         const belowStr = String(belowCell || '').toLowerCase();
         if (belowStr.match(/\d+\s+\w+|ave|street|st\b|rd\b|blvd|suite|ste\b|lane|ln\b|drive|dr\b|center/i)) {
           const companyName = cell.value;
-          if (!companyName.toLowerCase().includes('king city') &&
+          // Skip if it's purely numeric (invoice number), or if it matches common date patterns, or is an email
+          const isNumericOnly = /^\d+$/.test(companyName);
+          const isDateLike = /^\d{1,2}\/\d{1,2}\/\d{4}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(companyName);
+          const isEmail = /@/.test(companyName);
+          const isPhoneNumber = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(companyName);
+          if (!isNumericOnly && !isDateLike && !isEmail && !isPhoneNumber &&
+              !companyName.toLowerCase().includes('king city') &&
               companyName.length > 3 &&
               !companyName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family)/)) {
             invoice.customer_name = companyName;
             invoice.customer_address = String(belowCell).trim();
+            console.log(`[${sheetName}] Found customer name from address pattern: ${companyName}`);
             // Check for city/state/zip line
             const addr2 = data[cell.row + 2]?.[cell.col];
             if (addr2 && String(addr2).match(/[a-z]{2}[\s.,]+\d{5}/i)) {
