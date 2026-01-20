@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { config } from '../../../../config'
 
+export const dynamic = 'force-dynamic'
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 // POST - Create a PaymentIntent for manual card entry
