@@ -8,33 +8,33 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Professional green palette - muted and trustworthy
+        // Bold red from logo - classic, strong, trustworthy
         primary: {
-          DEFAULT: '#3d8b64',  // Default for bg-primary, text-primary, etc.
-          50: '#f0f7f4',
-          100: '#dceee5',
-          200: '#bcdccc',
-          300: '#8ec4a9',
-          400: '#5ea682',
-          500: '#3d8b64',  // Main professional green
-          600: '#2d6b4d',
-          700: '#265740',
-          800: '#214635',
-          900: '#1c3a2d',
+          DEFAULT: '#dc2626',  // Bold red matching logo
+          50: '#fef2f2',
+          100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
+          500: '#ef4444',
+          600: '#dc2626',  // Main red from logo
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
         },
-        // Gold/amber accent - professional and warm
+        // Classic blue from logo script - complementary accent
         accent: {
-          DEFAULT: '#d97706',  // Default for bg-accent, text-accent, etc.
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#f59e0b',
-          500: '#d97706',  // Main amber
-          600: '#b45309',
-          700: '#92400e',
-          800: '#78350f',
-          900: '#451a03',
+          DEFAULT: '#1e40af',  // Royal blue from logo
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',  // Main blue from logo
+          900: '#1e3a8a',
         },
         // Neutral grays for professional look
         neutral: {
