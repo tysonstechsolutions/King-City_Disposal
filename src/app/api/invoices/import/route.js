@@ -223,31 +223,36 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     }
   }
 
-  // Find line items columns
+  // Find line items columns and the header row
   let lineTotalColIdx = -1;
   let unitPriceColIdx = -1;
   let descriptionColIdx = -1;
   let quantityColIdx = -1;
+  let headerRowIdx = -1;
 
   for (const cell of allText) {
-    if (cell.lower === 'line total' || cell.lower.includes('line total')) lineTotalColIdx = cell.col;
+    if (cell.lower === 'line total' || cell.lower.includes('line total')) {
+      lineTotalColIdx = cell.col;
+      headerRowIdx = cell.row;
+    }
     if (cell.lower === 'unit price' || cell.lower.includes('unit price')) unitPriceColIdx = cell.col;
     if (cell.lower === 'description') descriptionColIdx = cell.col;
     if (cell.lower === 'quantity' || cell.lower === 'qty') quantityColIdx = cell.col;
   }
 
-  // Extract line items
-  if (lineTotalColIdx >= 0) {
-    for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
+  // Extract line items - start AFTER the header row
+  if (lineTotalColIdx >= 0 && headerRowIdx >= 0) {
+    for (let rowIdx = headerRowIdx + 1; rowIdx < data.length; rowIdx++) {
       const row = data[rowIdx];
       const lineTotalRaw = row[lineTotalColIdx];
       const lineTotal = parseCurrency(lineTotalRaw);
 
-      // Skip if line total is 0 or looks like a phone number (10 digits)
+      // Skip if line total is 0 or looks like a phone number (10 digits, or value over $1M which is unrealistic)
       const lineTotalStr = String(lineTotalRaw || '').replace(/\D/g, '');
       const looksLikePhone = lineTotalStr.length === 10 && /^\d{10}$/.test(lineTotalStr);
+      const unrealisticallyLarge = lineTotal > 100000000; // Over $1,000,000 in cents = likely phone number
 
-      if (lineTotal > 0 && !looksLikePhone) {
+      if (lineTotal > 0 && !looksLikePhone && !unrealisticallyLarge) {
         // Find description
         let description = '';
         if (descriptionColIdx >= 0 && row[descriptionColIdx]) {
@@ -314,15 +319,23 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     for (let colIdx = 0; colIdx < row.length; colIdx++) {
       const cell = String(row[colIdx] || '').toLowerCase().trim();
 
-      // Look for "TOTAL" cell
-      if (cell === 'total' && !invoice.total_cents) {
-        for (let i = colIdx + 1; i < row.length; i++) {
-          const val = row[i];
-          if (val) {
-            const amount = parseCurrency(val);
-            if (amount > 0) {
-              invoice.total_cents = amount;
-              break;
+      // Look for "TOTAL" cell (exact match or starts with total)
+      if ((cell === 'total' || cell.startsWith('total ') || cell.startsWith('total:')) && !invoice.total_cents) {
+        // First check if there's a $ amount in the same cell after "TOTAL"
+        const cellFull = String(row[colIdx] || '');
+        const inCellAmount = parseCurrency(cellFull);
+        if (inCellAmount > 0) {
+          invoice.total_cents = inCellAmount;
+        } else {
+          // Look in subsequent columns
+          for (let i = colIdx + 1; i < row.length; i++) {
+            const val = row[i];
+            if (val) {
+              const amount = parseCurrency(val);
+              if (amount > 0) {
+                invoice.total_cents = amount;
+                break;
+              }
             }
           }
         }
@@ -356,8 +369,12 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
 
   // Only return if we have essential data
   if (!invoice.total_cents && !invoice.invoice_number) {
+    console.log('Skipping sheet - no total or invoice number found');
     return null;
   }
+
+  // Debug log
+  console.log('Parsed invoice:', invoice.invoice_number, 'Total:', invoice.total_cents, 'Items:', invoice.line_items.length);
 
   // Use customer ID code as name fallback
   if (!invoice.customer_name && invoice.customer_id_code) {
