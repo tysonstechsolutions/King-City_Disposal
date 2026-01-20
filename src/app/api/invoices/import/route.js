@@ -648,17 +648,23 @@ export async function POST(request) {
       invoices: [],
     };
 
+    console.log('Processing', workbook.SheetNames.length, 'sheets:', workbook.SheetNames.slice(0, 5).join(', '), '...');
+
     // Process each sheet
     for (const sheetName of workbook.SheetNames) {
       try {
         const sheet = workbook.Sheets[sheetName];
+        console.log(`\n=== Processing sheet: ${sheetName} ===`);
         const invoiceData = parseCustomerInvoiceSheet(sheet, sheetName);
 
         if (!invoiceData) {
           results.skipped++;
           results.errors.push({ sheet: sheetName, error: 'Could not parse invoice data' });
+          console.log(`[${sheetName}] Skipped - no invoice data returned`);
           continue;
         }
+
+        console.log(`[${sheetName}] Got invoice data:`, invoiceData.invoice_number, invoiceData.total_cents);
 
         // Generate invoice number if not found
         if (!invoiceData.invoice_number) {
