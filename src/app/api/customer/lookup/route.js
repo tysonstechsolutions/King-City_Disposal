@@ -55,70 +55,133 @@ function checkRateLimit(phone) {
 
 export async function POST(request) {
   try {
-    const { phone } = await request.json();
+    const { phone, name, address } = await request.json();
 
-    if (!phone) {
+    // At least one search parameter required
+    if (!phone && !name && !address) {
       return NextResponse.json(
-        { error: 'Phone number is required' },
+        { error: 'Phone, name, or address is required' },
         { status: 400 }
       );
     }
 
-    // Clean phone number
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
-      return NextResponse.json(
-        { error: 'Invalid phone number' },
-        { status: 400 }
-      );
-    }
+    let cleanPhone = null;
+    let last10 = null;
 
-    // Rate limit check
-    if (!checkRateLimit(cleanPhone)) {
-      return NextResponse.json(
-        { error: 'Too many attempts. Please try again in a minute.' },
-        { status: 429 }
-      );
-    }
-
-    const last10 = cleanPhone.slice(-10);
-
-    // Find customer
-    const customerResponse = await fetch(
-      `${supabaseUrl}/rest/v1/customers?phone=ilike.%${last10}%&limit=1`,
-      {
-        headers: {
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
-        },
+    if (phone) {
+      // Clean phone number
+      cleanPhone = phone.replace(/\D/g, '');
+      if (cleanPhone.length < 10) {
+        return NextResponse.json(
+          { error: 'Invalid phone number' },
+          { status: 400 }
+        );
       }
-    );
+
+      // Rate limit check (only for phone lookups)
+      if (!checkRateLimit(cleanPhone)) {
+        return NextResponse.json(
+          { error: 'Too many attempts. Please try again in a minute.' },
+          { status: 429 }
+        );
+      }
+
+      last10 = cleanPhone.slice(-10);
+    }
 
     let customer = null;
-    if (customerResponse.ok) {
-      const customers = await customerResponse.json();
-      customer = customers[0] || null;
-    }
 
-    // Find bookings by phone
-    const bookingsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/bookings?customer_phone=ilike.%${last10}%&order=created_at.desc`,
-      {
-        headers: {
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
-        },
-      }
-    );
-
-    if (!bookingsResponse.ok) {
-      return NextResponse.json(
-        { error: 'Failed to lookup bookings' },
-        { status: 500 }
+    // Strategy 1: Find customer by phone (most reliable)
+    if (last10) {
+      const customerResponse = await fetch(
+        `${supabaseUrl}/rest/v1/customers?phone=ilike.%${last10}%&limit=1`,
+        {
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
       );
+
+      if (customerResponse.ok) {
+        const customers = await customerResponse.json();
+        customer = customers[0] || null;
+      }
     }
 
-    const bookings = await bookingsResponse.json();
+    // Strategy 2: Find customer by name AND address (for repeat customers)
+    if (!customer && name && address) {
+      // Extract the street part of the address for matching
+      const streetPart = address.split(',')[0].trim();
+      const customerResponse = await fetch(
+        `${supabaseUrl}/rest/v1/customers?name=ilike.%${encodeURIComponent(name)}%&address=ilike.%${encodeURIComponent(streetPart)}%&limit=1`,
+        {
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
+      );
+
+      if (customerResponse.ok) {
+        const customers = await customerResponse.json();
+        customer = customers[0] || null;
+      }
+    }
+
+    // Strategy 3: Find customer by name only (less reliable, but useful)
+    if (!customer && name && !address) {
+      const customerResponse = await fetch(
+        `${supabaseUrl}/rest/v1/customers?name=ilike.%${encodeURIComponent(name)}%&limit=5`,
+        {
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
+      );
+
+      if (customerResponse.ok) {
+        const customers = await customerResponse.json();
+        // Only use if there's exactly one match to avoid confusion
+        if (customers.length === 1) {
+          customer = customers[0];
+        }
+      }
+    }
+
+    // Find bookings - by phone if available, or by customer_id
+    let bookings = [];
+    if (last10) {
+      const bookingsResponse = await fetch(
+        `${supabaseUrl}/rest/v1/bookings?customer_phone=ilike.%${last10}%&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
+      );
+
+      if (bookingsResponse.ok) {
+        bookings = await bookingsResponse.json();
+      }
+    } else if (customer?.id) {
+      // No phone, but we found customer by name/address - find their bookings
+      const bookingsResponse = await fetch(
+        `${supabaseUrl}/rest/v1/bookings?customer_id=eq.${customer.id}&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
+      );
+
+      if (bookingsResponse.ok) {
+        bookings = await bookingsResponse.json();
+      }
+    }
 
     // Find invoices for this customer
     let invoices = [];
@@ -141,8 +204,11 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       customer: customer ? {
+        id: customer.id, // Include ID so booking can link to existing customer
         name: customer.name,
+        phone: customer.phone,
         email: customer.email,
+        address: customer.address,
         totalJobs: customer.total_jobs || bookings.length,
       } : null,
       bookings: bookings.map(b => ({

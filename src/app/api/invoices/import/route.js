@@ -174,10 +174,42 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     }
   }
 
-  // Extract billing phone
+  // Extract billing phone - look for phone patterns near "billing" or "phone" labels
   for (const cell of allText) {
-    if (cell.lower.includes('billing') && cell.value.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)) {
-      invoice.customer_phone = cell.value.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)[0].replace(/\D/g, '');
+    if (!invoice.customer_phone) {
+      // Check for phone number patterns
+      const phoneMatch = cell.value.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+      if (phoneMatch) {
+        // Make sure it's actually a phone field, not a currency field
+        const isCurrencyField = cell.lower.includes('total') || cell.lower.includes('amount') ||
+                                cell.lower.includes('price') || cell.lower.includes('subtotal') ||
+                                cell.lower.includes('$') || cell.value.includes('$');
+
+        // Check if it's near a phone/billing label
+        const isPhoneField = cell.lower.includes('phone') || cell.lower.includes('tel') ||
+                            cell.lower.includes('mobile') || cell.lower.includes('cell');
+
+        // Also check adjacent cells for phone labels
+        const prevCell = allText.find(c => c.row === cell.row && c.col === cell.col - 1);
+        const prevCellIsPhoneLabel = prevCell && (prevCell.lower.includes('phone') || prevCell.lower.includes('billing'));
+
+        if ((isPhoneField || prevCellIsPhoneLabel) && !isCurrencyField) {
+          invoice.customer_phone = phoneMatch[0].replace(/\D/g, '');
+        }
+      }
+    }
+  }
+
+  // Fallback: Look for standalone phone patterns in customer info area (rows 1-15)
+  if (!invoice.customer_phone) {
+    for (const cell of allText) {
+      if (cell.row <= 15 && cell.row >= 1) {
+        const phoneMatch = cell.value.match(/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/);
+        if (phoneMatch && !cell.value.includes('$')) {
+          invoice.customer_phone = phoneMatch[0].replace(/\D/g, '');
+          break;
+        }
+      }
     }
   }
 
@@ -370,6 +402,7 @@ function parseCurrency(value) {
 
 // ============================================
 // Try to find matching customer in database
+// Checks: customer_code, name+address, phone, name alone
 // ============================================
 async function findCustomer(invoice) {
   try {
@@ -390,10 +423,10 @@ async function findCustomer(invoice) {
       }
     }
 
-    // Try to match by name
-    if (invoice.customer_name) {
+    // Try to match by name AND address (most reliable for repeat customers)
+    if (invoice.customer_name && invoice.customer_address) {
       const response = await fetch(
-        `${supabaseUrl}/rest/v1/customers?name=ilike.%${encodeURIComponent(invoice.customer_name)}%`,
+        `${supabaseUrl}/rest/v1/customers?name=ilike.%${encodeURIComponent(invoice.customer_name)}%&address=ilike.%${encodeURIComponent(invoice.customer_address.split(',')[0])}%`,
         {
           headers: {
             'apikey': getSupabaseKey(),
@@ -424,8 +457,74 @@ async function findCustomer(invoice) {
         if (customers.length > 0) return customers[0];
       }
     }
+
+    // Try to match by name alone (less reliable but useful)
+    if (invoice.customer_name) {
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/customers?name=ilike.%${encodeURIComponent(invoice.customer_name)}%`,
+        {
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
+      );
+      if (response.ok) {
+        const customers = await response.json();
+        if (customers.length > 0) return customers[0];
+      }
+    }
   } catch (e) {
     logger.error('Error finding customer', e);
+  }
+
+  return null;
+}
+
+// ============================================
+// Create a new customer from invoice data
+// ============================================
+async function createCustomer(invoice) {
+  try {
+    // Don't create if no name
+    if (!invoice.customer_name || invoice.customer_name === 'Unknown Customer') {
+      return null;
+    }
+
+    const customerData = {
+      name: invoice.customer_name,
+      phone: invoice.customer_phone || null,
+      email: invoice.customer_email || null,
+      address: invoice.customer_address || null,
+      customer_code: invoice.customer_id_code || null,
+      notes: `Auto-created from invoice import`,
+      created_at: new Date().toISOString(),
+    };
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/customers`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(customerData),
+      }
+    );
+
+    if (response.ok) {
+      const [newCustomer] = await response.json();
+      logger.info(`Created new customer: ${newCustomer.name} (ID: ${newCustomer.id})`);
+      return newCustomer;
+    } else {
+      const errorText = await response.text();
+      logger.error('Failed to create customer:', errorText);
+    }
+  } catch (e) {
+    logger.error('Error creating customer', e);
   }
 
   return null;
@@ -489,6 +588,8 @@ export async function POST(request) {
       imported: 0,
       skipped: 0,
       duplicates: 0,
+      customers_created: 0,
+      customers_matched: 0,
       errors: [],
       invoices: [],
     };
@@ -518,8 +619,20 @@ export async function POST(request) {
           continue;
         }
 
-        // Try to find matching customer
-        const customer = await findCustomer(invoiceData);
+        // Try to find matching customer, or create a new one
+        let customer = await findCustomer(invoiceData);
+        let customerCreated = false;
+
+        if (customer) {
+          results.customers_matched++;
+        } else {
+          // No existing customer found - create a new one
+          customer = await createCustomer(invoiceData);
+          if (customer) {
+            customerCreated = true;
+            results.customers_created++;
+          }
+        }
 
         // Build invoice record
         const invoiceRecord = {
@@ -538,9 +651,14 @@ export async function POST(request) {
           discount_cents: invoiceData.discount_cents,
           total_cents: invoiceData.total_cents,
           amount_paid_cents: markAsPaid ? invoiceData.total_cents : 0,
-          due_date: invoiceData.due_date || invoiceData.invoice_date,
+          balance_due_cents: markAsPaid ? 0 : invoiceData.total_cents,
+          // Due date: use parsed due date, or null for "Due Upon Receipt"
+          // Late fees don't apply until 30 days after invoice date (handled by late fee cron)
+          due_date: invoiceData.due_date || null,
+          invoice_date: invoiceData.invoice_date || new Date().toISOString().split('T')[0],
           notes: invoiceData.notes,
           status: markAsPaid ? 'paid' : 'sent',
+          paid_at: markAsPaid ? new Date().toISOString() : null,
           created_at: invoiceData.invoice_date ? new Date(invoiceData.invoice_date).toISOString() : new Date().toISOString(),
         };
 
@@ -566,9 +684,11 @@ export async function POST(request) {
             id: created.id,
             invoice_number: invoiceData.invoice_number,
             customer: invoiceData.customer_name,
+            customer_id: customer?.id || null,
+            customer_created: customerCreated,
             date: invoiceData.invoice_date,
             total: invoiceData.total_cents / 100,
-            matched_customer: customer ? true : false,
+            matched_customer: customer && !customerCreated,
           });
         } else {
           const errorText = await response.text();

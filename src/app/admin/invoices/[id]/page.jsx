@@ -99,9 +99,20 @@ export default function InvoiceDetailPage() {
     })
   }
 
-  // Get status badge
-  const getStatusBadge = (status, dueDate) => {
-    const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'paid'
+  // Get status badge - account for 30-day grace period when no due date
+  const getStatusBadge = (status, dueDate, invoiceDate) => {
+    let isOverdue = false
+
+    if (status !== 'paid') {
+      if (dueDate) {
+        isOverdue = new Date(dueDate) < new Date()
+      } else if (invoiceDate) {
+        // No due date = Due Upon Receipt, with 30 day grace period before overdue
+        const gracePeriodEnd = new Date(invoiceDate)
+        gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30)
+        isOverdue = new Date() > gracePeriodEnd
+      }
+    }
 
     if (isOverdue || status === 'overdue') {
       return <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-700">Overdue</span>
@@ -379,7 +390,7 @@ export default function InvoiceDetailPage() {
                   <h1 className="text-xl font-bold text-white font-mono">
                     {invoice.invoice_number}
                   </h1>
-                  {getStatusBadge(invoice.status, invoice.due_date)}
+                  {getStatusBadge(invoice.status, invoice.due_date, invoice.invoice_date || invoice.created_at)}
                 </div>
                 <p className="text-sm text-dark-400">{invoice.customer_name}</p>
               </div>
@@ -661,6 +672,20 @@ export default function InvoiceDetailPage() {
                     </div>
                   ))}
 
+                  {invoice.late_fee_cents > 0 && (
+                    <div className="flex justify-between py-2 border-b border-neutral-100 text-red-600">
+                      <span>Late Fee</span>
+                      <span className="font-medium">{formatCurrency(invoice.late_fee_cents)}</span>
+                    </div>
+                  )}
+
+                  {invoice.cc_fee_cents > 0 && (
+                    <div className="flex justify-between py-2 border-b border-neutral-100">
+                      <span className="text-dark-200">Processing Fee</span>
+                      <span className="font-medium">{formatCurrency(invoice.cc_fee_cents)}</span>
+                    </div>
+                  )}
+
                   <div className="pt-3 flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span>{formatCurrency(invoice.total_cents)}</span>
@@ -749,11 +774,11 @@ export default function InvoiceDetailPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-dark-400">Status</span>
-                  {getStatusBadge(invoice.status, invoice.due_date)}
+                  {getStatusBadge(invoice.status, invoice.due_date, invoice.invoice_date || invoice.created_at)}
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-400">Due Date</span>
-                  <span className="font-medium">{formatDate(invoice.due_date)}</span>
+                  <span className="font-medium">{invoice.due_date ? formatDate(invoice.due_date) : 'Due Upon Receipt'}</span>
                 </div>
                 {invoice.sent_at && (
                   <div className="flex justify-between">

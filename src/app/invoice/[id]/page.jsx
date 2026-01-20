@@ -122,7 +122,24 @@ export default function CustomerInvoicePage() {
     })
   }
 
-  const isOverdue = invoice?.due_date && new Date(invoice.due_date) < new Date() && invoice.status !== 'paid'
+  // Check if invoice is overdue:
+  // - If due_date is set, use that
+  // - If no due_date (Due Upon Receipt), consider overdue after 30 days from invoice date
+  const getIsOverdue = () => {
+    if (!invoice || invoice.status === 'paid') return false
+
+    if (invoice.due_date) {
+      return new Date(invoice.due_date) < new Date()
+    }
+
+    // No due date = Due Upon Receipt, with 30 day grace period
+    const invoiceDate = new Date(invoice.invoice_date || invoice.created_at)
+    const gracePeriodEnd = new Date(invoiceDate)
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30)
+    return new Date() > gracePeriodEnd
+  }
+
+  const isOverdue = getIsOverdue()
   const isPaid = invoice?.status === 'paid'
 
   if (loading) {
@@ -153,7 +170,7 @@ export default function CustomerInvoicePage() {
         {/* Action Buttons - Hidden on print */}
         <div className="flex justify-between items-center mb-4 print:hidden">
           <div>
-            {isOverdue && (
+            {isOverdue && !isPaid && (
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
                 <AlertCircle className="w-4 h-4" />
                 Overdue
@@ -163,6 +180,12 @@ export default function CustomerInvoicePage() {
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
                 <CheckCircle2 className="w-4 h-4" />
                 Paid
+              </span>
+            )}
+            {!isPaid && !isOverdue && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                <Clock className="w-4 h-4" />
+                Payment Due
               </span>
             )}
           </div>
@@ -209,7 +232,11 @@ export default function CustomerInvoicePage() {
                 <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-red-800">Payment Overdue</p>
-                  <p className="text-sm text-red-600">Was due {formatDate(invoice.due_date)}</p>
+                  <p className="text-sm text-red-600">
+                    {invoice.due_date
+                      ? `Was due ${formatDate(invoice.due_date)}`
+                      : 'Please pay as soon as possible'}
+                  </p>
                 </div>
               </div>
             )}
@@ -240,7 +267,7 @@ export default function CustomerInvoicePage() {
                   <div className="flex md:justify-end gap-2">
                     <span className="text-dark-400">Due Date:</span>
                     <span className={`font-medium ${isOverdue ? 'text-red-600' : ''}`}>
-                      {formatDate(invoice.due_date)}
+                      {invoice.due_date ? formatDate(invoice.due_date) : 'Due Upon Receipt'}
                     </span>
                   </div>
                 </div>
@@ -313,6 +340,18 @@ export default function CustomerInvoicePage() {
                     <div className="flex justify-between">
                       <span className="text-dark-300">Tax</span>
                       <span className="font-medium">{formatCurrency(invoice.tax_cents)}</span>
+                    </div>
+                  )}
+                  {invoice.late_fee_cents > 0 && (
+                    <div className="flex justify-between text-red-600">
+                      <span>Late Fee</span>
+                      <span>{formatCurrency(invoice.late_fee_cents)}</span>
+                    </div>
+                  )}
+                  {invoice.cc_fee_cents > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-dark-300">Processing Fee</span>
+                      <span className="font-medium">{formatCurrency(invoice.cc_fee_cents)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold pt-2 border-t border-dark-700">

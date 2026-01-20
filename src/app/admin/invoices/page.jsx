@@ -42,6 +42,7 @@ export default function InvoicesPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
+  const [markImportAsPaid, setMarkImportAsPaid] = useState(false) // Default to NOT marking as paid
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
@@ -114,7 +115,7 @@ export default function InvoicesPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('mark_as_paid', 'true') // Historical invoices are usually paid
+      formData.append('mark_as_paid', markImportAsPaid ? 'true' : 'false')
 
       const response = await fetch('/api/invoices/import', {
         method: 'POST',
@@ -164,13 +165,25 @@ export default function InvoicesPage() {
     })
   }
 
-  const getStatusBadge = (status, dueDate) => {
-    const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'paid'
-    
+  // Get status badge - account for 30-day grace period when no due date
+  const getStatusBadge = (status, dueDate, invoiceDate) => {
+    let isOverdue = false
+
+    if (status !== 'paid') {
+      if (dueDate) {
+        isOverdue = new Date(dueDate) < new Date()
+      } else if (invoiceDate) {
+        // No due date = Due Upon Receipt, with 30 day grace period before overdue
+        const gracePeriodEnd = new Date(invoiceDate)
+        gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30)
+        isOverdue = new Date() > gracePeriodEnd
+      }
+    }
+
     if (isOverdue || status === 'overdue') {
       return <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Overdue</span>
     }
-    
+
     const badges = {
       draft: <span className="px-2 py-1 text-xs font-medium rounded-full bg-dark-700 text-dark-200">Draft</span>,
       sent: <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Sent</span>,
@@ -182,11 +195,26 @@ export default function InvoicesPage() {
     return badges[status] || badges.draft
   }
 
+  // Helper to check if an invoice is overdue with 30-day grace period
+  const isInvoiceOverdue = (invoice) => {
+    if (invoice.status === 'paid' || invoice.status === 'overdue') return invoice.status === 'overdue'
+
+    if (invoice.due_date) {
+      return new Date(invoice.due_date) < new Date()
+    }
+
+    // No due date = Due Upon Receipt, with 30 day grace period
+    const invoiceDate = new Date(invoice.invoice_date || invoice.created_at)
+    const gracePeriodEnd = new Date(invoiceDate)
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30)
+    return new Date() > gracePeriodEnd
+  }
+
   const stats = {
     draft: invoices.filter(i => i.status === 'draft').length,
     sent: invoices.filter(i => ['sent', 'viewed'].includes(i.status)).length,
-    overdue: invoices.filter(i => i.status === 'overdue' || (i.due_date && new Date(i.due_date) < new Date() && i.status !== 'paid')).length,
-    totalOutstanding: invoices.filter(i => i.status !== 'paid' && i.status !== 'void').reduce((sum, i) => sum + (i.balance_due_cents || 0), 0),
+    overdue: invoices.filter(i => isInvoiceOverdue(i)).length,
+    totalOutstanding: invoices.filter(i => i.status !== 'paid' && i.status !== 'void').reduce((sum, i) => sum + (i.balance_due_cents || i.total_cents || 0), 0),
   }
 
   const filteredInvoices = invoices
@@ -356,19 +384,17 @@ export default function InvoicesPage() {
                         >
                           {invoice.invoice_number}
                         </Link>
-                        {getStatusBadge(invoice.status, invoice.due_date)}
+                        {getStatusBadge(invoice.status, invoice.due_date, invoice.invoice_date || invoice.created_at)}
                       </div>
                       <p className="font-medium text-white">{invoice.customer_name}</p>
                       <div className="flex items-center gap-4 mt-1 text-sm text-dark-400">
                         {invoice.service_address && (
                           <span className="truncate max-w-[200px]">{invoice.service_address}</span>
                         )}
-                        {invoice.due_date && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Due {formatDate(invoice.due_date)}
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {invoice.due_date ? `Due ${formatDate(invoice.due_date)}` : 'Due Upon Receipt'}
+                        </span>
                       </div>
                     </div>
 
@@ -518,13 +544,32 @@ export default function InvoicesPage() {
                     </label>
                   </div>
 
+                  {/* Mark as Paid checkbox */}
+                  <div className="bg-dark-700 rounded-xl p-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={markImportAsPaid}
+                        onChange={(e) => setMarkImportAsPaid(e.target.checked)}
+                        className="mt-1 w-4 h-4 rounded border-dark-500 text-primary focus:ring-primary"
+                      />
+                      <div>
+                        <p className="font-medium text-dark-200">Mark all imported invoices as paid</p>
+                        <p className="text-sm text-dark-400">
+                          Check this if these are historical invoices that have already been paid.
+                          Leave unchecked to import as unpaid invoices.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
                   <div className="text-sm text-dark-400">
                     <p className="font-medium mb-1">Your invoice format is supported:</p>
                     <ul className="list-disc list-inside space-y-1 text-xs">
                       <li>Invoice No., Date, Customer ID auto-detected</li>
                       <li>Customer name from Job field or company header</li>
                       <li>Line items from Description/Quantity/Price/Total columns</li>
-                      <li>Imported as "Paid" status by default</li>
+                      <li>Payment status: Due Upon Receipt (no late fee for 30 days)</li>
                     </ul>
                   </div>
                 </>
@@ -563,6 +608,19 @@ export default function InvoicesPage() {
                               </p>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {(importResult.customers_created > 0 || importResult.customers_matched > 0) && (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                          <p className="text-sm text-green-800">
+                            {importResult.customers_created > 0 && (
+                              <><strong>{importResult.customers_created}</strong> new customers created. </>
+                            )}
+                            {importResult.customers_matched > 0 && (
+                              <><strong>{importResult.customers_matched}</strong> matched to existing customers.</>
+                            )}
+                          </p>
                         </div>
                       )}
 
