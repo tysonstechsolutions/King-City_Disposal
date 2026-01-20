@@ -333,12 +333,12 @@ export default function CustomerDetailPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold">{editing ? (
+                    <h1 className="text-xl font-bold text-white">{editing ? (
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="border rounded px-2 py-1"
+                        className="border border-dark-600 rounded px-2 py-1 bg-dark-700 text-white"
                       />
                     ) : customer.name}</h1>
                     {customer.is_vip && <Star className="w-5 h-5 text-amber-500 fill-amber-500" />}
@@ -352,7 +352,7 @@ export default function CustomerDetailPage() {
                           type="text"
                           value={formData.company_name}
                           onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                          className="border rounded px-2 py-1 text-sm"
+                          className="border border-dark-600 rounded px-2 py-1 text-sm bg-dark-700 text-white"
                         />
                       ) : customer.company_name}
                     </p>
@@ -368,7 +368,7 @@ export default function CustomerDetailPage() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="border rounded px-2 py-1 flex-1"
+                      className="border border-dark-600 rounded px-2 py-1 flex-1 bg-dark-700 text-white"
                     />
                   ) : (
                     <a href={`tel:${customer.phone}`} className="text-primary hover:underline">
@@ -383,10 +383,10 @@ export default function CustomerDetailPage() {
                       type="email"
                       value={formData.email || ''}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="border rounded px-2 py-1 flex-1"
+                      className="border border-dark-600 rounded px-2 py-1 flex-1 bg-dark-700 text-white"
                     />
                   ) : (
-                    <span>{customer.email || '-'}</span>
+                    <span className="text-dark-200">{customer.email || '-'}</span>
                   )}
                 </div>
                 <div className="flex items-start gap-2">
@@ -396,10 +396,10 @@ export default function CustomerDetailPage() {
                       type="text"
                       value={formData.address || ''}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="border rounded px-2 py-1 flex-1"
+                      className="border border-dark-600 rounded px-2 py-1 flex-1 bg-dark-700 text-white"
                     />
                   ) : (
-                    <span>{customer.address || '-'}</span>
+                    <span className="text-dark-200">{customer.address || '-'}</span>
                   )}
                 </div>
               </div>
@@ -407,23 +407,23 @@ export default function CustomerDetailPage() {
 
             {/* Stats Card */}
             <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
-              <h3 className="font-semibold mb-4">Stats</h3>
+              <h3 className="font-semibold mb-4 text-white">Stats</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-dark-400">Total Jobs</p>
-                  <p className="text-2xl font-bold">{customer.total_jobs || 0}</p>
+                  <p className="text-2xl font-bold text-white">{bookings.length || 0}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-dark-400">Total Spent</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(customer.total_spent_cents)}
+                  <p className="text-sm text-dark-400">Total Invoiced</p>
+                  <p className="text-2xl font-bold text-green-400">
+                    {formatCurrency(invoices.reduce((sum, inv) => sum + (inv.total_cents || 0), 0))}
                   </p>
                 </div>
-                {customer.outstanding_balance_cents > 0 && (
-                  <div className="col-span-2 p-3 bg-red-50 rounded-lg">
-                    <p className="text-sm text-red-600">Outstanding Balance</p>
-                    <p className="text-xl font-bold text-red-600">
-                      {formatCurrency(customer.outstanding_balance_cents)}
+                {invoices.filter(i => i.status !== 'paid').length > 0 && (
+                  <div className="col-span-2 p-3 bg-red-900/30 border border-red-800 rounded-lg">
+                    <p className="text-sm text-red-400">Outstanding Balance</p>
+                    <p className="text-xl font-bold text-red-400">
+                      {formatCurrency(invoices.filter(i => i.status !== 'paid').reduce((sum, inv) => sum + (inv.balance_due_cents || inv.total_cents || 0), 0))}
                     </p>
                   </div>
                 )}
@@ -432,12 +432,12 @@ export default function CustomerDetailPage() {
 
             {/* Notes */}
             <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
-              <h3 className="font-semibold mb-2">Notes</h3>
+              <h3 className="font-semibold mb-2 text-white">Notes</h3>
               {editing ? (
                 <textarea
                   value={formData.notes || ''}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full border border-dark-600 rounded px-3 py-2 text-sm bg-dark-700 text-white"
                   rows={4}
                 />
               ) : (
@@ -470,21 +470,21 @@ export default function CustomerDetailPage() {
               ) : (
                 <div className="space-y-2">
                   {invoices.map(inv => (
-                    <div key={inv.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                    <div key={inv.id} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg">
                       <div>
-                        <p className="font-medium">{inv.invoice_number}</p>
+                        <p className="font-medium text-white">{inv.invoice_number}</p>
                         <p className="text-sm text-dark-400">{formatDate(inv.created_at)}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={`text-sm px-2 py-1 rounded ${
-                          inv.status === 'paid' ? 'bg-green-100 text-green-700' :
-                          inv.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                          inv.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                          'bg-dark-700 text-dark-200'
+                          inv.status === 'paid' ? 'bg-green-900/50 text-green-400' :
+                          inv.status === 'sent' ? 'bg-blue-900/50 text-blue-400' :
+                          inv.status === 'overdue' ? 'bg-red-900/50 text-red-400' :
+                          'bg-dark-600 text-dark-200'
                         }`}>
                           {inv.status}
                         </span>
-                        <span className="font-semibold">{formatCurrency(inv.total_cents)}</span>
+                        <span className="font-semibold text-white">{formatCurrency(inv.total_cents)}</span>
                         <div className="flex gap-1">
                           {inv.status === 'draft' && (
                             <button
@@ -497,7 +497,7 @@ export default function CustomerDetailPage() {
                           )}
                           <button
                             onClick={() => router.push(`/admin/invoices/${inv.id}`)}
-                            className="p-2 text-dark-400 hover:bg-dark-700 rounded"
+                            className="p-2 text-dark-400 hover:bg-dark-600 rounded"
                             title="View"
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -512,7 +512,7 @@ export default function CustomerDetailPage() {
 
             {/* Bookings */}
             <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
-              <h3 className="font-semibold flex items-center gap-2 mb-4">
+              <h3 className="font-semibold flex items-center gap-2 mb-4 text-white">
                 <Truck className="w-5 h-5 text-primary" />
                 Bookings ({bookings.length})
               </h3>
@@ -525,15 +525,15 @@ export default function CustomerDetailPage() {
                     <div
                       key={booking.id}
                       onClick={() => router.push(`/admin/booking/${booking.id}`)}
-                      className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg cursor-pointer hover:bg-dark-700"
+                      className="flex items-center justify-between p-3 bg-dark-700 rounded-lg cursor-pointer hover:bg-dark-600"
                     >
                       <div>
-                        <p className="font-medium">{booking.dumpster_size} - {booking.address}</p>
+                        <p className="font-medium text-white">{booking.dumpster_size} - {booking.address}</p>
                         <p className="text-sm text-dark-400">
                           {formatDate(booking.delivery_date)} - {booking.status}
                         </p>
                       </div>
-                      <span className="font-semibold">{formatCurrency(booking.price_cents)}</span>
+                      <span className="font-semibold text-white">{formatCurrency(booking.price_cents)}</span>
                     </div>
                   ))}
                 </div>
@@ -579,63 +579,63 @@ function NewInvoiceModal({ customer, onClose, onSubmit, loading }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-dark-800 border border-dark-700 rounded-xl max-w-lg w-full">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-bold">Create Invoice for {customer.name}</h2>
+        <div className="flex items-center justify-between p-4 border-b border-dark-700">
+          <h2 className="text-lg font-bold text-white">Create Invoice for {customer.name}</h2>
           <button onClick={onClose} className="text-dark-400 hover:text-dark-200">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Description *</label>
+            <label className="block text-sm font-medium mb-1 text-dark-200">Description *</label>
             <input
               type="text"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="e.g., 20 Yard Dumpster - 10 Day Rental"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border border-dark-600 rounded-lg px-3 py-2 bg-dark-700 text-white placeholder-dark-400"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Amount ($) *</label>
+            <label className="block text-sm font-medium mb-1 text-dark-200">Amount ($) *</label>
             <input
               type="number"
               step="0.01"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               placeholder="0.00"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border border-dark-600 rounded-lg px-3 py-2 bg-dark-700 text-white placeholder-dark-400"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Service Address</label>
+            <label className="block text-sm font-medium mb-1 text-dark-200">Service Address</label>
             <input
               type="text"
               value={formData.service_address}
               onChange={(e) => setFormData({ ...formData, service_address: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border border-dark-600 rounded-lg px-3 py-2 bg-dark-700 text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Due Date</label>
+            <label className="block text-sm font-medium mb-1 text-dark-200">Due Date</label>
             <input
               type="date"
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border border-dark-600 rounded-lg px-3 py-2 bg-dark-700 text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
+            <label className="block text-sm font-medium mb-1 text-dark-200">Notes</label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border border-dark-600 rounded-lg px-3 py-2 bg-dark-700 text-white"
               rows={2}
             />
           </div>

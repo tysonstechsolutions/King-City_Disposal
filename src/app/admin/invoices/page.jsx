@@ -420,10 +420,10 @@ export default function InvoicesPage() {
                       </button>
 
                       {showActions === invoice.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-dark-700 py-1 z-10">
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-dark-800 rounded-lg shadow-lg border border-dark-600 py-1 z-10">
                           <Link
                             href={`/admin/invoices/${invoice.id}`}
-                            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-dark-700"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-dark-700"
                           >
                             <Eye className="w-4 h-4" />
                             View Details
@@ -431,7 +431,7 @@ export default function InvoicesPage() {
                           {invoice.status === 'draft' && (
                             <button
                               onClick={() => sendInvoice(invoice)}
-                              className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-dark-700 w-full text-left"
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-dark-700 w-full text-left"
                             >
                               <Send className="w-4 h-4" />
                               Send Invoice
@@ -440,7 +440,7 @@ export default function InvoicesPage() {
                           {invoice.customer_phone && (
                             <button
                               onClick={() => sendInvoice(invoice)}
-                              className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-dark-700 w-full text-left"
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-dark-700 w-full text-left"
                             >
                               <MessageSquare className="w-4 h-4" />
                               Send Reminder
@@ -449,15 +449,15 @@ export default function InvoicesPage() {
                           <Link
                             href={`/invoice/${invoice.invoice_number}`}
                             target="_blank"
-                            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-dark-700"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-dark-700"
                           >
                             <FileText className="w-4 h-4" />
                             View as Customer
                           </Link>
                           {invoice.status !== 'paid' && (
                             <Link
-                              href={`/admin/invoices/${invoice.id}/payment`}
-                              className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-dark-700 text-green-600"
+                              href={`/admin/invoices/${invoice.id}`}
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-green-400 hover:bg-dark-700"
                             >
                               <DollarSign className="w-4 h-4" />
                               Record Payment
