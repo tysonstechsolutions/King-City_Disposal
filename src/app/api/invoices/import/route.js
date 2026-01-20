@@ -137,8 +137,33 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
 
   // Extract customer name - Look for company names that aren't King City
   // Usually after a row containing address info, or in "Job" field
+  // Also look for "Bill To" section which contains customer info
+
+  // First, try to use the Customer ID as a fallback for customer name lookup
+  // Then look for customer name in the standard positions
+
   for (const cell of allText) {
-    if (cell.row < 12) {
+    if (cell.row < 15) {
+      // Check for "Bill To" section - usually followed by customer name on next row
+      if (cell.lower === 'bill to' || cell.lower.includes('bill to:')) {
+        // Check the row below for customer name
+        const belowCell = data[cell.row + 1]?.[cell.col];
+        if (belowCell && String(belowCell).trim().length > 2) {
+          const candidateName = String(belowCell).trim();
+          // Make sure it's not King City or another header
+          if (!candidateName.toLowerCase().includes('king city') &&
+              !candidateName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family|address)/)) {
+            if (!invoice.customer_name) {
+              invoice.customer_name = candidateName;
+              console.log(`[${sheetName}] Found customer name from Bill To: ${candidateName}`);
+            }
+            // Check for address below
+            const addrCell = data[cell.row + 2]?.[cell.col];
+            if (addrCell) invoice.customer_address = String(addrCell).trim();
+          }
+        }
+      }
+
       // Check for "Job" field
       if (cell.lower === 'job' || cell.lower.includes('job:')) {
         const nextCell = data[cell.row]?.[cell.col + 1];
@@ -156,22 +181,39 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
       if (!invoice.customer_name && cell.row >= 1 && cell.row <= 10) {
         const belowCell = data[cell.row + 1]?.[cell.col];
         const belowStr = String(belowCell || '').toLowerCase();
-        if (belowStr.match(/\d+\s+\w+|ave|street|st\b|rd\b|blvd|suite|ste\b/i)) {
+        if (belowStr.match(/\d+\s+\w+|ave|street|st\b|rd\b|blvd|suite|ste\b|lane|ln\b|drive|dr\b|center/i)) {
           const companyName = cell.value;
           if (!companyName.toLowerCase().includes('king city') &&
               companyName.length > 3 &&
-              !companyName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase)/)) {
+              !companyName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family)/)) {
             invoice.customer_name = companyName;
             invoice.customer_address = String(belowCell).trim();
             // Check for city/state/zip line
             const addr2 = data[cell.row + 2]?.[cell.col];
-            if (addr2 && String(addr2).match(/[a-z]{2}\s*\d{5}/i)) {
+            if (addr2 && String(addr2).match(/[a-z]{2}[\s.,]+\d{5}/i)) {
               invoice.customer_address += ', ' + String(addr2).trim();
             }
           }
         }
       }
+
+      // Also check for common company suffixes (LLC, Inc, Corp, etc.) as a name indicator
+      if (!invoice.customer_name && cell.row >= 1 && cell.row <= 12) {
+        if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals)\b/i)) {
+          const candidateName = cell.value;
+          if (!candidateName.toLowerCase().includes('king city') && candidateName.length > 3) {
+            invoice.customer_name = candidateName;
+            console.log(`[${sheetName}] Found customer name from company suffix: ${candidateName}`);
+          }
+        }
+      }
     }
+  }
+
+  // If still no customer name, use customer ID code
+  if (!invoice.customer_name && invoice.customer_id_code) {
+    invoice.customer_name = invoice.customer_id_code;
+    console.log(`[${sheetName}] Using customer_id_code as name: ${invoice.customer_id_code}`);
   }
 
   // Extract billing phone - look for phone patterns near "billing" or "phone" labels
@@ -683,14 +725,21 @@ export async function POST(request) {
         let customer = await findCustomer(invoiceData);
         let customerCreated = false;
 
+        console.log(`[${sheetName}] Customer name for lookup/create: "${invoiceData.customer_name}"`);
+
         if (customer) {
           results.customers_matched++;
+          console.log(`[${sheetName}] Matched existing customer: ${customer.name} (ID: ${customer.id})`);
         } else {
           // No existing customer found - create a new one
+          console.log(`[${sheetName}] No matching customer found, creating new one...`);
           customer = await createCustomer(invoiceData);
           if (customer) {
             customerCreated = true;
             results.customers_created++;
+            console.log(`[${sheetName}] Created customer: ${customer.name} (ID: ${customer.id})`);
+          } else {
+            console.log(`[${sheetName}] Failed to create customer, will import invoice without customer link`);
           }
         }
 
@@ -737,6 +786,7 @@ export async function POST(request) {
           }
         );
 
+        console.log(`[${sheetName}] Inserting invoice...`);
         if (response.ok) {
           const [created] = await response.json();
           results.imported++;
@@ -750,8 +800,10 @@ export async function POST(request) {
             total: invoiceData.total_cents / 100,
             matched_customer: customer && !customerCreated,
           });
+          console.log(`[${sheetName}] SUCCESS - Invoice ${invoiceData.invoice_number} imported`);
         } else {
           const errorText = await response.text();
+          console.log(`[${sheetName}] FAILED to insert invoice:`, errorText);
           results.errors.push({ sheet: sheetName, error: errorText });
           results.skipped++;
         }
