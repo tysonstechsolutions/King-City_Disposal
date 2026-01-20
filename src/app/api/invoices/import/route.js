@@ -257,7 +257,11 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
           }
         }
 
-        if (description && description.toLowerCase() !== 'description') {
+        // Skip non-service descriptions (billing info, phone labels, etc.)
+        const skipDescriptions = ['description', 'billing', 'phone', 'fax', 'email', 'address', 'contact', 'total', 'subtotal', 'tax'];
+        const isSkippedDescription = skipDescriptions.some(skip => description.toLowerCase() === skip || description.toLowerCase().startsWith(skip + ':'));
+
+        if (description && !isSkippedDescription) {
           const qty = quantityColIdx >= 0 ? parseFloat(row[quantityColIdx]) || 1 : 1;
           const unitPrice = unitPriceColIdx >= 0 ? parseCurrency(row[unitPriceColIdx]) : lineTotal;
 
@@ -391,10 +395,20 @@ function parseCurrency(value) {
   if (!value) return 0;
 
   if (typeof value === 'number') {
+    // Skip if it looks like a phone number (10 digits, large number with no cents)
+    if (value >= 1000000000 && value <= 9999999999 && Number.isInteger(value)) {
+      return 0; // Likely a phone number
+    }
     return Math.round(value * 100);
   }
 
   const str = String(value).replace(/[$,\s]/g, '');
+
+  // Skip if it looks like a phone number (10 consecutive digits)
+  if (/^\d{10}$/.test(str)) {
+    return 0; // Likely a phone number
+  }
+
   const num = parseFloat(str);
 
   return isNaN(num) ? 0 : Math.round(num * 100);

@@ -47,6 +47,8 @@ export default function InvoiceDetailPage() {
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [paymentNotes, setPaymentNotes] = useState('')
+  const [paymentCheckNumber, setPaymentCheckNumber] = useState('')
+  const [paymentDate, setPaymentDate] = useState('')
   const [recordingPayment, setRecordingPayment] = useState(false)
 
   // Fetch invoice
@@ -166,6 +168,9 @@ export default function InvoiceDetailPage() {
     setSaving(true)
     try {
       const subtotal = calculateSubtotal(editedInvoice.line_items)
+      const lateFee = editedInvoice.late_fee_cents || 0
+      const ccFee = editedInvoice.cc_fee_cents || 0
+      const total = subtotal + lateFee + ccFee
 
       const response = await fetch(
         `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
@@ -188,7 +193,9 @@ export default function InvoiceDetailPage() {
             weight_included_lbs: editedInvoice.weight_included_lbs,
             line_items: JSON.stringify(editedInvoice.line_items),
             subtotal_cents: subtotal,
-            total_cents: subtotal,
+            late_fee_cents: lateFee,
+            cc_fee_cents: ccFee,
+            total_cents: total,
             notes: editedInvoice.notes,
             due_date: editedInvoice.due_date,
             updated_at: new Date().toISOString(),
@@ -256,6 +263,15 @@ export default function InvoiceDetailPage() {
       const newBalanceDue = invoice.total_cents - newAmountPaid
       const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
 
+      // Use custom date if provided, otherwise use now
+      const paidAtDate = paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString()
+
+      // Build notes with check number if provided
+      let fullNotes = paymentNotes
+      if (paymentCheckNumber && paymentMethod === 'check') {
+        fullNotes = `Check #${paymentCheckNumber}${paymentNotes ? ' - ' + paymentNotes : ''}`
+      }
+
       const response = await fetch(
         `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
         {
@@ -269,7 +285,8 @@ export default function InvoiceDetailPage() {
             amount_paid_cents: newAmountPaid,
             balance_due_cents: Math.max(0, newBalanceDue),
             status: newStatus,
-            paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+            paid_at: newStatus === 'paid' ? paidAtDate : null,
+            check_number: paymentMethod === 'check' ? paymentCheckNumber : null,
             updated_at: new Date().toISOString(),
           }),
         }
@@ -291,8 +308,9 @@ export default function InvoiceDetailPage() {
               customer_id: invoice.customer_id,
               amount_cents: amountCents,
               method: paymentMethod,
-              notes: paymentNotes,
-              paid_at: new Date().toISOString(),
+              check_number: paymentMethod === 'check' ? paymentCheckNumber : null,
+              notes: fullNotes,
+              paid_at: paidAtDate,
             }),
           }
         )
@@ -300,6 +318,8 @@ export default function InvoiceDetailPage() {
         setShowPaymentModal(false)
         setPaymentAmount('')
         setPaymentNotes('')
+        setPaymentCheckNumber('')
+        setPaymentDate('')
         fetchInvoice()
       } else {
         alert('Failed to record payment')
@@ -656,10 +676,45 @@ export default function InvoiceDetailPage() {
                     Add Line Item
                   </button>
 
-                  <div className="mt-4 pt-4 border-t border-dark-700 flex justify-end">
-                    <div className="text-right">
-                      <p className="text-sm text-dark-400">Total</p>
-                      <p className="text-2xl font-bold">{formatCurrency(calculateSubtotal(editedInvoice.line_items))}</p>
+                  {/* Late Fee and CC Fee fields */}
+                  <div className="mt-4 pt-4 border-t border-dark-700 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm text-dark-400">Late Fee</label>
+                      <div className="relative w-32">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editedInvoice.late_fee_cents ? (editedInvoice.late_fee_cents / 100).toFixed(2) : ''}
+                          onChange={(e) => setEditedInvoice({ ...editedInvoice, late_fee_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
+                          placeholder="0.00"
+                          className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-red-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm text-dark-400">CC Processing Fee</label>
+                      <div className="relative w-32">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editedInvoice.cc_fee_cents ? (editedInvoice.cc_fee_cents / 100).toFixed(2) : ''}
+                          onChange={(e) => setEditedInvoice({ ...editedInvoice, cc_fee_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
+                          placeholder="0.00"
+                          className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-dark-700">
+                      <span className="font-semibold">Total</span>
+                      <span className="text-2xl font-bold">
+                        {formatCurrency(
+                          calculateSubtotal(editedInvoice.line_items) +
+                          (editedInvoice.late_fee_cents || 0) +
+                          (editedInvoice.cc_fee_cents || 0)
+                        )}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -792,6 +847,12 @@ export default function InvoiceDetailPage() {
                     <span className="font-medium text-green-600">{formatDate(invoice.paid_at)}</span>
                   </div>
                 )}
+                {invoice.check_number && (
+                  <div className="flex justify-between">
+                    <span className="text-dark-400">Check #</span>
+                    <span className="font-medium">{invoice.check_number}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -867,36 +928,62 @@ export default function InvoiceDetailPage() {
             <h2 className="text-xl font-bold mb-4">Record Payment</h2>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      placeholder={`${(balanceDue / 100).toFixed(2)}`}
+                      className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Date Paid</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder={`${(balanceDue / 100).toFixed(2)} (full balance)`}
-                    className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    autoFocus
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">Payment Method</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="check">Check</option>
-                  <option value="card">Credit/Debit Card</option>
-                  <option value="venmo">Venmo</option>
-                  <option value="zelle">Zelle</option>
-                  <option value="other">Other</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Payment Method</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="check">Check</option>
+                    <option value="card">Credit/Debit Card</option>
+                    <option value="venmo">Venmo</option>
+                    <option value="zelle">Zelle</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {paymentMethod === 'check' && (
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1">Check #</label>
+                    <input
+                      type="text"
+                      value={paymentCheckNumber}
+                      onChange={(e) => setPaymentCheckNumber(e.target.value)}
+                      placeholder="Enter check number"
+                      className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -905,7 +992,7 @@ export default function InvoiceDetailPage() {
                   type="text"
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  placeholder="Check #, reference, etc."
+                  placeholder="Additional notes..."
                   className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
