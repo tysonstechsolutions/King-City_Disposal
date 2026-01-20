@@ -124,12 +124,17 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
   for (const cell of allText) {
     if (!invoice.customer_id_code) {
       if (cell.lower.includes('customer id') || cell.lower.includes('customer #') || cell.lower.includes('cust id')) {
+        console.log(`[${sheetName}] Found Customer ID label at row ${cell.row}, col ${cell.col}: "${cell.value}"`);
         const extracted = extractValueAfterDelimiter(cell.value);
         if (extracted) {
           invoice.customer_id_code = extracted;
+          console.log(`[${sheetName}] Extracted Customer ID from delimiter: "${extracted}"`);
         } else {
           const nextCell = data[cell.row]?.[cell.col + 1];
-          if (nextCell) invoice.customer_id_code = String(nextCell).trim();
+          if (nextCell) {
+            invoice.customer_id_code = String(nextCell).trim();
+            console.log(`[${sheetName}] Extracted Customer ID from next cell: "${invoice.customer_id_code}"`);
+          }
         }
       }
     }
@@ -431,10 +436,18 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
 
   // Debug log
   console.log(`[${sheetName}] PARSED: #${invoice.invoice_number}, Total: ${invoice.total_cents}, Items: ${invoice.line_items.length}`);
+  console.log(`[${sheetName}] Customer ID Code: "${invoice.customer_id_code}", Customer Name: "${invoice.customer_name}"`);
 
   // Use customer ID code as name fallback
   if (!invoice.customer_name && invoice.customer_id_code) {
     invoice.customer_name = invoice.customer_id_code;
+    console.log(`[${sheetName}] Fallback: using customer_id_code "${invoice.customer_id_code}" as customer name`);
+  }
+
+  // Final fallback - use invoice number if still no name (shouldn't happen)
+  if (!invoice.customer_name) {
+    console.log(`[${sheetName}] WARNING: No customer name found, using invoice number as fallback`);
+    invoice.customer_name = invoice.invoice_number;
   }
 
   return invoice;
