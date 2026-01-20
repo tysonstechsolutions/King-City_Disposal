@@ -344,7 +344,7 @@ export default function AdminPaymentsPage() {
                 placeholder="Search by receipt #, customer, phone, address..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+                className="w-full pl-10 pr-4 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
               />
             </div>
 
@@ -352,7 +352,7 @@ export default function AdminPaymentsPage() {
             <select
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="px-4 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+              className="px-4 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
             >
               <option value="all">All Types</option>
               <option value="booking">Bookings</option>
@@ -366,7 +366,7 @@ export default function AdminPaymentsPage() {
             <select
               value={dateRange}
               onChange={(e) => { setDateRange(e.target.value); setCurrentPage(1); }}
-              className="px-4 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+              className="px-4 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>

@@ -240,8 +240,14 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
   if (lineTotalColIdx >= 0) {
     for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
       const row = data[rowIdx];
-      const lineTotal = parseCurrency(row[lineTotalColIdx]);
-      if (lineTotal > 0) {
+      const lineTotalRaw = row[lineTotalColIdx];
+      const lineTotal = parseCurrency(lineTotalRaw);
+
+      // Skip if line total is 0 or looks like a phone number (10 digits)
+      const lineTotalStr = String(lineTotalRaw || '').replace(/\D/g, '');
+      const looksLikePhone = lineTotalStr.length === 10 && /^\d{10}$/.test(lineTotalStr);
+
+      if (lineTotal > 0 && !looksLikePhone) {
         // Find description
         let description = '';
         if (descriptionColIdx >= 0 && row[descriptionColIdx]) {
@@ -257,11 +263,25 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
           }
         }
 
-        // Skip non-service descriptions (billing info, phone labels, etc.)
-        const skipDescriptions = ['description', 'billing', 'phone', 'fax', 'email', 'address', 'contact', 'total', 'subtotal', 'tax'];
-        const isSkippedDescription = skipDescriptions.some(skip => description.toLowerCase() === skip || description.toLowerCase().startsWith(skip + ':'));
+        // Skip non-service descriptions (billing info, phone labels, header rows, etc.)
+        const skipDescriptions = [
+          'description', 'billing', 'phone', 'fax', 'email', 'address', 'contact',
+          'total', 'subtotal', 'tax', 'quantity', 'unit price', 'line total',
+          'purchase order', 'job', 'payment terms', 'due date', 'customer id',
+          'invoice no', 'date', 'make all checks', 'thank you', 'payments over',
+          'credit card fee', 'family owned', 'king city'
+        ];
+        const descLower = description.toLowerCase();
+        const isSkippedDescription = skipDescriptions.some(skip =>
+          descLower === skip ||
+          descLower.startsWith(skip + ':') ||
+          descLower.startsWith(skip + ' ')
+        );
 
-        if (description && !isSkippedDescription) {
+        // Also skip if description contains a phone number pattern
+        const hasPhoneNumber = /\(\d{3}\)\s*\d{3}[-.]?\d{4}|\d{3}[-.]?\d{3}[-.]?\d{4}/.test(description);
+
+        if (description && !isSkippedDescription && !hasPhoneNumber) {
           const qty = quantityColIdx >= 0 ? parseFloat(row[quantityColIdx]) || 1 : 1;
           const unitPrice = unitPriceColIdx >= 0 ? parseCurrency(row[unitPriceColIdx]) : lineTotal;
 

@@ -178,7 +178,7 @@ export default function ExpensesPage() {
               <select
                 value={taxYear}
                 onChange={(e) => setTaxYear(parseInt(e.target.value))}
-                className="px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               >
                 {yearOptions.map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -325,7 +325,7 @@ export default function ExpensesPage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg"
+                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
                 >
                   {EXPENSE_CATEGORIES.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.label}</option>
@@ -338,7 +338,7 @@ export default function ExpensesPage() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg"
+                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
                 />
               </div>
               <div>
@@ -347,7 +347,7 @@ export default function ExpensesPage() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg"
+                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
                 />
               </div>
             </div>

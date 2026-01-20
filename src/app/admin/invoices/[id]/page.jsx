@@ -28,8 +28,10 @@ import {
   X,
   ExternalLink,
   Clock,
-  CreditCard
+  CreditCard,
+  Banknote
 } from 'lucide-react'
+import CardPaymentForm from '../../../../components/CardPaymentForm'
 
 export default function InvoiceDetailPage() {
   const params = useParams()
@@ -50,6 +52,7 @@ export default function InvoiceDetailPage() {
   const [paymentCheckNumber, setPaymentCheckNumber] = useState('')
   const [paymentDate, setPaymentDate] = useState('')
   const [recordingPayment, setRecordingPayment] = useState(false)
+  const [showCardForm, setShowCardForm] = useState(false)
 
   // Fetch invoice
   const fetchInvoice = useCallback(async () => {
@@ -99,6 +102,28 @@ export default function InvoiceDetailPage() {
       day: 'numeric',
       year: 'numeric',
     })
+  }
+
+  // Calculate late fee (5% per month after 30 days from invoice date)
+  const calculateLateFee = (inv) => {
+    if (!inv || inv.status === 'paid') return { monthsLate: 0, lateFee: 0 }
+
+    const invoiceDate = new Date(inv.invoice_date || inv.created_at)
+    const dueDate = inv.due_date ? new Date(inv.due_date) : new Date(invoiceDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const now = new Date()
+
+    if (now <= dueDate) return { monthsLate: 0, lateFee: 0 }
+
+    // Calculate months overdue (30-day periods after due date)
+    const msOverdue = now.getTime() - dueDate.getTime()
+    const daysOverdue = Math.floor(msOverdue / (24 * 60 * 60 * 1000))
+    const monthsLate = Math.ceil(daysOverdue / 30)
+
+    // 5% per month on original subtotal (not including existing late fees)
+    const subtotal = inv.subtotal_cents || inv.total_cents || 0
+    const lateFee = Math.round(subtotal * 0.05 * monthsLate)
+
+    return { monthsLate, lateFee, daysOverdue }
   }
 
   // Get status badge - account for 30-day grace period when no due date
@@ -258,9 +283,15 @@ export default function InvoiceDetailPage() {
 
     setRecordingPayment(true)
     try {
-      const amountCents = Math.round(parseFloat(paymentAmount) * 100)
-      const newAmountPaid = (invoice.amount_paid_cents || 0) + amountCents
-      const newBalanceDue = invoice.total_cents - newAmountPaid
+      const baseAmountCents = Math.round(parseFloat(paymentAmount) * 100)
+
+      // Calculate CC fee if card payment (3.75%)
+      const ccFeeCents = paymentMethod === 'card' ? Math.round(baseAmountCents * 0.0375) : 0
+      const totalAmountCents = baseAmountCents + ccFeeCents
+
+      const newAmountPaid = (invoice.amount_paid_cents || 0) + totalAmountCents
+      const newTotalWithFee = invoice.total_cents + ccFeeCents
+      const newBalanceDue = newTotalWithFee - newAmountPaid
       const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
 
       // Use custom date if provided, otherwise use now
@@ -270,6 +301,9 @@ export default function InvoiceDetailPage() {
       let fullNotes = paymentNotes
       if (paymentCheckNumber && paymentMethod === 'check') {
         fullNotes = `Check #${paymentCheckNumber}${paymentNotes ? ' - ' + paymentNotes : ''}`
+      }
+      if (paymentMethod === 'card' && ccFeeCents > 0) {
+        fullNotes = `CC Fee: $${(ccFeeCents / 100).toFixed(2)}${fullNotes ? ' - ' + fullNotes : ''}`
       }
 
       const response = await fetch(
@@ -284,6 +318,8 @@ export default function InvoiceDetailPage() {
           body: JSON.stringify({
             amount_paid_cents: newAmountPaid,
             balance_due_cents: Math.max(0, newBalanceDue),
+            cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
+            total_cents: newTotalWithFee,
             status: newStatus,
             paid_at: newStatus === 'paid' ? paidAtDate : null,
             check_number: paymentMethod === 'check' ? paymentCheckNumber : null,
@@ -306,7 +342,7 @@ export default function InvoiceDetailPage() {
             body: JSON.stringify({
               invoice_id: invoice.id,
               customer_id: invoice.customer_id,
-              amount_cents: amountCents,
+              amount_cents: totalAmountCents,
               method: paymentMethod,
               check_number: paymentMethod === 'check' ? paymentCheckNumber : null,
               notes: fullNotes,
@@ -487,7 +523,7 @@ export default function InvoiceDetailPage() {
                       type="text"
                       value={editedInvoice.customer_name || ''}
                       onChange={(e) => setEditedInvoice({ ...editedInvoice, customer_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
                   <div>
@@ -496,7 +532,7 @@ export default function InvoiceDetailPage() {
                       type="tel"
                       value={editedInvoice.customer_phone || ''}
                       onChange={(e) => setEditedInvoice({ ...editedInvoice, customer_phone: e.target.value })}
-                      className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
                   <div className="col-span-2">
@@ -505,7 +541,7 @@ export default function InvoiceDetailPage() {
                       type="email"
                       value={editedInvoice.customer_email || ''}
                       onChange={(e) => setEditedInvoice({ ...editedInvoice, customer_email: e.target.value })}
-                      className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
                 </div>
@@ -545,7 +581,7 @@ export default function InvoiceDetailPage() {
                       type="text"
                       value={editedInvoice.service_address || ''}
                       onChange={(e) => setEditedInvoice({ ...editedInvoice, service_address: e.target.value })}
-                      className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -555,7 +591,7 @@ export default function InvoiceDetailPage() {
                         type="text"
                         value={editedInvoice.dumpster_size || ''}
                         onChange={(e) => setEditedInvoice({ ...editedInvoice, dumpster_size: e.target.value })}
-                        className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       />
                     </div>
                     <div>
@@ -564,7 +600,7 @@ export default function InvoiceDetailPage() {
                         type="text"
                         value={editedInvoice.rental_duration || ''}
                         onChange={(e) => setEditedInvoice({ ...editedInvoice, rental_duration: e.target.value })}
-                        className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       />
                     </div>
                   </div>
@@ -575,7 +611,7 @@ export default function InvoiceDetailPage() {
                         type="number"
                         value={editedInvoice.weight_lbs || ''}
                         onChange={(e) => setEditedInvoice({ ...editedInvoice, weight_lbs: parseInt(e.target.value) || null })}
-                        className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       />
                     </div>
                     <div>
@@ -584,7 +620,7 @@ export default function InvoiceDetailPage() {
                         type="number"
                         value={editedInvoice.weight_included_lbs || ''}
                         onChange={(e) => setEditedInvoice({ ...editedInvoice, weight_included_lbs: parseInt(e.target.value) || null })}
-                        className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       />
                     </div>
                   </div>
@@ -643,7 +679,7 @@ export default function InvoiceDetailPage() {
                         value={item.description}
                         onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                         placeholder="Description"
-                        className="flex-1 px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        className="flex-1 px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       />
                       <div className="relative w-32">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
@@ -653,7 +689,7 @@ export default function InvoiceDetailPage() {
                           value={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
                           onChange={(e) => updateLineItem(index, 'amount_cents', e.target.value)}
                           placeholder="0.00"
-                          className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                          className="w-full pl-7 pr-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                         />
                       </div>
                       <button
@@ -702,7 +738,7 @@ export default function InvoiceDetailPage() {
                           value={editedInvoice.cc_fee_cents ? (editedInvoice.cc_fee_cents / 100).toFixed(2) : ''}
                           onChange={(e) => setEditedInvoice({ ...editedInvoice, cc_fee_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
                           placeholder="0.00"
-                          className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                          className="w-full pl-7 pr-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                         />
                       </div>
                     </div>
@@ -758,6 +794,59 @@ export default function InvoiceDetailPage() {
                       </div>
                     </>
                   )}
+
+                  {/* Late fee calculation alert */}
+                  {invoice.status !== 'paid' && (() => {
+                    const { monthsLate, lateFee, daysOverdue } = calculateLateFee(invoice)
+                    const existingLateFee = invoice.late_fee_cents || 0
+                    const additionalLateFee = Math.max(0, lateFee - existingLateFee)
+
+                    if (additionalLateFee > 0) {
+                      return (
+                        <div className="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-red-400 font-medium">Late Fee Due</p>
+                              <p className="text-sm text-red-300">
+                                {daysOverdue} days overdue ({monthsLate} month{monthsLate > 1 ? 's' : ''} × 5%)
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-red-400 font-bold">{formatCurrency(additionalLateFee)}</p>
+                              <button
+                                onClick={async () => {
+                                  const newLateFee = existingLateFee + additionalLateFee
+                                  const newTotal = (invoice.subtotal_cents || 0) + newLateFee + (invoice.cc_fee_cents || 0)
+                                  await fetch(
+                                    `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
+                                    {
+                                      method: 'PATCH',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        'apikey': config.supabase.anonKey,
+                                        'Authorization': `Bearer ${config.supabase.anonKey}`,
+                                      },
+                                      body: JSON.stringify({
+                                        late_fee_cents: newLateFee,
+                                        total_cents: newTotal,
+                                        balance_due_cents: newTotal - (invoice.amount_paid_cents || 0),
+                                        updated_at: new Date().toISOString(),
+                                      }),
+                                    }
+                                  )
+                                  fetchInvoice()
+                                }}
+                                className="mt-1 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              >
+                                Apply Fee
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
                 </div>
               )}
             </div>
@@ -775,7 +864,7 @@ export default function InvoiceDetailPage() {
                   onChange={(e) => setEditedInvoice({ ...editedInvoice, notes: e.target.value })}
                   placeholder="Invoice notes..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
                 />
               ) : (
                 <p className="text-dark-300">{invoice.notes || 'No notes'}</p>
@@ -925,95 +1014,201 @@ export default function InvoiceDetailPage() {
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-800 rounded-xl border border-dark-700 p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Record Payment</h2>
+            {showCardForm ? (
+              <>
+                <h2 className="text-xl font-bold mb-4">Charge Card</h2>
+                <CardPaymentForm
+                  amountCents={Math.round(parseFloat(paymentAmount || (balanceDue / 100)) * 100 * 1.0375)}
+                  customerName={invoice.customer_name}
+                  customerEmail={invoice.customer_email}
+                  invoiceId={invoice.id}
+                  description={`Invoice #${invoice.invoice_number}`}
+                  onSuccess={async (paymentIntent) => {
+                    // Record the payment
+                    const baseAmount = parseFloat(paymentAmount || (balanceDue / 100))
+                    const baseAmountCents = Math.round(baseAmount * 100)
+                    const ccFeeCents = Math.round(baseAmountCents * 0.0375)
+                    const totalAmountCents = baseAmountCents + ccFeeCents
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-1">Amount</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      placeholder={`${(balanceDue / 100).toFixed(2)}`}
-                      className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                      autoFocus
-                    />
+                    const newAmountPaid = (invoice.amount_paid_cents || 0) + totalAmountCents
+                    const newTotalWithFee = invoice.total_cents + ccFeeCents
+                    const newBalanceDue = newTotalWithFee - newAmountPaid
+                    const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
+
+                    await fetch(
+                      `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
+                      {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'apikey': config.supabase.anonKey,
+                          'Authorization': `Bearer ${config.supabase.anonKey}`,
+                        },
+                        body: JSON.stringify({
+                          amount_paid_cents: newAmountPaid,
+                          balance_due_cents: Math.max(0, newBalanceDue),
+                          cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
+                          total_cents: newTotalWithFee,
+                          status: newStatus,
+                          paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+                          updated_at: new Date().toISOString(),
+                        }),
+                      }
+                    )
+
+                    // Record in payments table
+                    await fetch(
+                      `${config.supabase.url}/rest/v1/payments`,
+                      {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'apikey': config.supabase.anonKey,
+                          'Authorization': `Bearer ${config.supabase.anonKey}`,
+                        },
+                        body: JSON.stringify({
+                          invoice_id: invoice.id,
+                          customer_id: invoice.customer_id,
+                          amount_cents: totalAmountCents,
+                          method: 'card',
+                          notes: `Stripe: ${paymentIntent.id} | CC Fee: $${(ccFeeCents / 100).toFixed(2)}`,
+                          paid_at: new Date().toISOString(),
+                        }),
+                      }
+                    )
+
+                    setShowPaymentModal(false)
+                    setShowCardForm(false)
+                    setPaymentAmount('')
+                    fetchInvoice()
+                  }}
+                  onError={(error) => {
+                    console.error('Payment failed:', error)
+                  }}
+                  onCancel={() => setShowCardForm(false)}
+                />
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold mb-4">Record Payment</h2>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Amount</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                          placeholder={`${(balanceDue / 100).toFixed(2)}`}
+                          className="w-full pl-7 pr-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Date Paid</label>
+                      <input
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-1">Date Paid</label>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-1">Payment Method</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="check">Check</option>
-                    <option value="card">Credit/Debit Card</option>
-                    <option value="venmo">Venmo</option>
-                    <option value="zelle">Zelle</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Payment Method</label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="check">Check</option>
+                        <option value="card">Credit/Debit Card</option>
+                        <option value="venmo">Venmo</option>
+                        <option value="zelle">Zelle</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
 
-                {paymentMethod === 'check' && (
+                    {paymentMethod === 'check' && (
+                      <div>
+                        <label className="block text-sm font-medium text-dark-200 mb-1">Check #</label>
+                        <input
+                          type="text"
+                          value={paymentCheckNumber}
+                          onChange={(e) => setPaymentCheckNumber(e.target.value)}
+                          placeholder="Enter check number"
+                          className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CC Fee notice when card is selected */}
+                  {paymentMethod === 'card' && paymentAmount && (
+                    <div className="bg-dark-700 rounded-lg p-3 text-sm">
+                      <div className="flex justify-between text-dark-300">
+                        <span>Payment Amount:</span>
+                        <span>${parseFloat(paymentAmount || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-dark-300">
+                        <span>CC Fee (3.75%):</span>
+                        <span>${(parseFloat(paymentAmount || 0) * 0.0375).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium text-white border-t border-dark-600 mt-2 pt-2">
+                        <span>Total with Fee:</span>
+                        <span>${(parseFloat(paymentAmount || 0) * 1.0375).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-sm font-medium text-dark-200 mb-1">Check #</label>
+                    <label className="block text-sm font-medium text-dark-200 mb-1">Notes (optional)</label>
                     <input
                       type="text"
-                      value={paymentCheckNumber}
-                      onChange={(e) => setPaymentCheckNumber(e.target.value)}
-                      placeholder="Enter check number"
-                      className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      value={paymentNotes}
+                      onChange={(e) => setPaymentNotes(e.target.value)}
+                      placeholder="Additional notes..."
+                      className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">Notes (optional)</label>
-                <input
-                  type="text"
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  placeholder="Additional notes..."
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="flex-1 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRecordPayment}
-                disabled={recordingPayment}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                Record Payment
-              </button>
-            </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    className="flex-1 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
+                  >
+                    Cancel
+                  </button>
+                  {paymentMethod === 'card' ? (
+                    <button
+                      onClick={() => setShowCardForm(true)}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Enter Card Details
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleRecordPayment}
+                      disabled={recordingPayment}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+                      Record Payment
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

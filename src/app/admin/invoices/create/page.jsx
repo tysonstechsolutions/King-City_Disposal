@@ -356,7 +356,7 @@ function CreateInvoiceContent() {
                   type="text"
                   value={invoice.customer_name}
                   onChange={(e) => setInvoice({ ...invoice, customer_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
@@ -365,7 +365,7 @@ function CreateInvoiceContent() {
                   type="tel"
                   value={invoice.customer_phone}
                   onChange={(e) => setInvoice({ ...invoice, customer_phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
@@ -374,7 +374,7 @@ function CreateInvoiceContent() {
                   type="email"
                   value={invoice.customer_email}
                   onChange={(e) => setInvoice({ ...invoice, customer_email: e.target.value })}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
@@ -382,7 +382,7 @@ function CreateInvoiceContent() {
                 <select
                   value={invoice.payment_terms}
                   onChange={(e) => setInvoice({ ...invoice, payment_terms: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 >
                   <option value={0}>Due on Receipt</option>
                   <option value={7}>Net 7</option>
@@ -407,7 +407,7 @@ function CreateInvoiceContent() {
                   type="text"
                   value={invoice.service_address}
                   onChange={(e) => setInvoice({ ...invoice, service_address: e.target.value })}
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
@@ -417,7 +417,7 @@ function CreateInvoiceContent() {
                   value={invoice.dumpster_size}
                   onChange={(e) => setInvoice({ ...invoice, dumpster_size: e.target.value })}
                   placeholder="e.g., 20 Yard"
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <div>
@@ -427,7 +427,7 @@ function CreateInvoiceContent() {
                   value={invoice.rental_duration}
                   onChange={(e) => setInvoice({ ...invoice, rental_duration: e.target.value })}
                   placeholder="e.g., 10-day"
-                  className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
             </div>
@@ -445,7 +445,7 @@ function CreateInvoiceContent() {
                     type="number"
                     value={invoice.weight_lbs}
                     onChange={(e) => setInvoice({ ...invoice, weight_lbs: e.target.value })}
-                    className="w-full px-3 py-2 border border-dark-600 rounded-lg"
+                    className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
                   />
                 </div>
                 <div>
@@ -454,7 +454,7 @@ function CreateInvoiceContent() {
                     type="number"
                     value={invoice.weight_included_lbs}
                     onChange={(e) => setInvoice({ ...invoice, weight_included_lbs: e.target.value })}
-                    className="w-full px-3 py-2 border border-dark-600 rounded-lg"
+                    className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
                   />
                 </div>
                 <div className="flex items-end">
@@ -487,7 +487,7 @@ function CreateInvoiceContent() {
                     value={item.description}
                     onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                     placeholder="Description"
-                    className="flex-1 px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    className="flex-1 px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                   />
                   <div className="relative w-32">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
@@ -497,7 +497,7 @@ function CreateInvoiceContent() {
                       value={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
                       onChange={(e) => updateLineItem(index, 'amount_cents', e.target.value)}
                       placeholder="0.00"
-                      className="w-full pl-7 pr-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      className="w-full pl-7 pr-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
                   <button
