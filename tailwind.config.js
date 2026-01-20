@@ -8,19 +8,19 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Bold red from logo - classic, strong, trustworthy
+        // Muted red from logo - professional, not harsh
         primary: {
-          DEFAULT: '#dc2626',  // Bold red matching logo
+          DEFAULT: '#b91c1c',  // Deeper, muted red - easier on eyes
           50: '#fef2f2',
           100: '#fee2e2',
           200: '#fecaca',
           300: '#fca5a5',
           400: '#f87171',
-          500: '#ef4444',
-          600: '#dc2626',  // Main red from logo
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
+          500: '#dc2626',
+          600: '#b91c1c',  // Main muted red
+          700: '#991b1b',
+          800: '#7f1d1d',
+          900: '#6b1515',
         },
         // Classic blue from logo script - complementary accent
         accent: {
