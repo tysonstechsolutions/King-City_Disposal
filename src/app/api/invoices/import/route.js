@@ -199,12 +199,23 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
 
       // Also check for common company suffixes (LLC, Inc, Corp, etc.) as a name indicator
       if (!invoice.customer_name && cell.row >= 1 && cell.row <= 12) {
-        if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals)\b/i)) {
+        if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals|Roofing|Plumbing|Electric|Excavating|Hauling|Landscaping|Dumpsters?)\b/i)) {
           const candidateName = cell.value;
           if (!candidateName.toLowerCase().includes('king city') && candidateName.length > 3) {
             invoice.customer_name = candidateName;
             console.log(`[${sheetName}] Found customer name from company suffix: ${candidateName}`);
           }
+        }
+      }
+
+      // Check row 6 specifically - this is where customer name typically appears in these invoices
+      if (!invoice.customer_name && cell.row === 6 && cell.col === 0) {
+        const candidateName = cell.value;
+        if (!candidateName.toLowerCase().includes('king city') &&
+            !candidateName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family|address|kingcity)/) &&
+            candidateName.length > 2) {
+          invoice.customer_name = candidateName;
+          console.log(`[${sheetName}] Found customer name from row 6: ${candidateName}`);
         }
       }
     }
