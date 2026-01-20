@@ -193,7 +193,7 @@ export default function CityPage({ params }) {
       <CitySchema townName={townName} />
 
       {/* Hero Section */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-4xl">
             {/* Breadcrumb */}
@@ -216,7 +216,7 @@ export default function CityPage({ params }) {
               Dumpster Rental in {townName}, IL
             </h1>
 
-            <p className="text-xl text-neutral-300 mb-8 leading-relaxed">
+            <p className="text-xl text-white/90 mb-8 leading-relaxed">
               Need a dumpster in {townName}, Illinois? {config.businessName} delivers
               roll-off dumpsters for home cleanouts, renovations, roofing projects,
               and construction debris. {isBaseCity

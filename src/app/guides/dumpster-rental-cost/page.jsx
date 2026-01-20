@@ -81,7 +81,7 @@ export default function DumpsterCostGuide() {
       <ArticleSchema />
 
       {/* Hero */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <nav className="flex items-center gap-2 text-sm text-dark-500 mb-6">
             <Link href="/" className="hover:text-white">Home</Link>
@@ -101,7 +101,7 @@ export default function DumpsterCostGuide() {
               How Much Does a Dumpster Rental Cost?
             </h1>
 
-            <p className="text-xl text-neutral-300 leading-relaxed">
+            <p className="text-xl text-white/90 leading-relaxed">
               Get straight answers about dumpster rental pricing in Southern Illinois. No hidden fees,
               no surprises - just honest pricing from a local company.
             </p>

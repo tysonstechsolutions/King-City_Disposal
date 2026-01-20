@@ -191,7 +191,7 @@ export default function ContainerBoardPage() {
             <div className="flex items-center gap-4">
               <Link 
                 href="/admin"
-                className="flex items-center gap-2 text-neutral-300 hover:text-white transition-colors"
+                className="flex items-center gap-2 text-white/90 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
                 <span className="hidden sm:inline">Back</span>
@@ -352,14 +352,14 @@ export default function ContainerBoardPage() {
                         className="p-2 bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors"
                         title="Call customer"
                       >
-                        <Phone className="w-5 h-5 text-neutral-300" />
+                        <Phone className="w-5 h-5 text-white/90" />
                       </a>
                       <button
                         onClick={() => openInMaps(container)}
                         className="p-2 bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors"
                         title="Open in Maps"
                       >
-                        <Navigation className="w-5 h-5 text-neutral-300" />
+                        <Navigation className="w-5 h-5 text-white/90" />
                       </button>
                       <Link
                         href={`/admin/booking/${container.id}`}

@@ -53,23 +53,23 @@ const haulItems = [
 export default function HomePage() {
   return (
     <>
-      {/* Hero Section - Clean & Professional */}
-      <section className="bg-neutral-900 text-white">
+      {/* Hero Section - Red background with blue/white text like logo */}
+      <section className="bg-primary-700 text-white">
         <div className="container-custom py-16 md:py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               {/* Trust indicator */}
-              <div className="flex items-center gap-2 text-primary-400 mb-6">
+              <div className="flex items-center gap-2 text-accent-200 mb-6">
                 <Shield className="w-5 h-5" />
                 <span className="text-sm font-medium">Southern Illinois&apos; Trusted Dumpster Rental Company</span>
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
                 Get a Dumpster<br />
-                <span className="text-primary-400">Delivered TODAY</span>
+                <span className="text-accent-300">Delivered TODAY</span>
               </h1>
 
-              <p className="text-xl text-neutral-300 mb-8 max-w-2xl">
+              <p className="text-xl text-white/90 mb-8 max-w-2xl">
                 Same-day delivery available in Mount Vernon & Southern IL.
                 From $475 with no hidden fees. 10-day rental, 3 tons included.
               </p>
@@ -78,37 +78,37 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <Link
                   href="/book"
-                  className="inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
+                  className="inline-flex items-center justify-center gap-2 bg-accent-700 hover:bg-accent-800 text-white font-bold py-4 px-8 rounded-lg text-lg transition-colors shadow-lg"
                 >
                   Book Online Now
                   <ArrowRight className="w-5 h-5" />
                 </Link>
                 <a
                   href={`tel:${config.phoneRaw}`}
-                  className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
+                  className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-700 font-bold py-4 px-8 rounded-lg text-lg transition-colors"
                 >
                   <Phone className="w-5 h-5" />
                   {config.phone}
                 </a>
               </div>
 
-              {/* Trust stats - like Pinpoint Parking */}
+              {/* Trust stats */}
               <div className="flex flex-wrap gap-6 text-center mt-8">
                 <div className="bg-white/10 rounded-lg px-4 py-3">
-                  <span className="block text-2xl font-bold text-primary-400">$475</span>
-                  <span className="text-neutral-400 text-xs">Starting Price</span>
+                  <span className="block text-2xl font-bold text-accent-300">$475</span>
+                  <span className="text-white/70 text-xs">Starting Price</span>
                 </div>
                 <div className="bg-white/10 rounded-lg px-4 py-3">
-                  <span className="block text-2xl font-bold text-primary-400">10 Day</span>
-                  <span className="text-neutral-400 text-xs">Rental Period</span>
+                  <span className="block text-2xl font-bold text-accent-300">10 Day</span>
+                  <span className="text-white/70 text-xs">Rental Period</span>
                 </div>
                 <div className="bg-white/10 rounded-lg px-4 py-3">
-                  <span className="block text-2xl font-bold text-primary-400">$0</span>
-                  <span className="text-neutral-400 text-xs">Hidden Fees</span>
+                  <span className="block text-2xl font-bold text-accent-300">$0</span>
+                  <span className="text-white/70 text-xs">Hidden Fees</span>
                 </div>
                 <div className="bg-white/10 rounded-lg px-4 py-3">
-                  <span className="block text-2xl font-bold text-primary-400">Same Day</span>
-                  <span className="text-neutral-400 text-xs">Delivery Available</span>
+                  <span className="block text-2xl font-bold text-accent-300">Same Day</span>
+                  <span className="text-white/70 text-xs">Delivery Available</span>
                 </div>
               </div>
             </div>
@@ -584,13 +584,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="section bg-primary">
+      {/* Final CTA - Red background like logo */}
+      <section className="section bg-primary-700">
         <div className="container-custom text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
           </h2>
-          <p className="text-white/80 text-lg mb-8 max-w-2xl mx-auto">
+          <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto">
             Book your dumpster online in minutes, or give us a call.
             We&apos;re here to help.
           </p>
@@ -598,14 +598,14 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
               href="/book"
-              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary font-semibold py-4 px-8 rounded-lg text-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-accent-700 hover:bg-accent-800 text-white font-bold py-4 px-8 rounded-lg text-lg transition-colors shadow-lg"
             >
               Book Online Now
               <ArrowRight className="w-5 h-5" />
             </Link>
             <a
               href={`tel:${config.phoneRaw}`}
-              className="inline-flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors border border-white/30"
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-100 text-primary-700 font-bold py-4 px-8 rounded-lg text-lg transition-colors"
             >
               <Phone className="w-5 h-5" />
               Call {config.phone}

@@ -104,13 +104,13 @@ export default function ServiceAreaPage() {
   return (
     <>
       {/* Hero */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Service Area
             </h1>
-            <p className="text-xl text-neutral-300">
+            <p className="text-xl text-white/90">
               We deliver dumpsters throughout Southern Illinois. If you&apos;re within{' '}
               {config.serviceRadius} miles of {config.address.city}, we&apos;ve got you covered.
             </p>

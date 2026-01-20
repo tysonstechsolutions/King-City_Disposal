@@ -143,7 +143,7 @@ export default function DumpsterSizesGuide() {
       <ArticleSchema />
 
       {/* Hero */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <nav className="flex items-center gap-2 text-sm text-dark-500 mb-6">
             <Link href="/" className="hover:text-white">Home</Link>
@@ -163,7 +163,7 @@ export default function DumpsterSizesGuide() {
               What Size Dumpster Do I Need?
             </h1>
 
-            <p className="text-xl text-neutral-300 leading-relaxed">
+            <p className="text-xl text-white/90 leading-relaxed">
               Choosing the right dumpster size saves you money and hassle. This guide helps you pick
               between our 20 and 30 yard dumpsters based on your specific project.
             </p>

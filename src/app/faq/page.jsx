@@ -189,13 +189,13 @@ export default function FAQPage() {
       <FAQSchema />
 
       {/* Hero */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Frequently Asked Questions
             </h1>
-            <p className="text-xl text-neutral-300">
+            <p className="text-xl text-white/90">
               Everything you need to know about renting a dumpster in {config.address.city} and Southern Illinois.
               Can&apos;t find your answer? Call us at{' '}
               <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:text-primary-300">

@@ -18,13 +18,13 @@ export default function DumpstersPage() {
   return (
     <>
       {/* Hero */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Dumpster Sizes
             </h1>
-            <p className="text-xl text-neutral-300">
+            <p className="text-xl text-white/90">
               Not sure which size you need? We&apos;ll help you figure it out.
               When in doubt, go up a size — it&apos;s better to have extra room.
             </p>
@@ -46,7 +46,7 @@ export default function DumpstersPage() {
                   {/* Image/Visual */}
                   <div className="bg-dark-800 p-8 lg:p-12 flex items-center justify-center relative">
                     <div className="text-center">
-                      <Truck className="w-32 h-32 text-neutral-300 mx-auto mb-4" />
+                      <Truck className="w-32 h-32 text-white/90 mx-auto mb-4" />
                       <div className="inline-block bg-primary text-white px-4 py-2 rounded-full font-bold">
                         {dumpster.id.replace('yd', ' Yard')}
                       </div>

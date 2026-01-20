@@ -18,12 +18,12 @@ export default function PricingPage() {
   return (
     <>
       {/* Hero */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Transparent Pricing
           </h1>
-          <p className="text-xl text-neutral-300 max-w-2xl mx-auto">
+          <p className="text-xl text-white/90 max-w-2xl mx-auto">
             No hidden fees, no surprises. What you see is what you pay.
           </p>
         </div>
@@ -40,7 +40,7 @@ export default function PricingPage() {
               >
                 {/* Dumpster visual */}
                 <div className="h-40 bg-dark-800 flex items-center justify-center relative">
-                  <Truck className="w-20 h-20 text-neutral-300" />
+                  <Truck className="w-20 h-20 text-white/90" />
                   <div className="absolute top-4 right-4 bg-primary text-white text-sm font-bold px-3 py-1 rounded">
                     {dumpster.shortName}
                   </div>

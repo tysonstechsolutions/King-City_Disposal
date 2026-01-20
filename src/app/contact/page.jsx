@@ -31,13 +31,13 @@ export default function ContactPage() {
   return (
     <>
       {/* Hero */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Get in Touch
             </h1>
-            <p className="text-xl text-neutral-300">
+            <p className="text-xl text-white/90">
               Have a question? Need a custom quote? We&apos;re here to help.
               Real people answer our phones — no robots, no phone trees.
             </p>

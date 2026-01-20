@@ -118,7 +118,7 @@ export default function DumpsterDetailPage({ params }) {
       <DumpsterSchema dumpster={dumpster} />
 
       {/* Hero Section */}
-      <section className="bg-neutral-900 text-white py-16">
+      <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-4xl">
             {/* Breadcrumb */}
@@ -141,7 +141,7 @@ export default function DumpsterDetailPage({ params }) {
               {dumpster.name}
             </h1>
 
-            <p className="text-xl text-neutral-300 mb-8 leading-relaxed">
+            <p className="text-xl text-white/90 mb-8 leading-relaxed">
               {dumpster.description}
             </p>
 
@@ -197,7 +197,7 @@ export default function DumpsterDetailPage({ params }) {
             {/* Left: Visual */}
             <div className="bg-dark-900 rounded-xl border border-dark-700 p-8 lg:p-12">
               <div className="text-center mb-8">
-                <Truck className="w-32 h-32 text-neutral-300 mx-auto mb-4" />
+                <Truck className="w-32 h-32 text-white/90 mx-auto mb-4" />
                 <div className="inline-block bg-primary text-white px-6 py-3 rounded-full font-bold text-xl">
                   {dumpster.id.replace('yd', ' Yard')}
                 </div>

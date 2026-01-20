@@ -8,23 +8,23 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Muted red from logo - professional, not harsh
+        // Deep red from logo triangle - for backgrounds
         primary: {
-          DEFAULT: '#b91c1c',  // Deeper, muted red - easier on eyes
+          DEFAULT: '#991b1b',  // Deep red for backgrounds
           50: '#fef2f2',
           100: '#fee2e2',
           200: '#fecaca',
           300: '#fca5a5',
           400: '#f87171',
           500: '#dc2626',
-          600: '#b91c1c',  // Main muted red
-          700: '#991b1b',
+          600: '#b91c1c',
+          700: '#991b1b',  // Main background red
           800: '#7f1d1d',
-          900: '#6b1515',
+          900: '#450a0a',
         },
-        // Classic blue from logo script - complementary accent
+        // Classic blue from logo script - for text and accents
         accent: {
-          DEFAULT: '#1e40af',  // Royal blue from logo
+          DEFAULT: '#1e3a8a',  // Deep blue from logo lettering
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -33,8 +33,8 @@ module.exports = {
           500: '#3b82f6',
           600: '#2563eb',
           700: '#1d4ed8',
-          800: '#1e40af',  // Main blue from logo
-          900: '#1e3a8a',
+          800: '#1e40af',
+          900: '#1e3a8a',  // Main blue for text
         },
         // Neutral grays for professional look
         neutral: {
