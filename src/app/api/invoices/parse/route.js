@@ -230,13 +230,29 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
       }
 
       if (cell.lower === 'job' || cell.lower.includes('job:')) {
-        const nextCell = data[cell.row]?.[cell.col + 1];
-        const belowCell = data[cell.row + 1]?.[cell.col];
+        // Job section format:
+        // Row 1: "Job" | "Description (e.g. Remodel, Construction Debris)"
+        // Row 2:       | "Street Address (e.g. 215 SE 3rd St)"
+        // Row 3:       | "City, State ZIP (e.g. Fairfield, IL 62837)"
+        const nextCell = data[cell.row]?.[cell.col + 1]; // Job description (same row, next col)
+        const addrRow1 = data[cell.row + 1]?.[cell.col + 1]; // Address line 1 (below description)
+        const addrRow2 = data[cell.row + 2]?.[cell.col + 1]; // Address line 2 (city/state/zip)
+
+        // Store job description for service_description
         if (nextCell && String(nextCell).trim().length > 2) {
-          if (!invoice.customer_name) invoice.customer_name = String(nextCell).trim();
-          if (belowCell) invoice.service_address = String(belowCell).trim();
-        } else if (belowCell && String(belowCell).trim().length > 2) {
-          if (!invoice.customer_name) invoice.customer_name = String(belowCell).trim();
+          invoice.service_description = String(nextCell).trim();
+        }
+
+        // Build service address from the lines below the job description
+        let serviceAddr = '';
+        if (addrRow1 && String(addrRow1).trim().length > 2) {
+          serviceAddr = String(addrRow1).trim();
+        }
+        if (addrRow2 && String(addrRow2).trim().length > 2) {
+          serviceAddr += (serviceAddr ? ', ' : '') + String(addrRow2).trim();
+        }
+        if (serviceAddr) {
+          invoice.service_address = serviceAddr;
         }
       }
 
