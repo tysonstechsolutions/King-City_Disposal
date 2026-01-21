@@ -181,20 +181,22 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
 
       // Check for "Job" field
       if (cell.lower === 'job' || cell.lower.includes('job:')) {
-        // Job section format:
-        // Row 1: "Job" | "Description (e.g. Remodel, Mobile Home Park - 2 demos)" | "Payment Terms" | "Due Date"
-        // Row 2:       | "Street Address or Contact info"                          | "Due upon receipt" | "Due upon receipt"
-        // Row 3:       | "City, State ZIP"
-        const nextCell = data[cell.row]?.[cell.col + 1]; // Job description (same row, next col)
-        const addrRow1 = data[cell.row + 1]?.[cell.col + 1]; // Address line 1 or Contact (below description)
-        const addrRow2 = data[cell.row + 2]?.[cell.col + 1]; // Address line 2 (city/state/zip)
+        // Job section format - the job description is in the ROW BELOW the "Job" header
+        // Row 0: "Purchase Order" | "Job"          | "Payment Terms"    | "Due Date"
+        // Row 1:                  | "Description"  | "Due upon receipt" | "Due upon receipt"
+        // Row 2:                  | "Address/Contact"
+
+        // The actual job description is in the row below, same column as "Job"
+        const jobDescCell = data[cell.row + 1]?.[cell.col]; // Job description (row below, same col)
+        const addrRow1 = data[cell.row + 2]?.[cell.col]; // Address line 1 or Contact (2 rows below)
+        const addrRow2 = data[cell.row + 3]?.[cell.col]; // Address line 2 (3 rows below)
 
         // Skip values that are clearly from other columns (Payment Terms, Due Date, etc.)
-        const skipValues = ['payment terms', 'due upon receipt', 'due date', 'net 30', 'net 15', 'upon receipt'];
+        const skipValues = ['payment terms', 'due upon receipt', 'due date', 'net 30', 'net 15', 'upon receipt', 'purchase order'];
 
         // Store job description for service_description
-        if (nextCell && String(nextCell).trim().length > 2) {
-          const jobDesc = String(nextCell).trim();
+        if (jobDescCell && String(jobDescCell).trim().length > 2) {
+          const jobDesc = String(jobDescCell).trim();
           if (!skipValues.some(sv => jobDesc.toLowerCase().includes(sv))) {
             invoice.service_description = jobDesc;
           }
@@ -226,7 +228,8 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
       if (!invoice.customer_name && cell.row >= 1 && cell.row <= 10) {
         const belowCell = data[cell.row + 1]?.[cell.col];
         const belowStr = String(belowCell || '').toLowerCase();
-        if (belowStr.match(/\d+\s+\w+|ave|street|st\b|rd\b|blvd|suite|ste\b|lane|ln\b|drive|dr\b|center/i)) {
+        // Match addresses including PO BOX, street numbers, etc.
+        if (belowStr.match(/\d+\s+\w+|p\.?o\.?\s*box|ave|street|st\b|rd\b|blvd|suite|ste\b|lane|ln\b|drive|dr\b|center/i)) {
           const companyName = cell.value;
           // Skip if it's purely numeric (invoice number), or if it matches common date patterns, or is an email
           const isNumericOnly = /^\d+$/.test(companyName);
@@ -249,13 +252,33 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
         }
       }
 
-      // Also check for common company suffixes (LLC, Inc, Corp, etc.) as a name indicator
+      // Also check for common company suffixes or known patterns (Village of, City of, etc.)
       if (!invoice.customer_name && cell.row >= 1 && cell.row <= 12) {
-        if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals|Roofing|Plumbing|Electric|Excavating|Hauling|Landscaping|Dumpsters?)\b/i)) {
+        if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals|Roofing|Plumbing|Electric|Excavating|Hauling|Landscaping|Dumpsters?|Village\s+of|City\s+of|Town\s+of|County\s+of)\b/i)) {
           const candidateName = cell.value;
           if (!candidateName.toLowerCase().includes('king city') && candidateName.length > 3) {
             invoice.customer_name = candidateName;
             console.log(`[${sheetName}] Found customer name from company suffix: ${candidateName}`);
+            // Try to get address from rows below
+            const addrLine1 = data[cell.row + 1]?.[cell.col];
+            const addrLine2 = data[cell.row + 2]?.[cell.col];
+            let fullAddr = '';
+            if (addrLine1 && String(addrLine1).trim().length > 2) {
+              const addr1 = String(addrLine1).trim();
+              // Skip if it's a phone number
+              if (!/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(addr1)) {
+                fullAddr = addr1;
+              }
+            }
+            if (addrLine2 && String(addrLine2).trim().length > 2) {
+              const addr2 = String(addrLine2).trim();
+              if (!/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(addr2)) {
+                fullAddr += (fullAddr ? ', ' : '') + addr2;
+              }
+            }
+            if (fullAddr && !invoice.customer_address) {
+              invoice.customer_address = fullAddr;
+            }
           }
         }
       }
