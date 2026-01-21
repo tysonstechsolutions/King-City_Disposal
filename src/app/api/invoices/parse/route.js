@@ -1,7 +1,7 @@
 // ============================================
 // PARSE INVOICES API - Parse Excel without saving to database
 // ============================================
-// Returns parsed invoice data for review before import
+// Specifically designed for King City Disposal invoice format
 
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
@@ -10,17 +10,92 @@ import { logger } from '../../../../lib/logger';
 export const dynamic = 'force-dynamic';
 
 // ============================================
-// Parse a single Excel sheet into customer invoice data
+// Parse Invoice Tracker sheet for payment info
 // ============================================
-function parseCustomerInvoiceSheet(sheet, sheetName) {
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+function parseInvoiceTracker(workbook) {
+  const trackerSheet = workbook.Sheets['Invoice Tracker'];
+  if (!trackerSheet) return {};
 
-  if (data.length < 2) {
-    return null;
+  const data = XLSX.utils.sheet_to_json(trackerSheet, { header: 1, defval: '' });
+  const paymentInfo = {};
+
+  // Skip header row (row 0)
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const invoiceNum = String(row[0] || '').trim();
+    if (!invoiceNum || !/^\d+$/.test(invoiceNum)) continue;
+
+    paymentInfo[invoiceNum] = {
+      customer: row[1] || '',
+      total: parseFloat(row[2]) || 0,
+      is_paid: String(row[4] || '').toLowerCase() === 'x',
+      date_paid: row[5] ? parseExcelDate(row[5]) : null,
+      payment_method: row[6] || '',
+      late_fees: parseFloat(row[7]) || 0,
+      cc_fees: parseFloat(row[8]) || 0,
+      payment_amount: parseFloat(row[9]) || 0,
+    };
   }
 
+  return paymentInfo;
+}
+
+// ============================================
+// Parse Excel date (serial number or string)
+// ============================================
+function parseExcelDate(value) {
+  if (!value) return null;
+
+  // If it's a number (Excel serial date)
+  if (typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value);
+    if (date) {
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+    }
+  }
+
+  // If it's a Date object
+  if (value instanceof Date) {
+    return value.toISOString().split('T')[0];
+  }
+
+  // If it's a string, try to parse it
+  const str = String(value).trim();
+
+  // MM/DD/YYYY format
+  let match = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (match) {
+    const [, m, d, y] = match;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // YYYY-MM-DD format
+  match = str.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (match) {
+    const [, y, m, d] = match;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  return null;
+}
+
+// ============================================
+// Parse a single invoice sheet
+// ============================================
+function parseInvoiceSheet(sheet, sheetName, paymentInfo) {
+  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  if (data.length < 10) return null;
+
+  // Get cell value helper
+  const getCell = (row, col) => {
+    if (row < 0 || row >= data.length) return '';
+    if (!data[row] || col < 0 || col >= data[row].length) return '';
+    return String(data[row][col] || '').trim();
+  };
+
   const invoice = {
-    invoice_number: '',
+    invoice_number: sheetName, // Use sheet name as invoice number (it's the invoice #)
     invoice_date: null,
     due_date: null,
     customer_id_code: '',
@@ -36,512 +111,143 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     tax_cents: 0,
     discount_cents: 0,
     total_cents: 0,
-    notes: `Imported from sheet: ${sheetName}`,
-    // Auto-detect paid status
+    notes: '',
     is_paid: false,
     date_paid: null,
     check_number: null,
     payment_method: null,
   };
 
-  const extractValueAfterDelimiter = (cellValue) => {
-    const str = String(cellValue || '');
-    const match = str.match(/[:.]\s*(.+)$/);
-    return match ? match[1].trim() : null;
-  };
-
-  // Scan ALL cells and build index
-  const allText = [];
-  for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
-    const row = data[rowIdx];
-    for (let colIdx = 0; colIdx < row.length; colIdx++) {
-      const cellStr = String(row[colIdx] || '').trim();
-      if (cellStr) {
-        allText.push({ row: rowIdx, col: colIdx, value: cellStr, lower: cellStr.toLowerCase() });
-      }
+  // Row 2: Invoice No
+  // Format: C2="Invoice No :" C3="4621"
+  const invoiceNoLabel = getCell(2, 2).toLowerCase();
+  if (invoiceNoLabel.includes('invoice no')) {
+    const invoiceNo = getCell(2, 3);
+    if (invoiceNo && /^\d+$/.test(invoiceNo)) {
+      invoice.invoice_number = invoiceNo;
     }
   }
 
-  // Extract invoice number
-  for (const cell of allText) {
-    if (!invoice.invoice_number) {
-      if (cell.lower.includes('invoice no') || cell.lower.includes('invoice #') ||
-          cell.lower.includes('invoice:') || cell.lower.match(/^invoice\s*[:#]/)) {
-        const extracted = extractValueAfterDelimiter(cell.value);
-        if (extracted) {
-          invoice.invoice_number = extracted;
-        } else {
-          const nextCell = data[cell.row]?.[cell.col + 1];
-          if (nextCell) invoice.invoice_number = String(nextCell).trim();
-        }
-      }
+  // Row 3: Date
+  // Format: C2="Date :" C3=46041 (Excel serial)
+  const dateLabel = getCell(3, 2).toLowerCase();
+  if (dateLabel.includes('date')) {
+    const dateVal = data[3]?.[3];
+    invoice.invoice_date = parseExcelDate(dateVal);
+  }
+
+  // Row 4: Customer ID
+  // Format: C2="Customer ID :" C3="WOODLAWN"
+  const custIdLabel = getCell(4, 2).toLowerCase();
+  if (custIdLabel.includes('customer id')) {
+    invoice.customer_id_code = getCell(4, 3);
+  }
+
+  // Row 6: Customer Name
+  invoice.customer_name = getCell(6, 0);
+
+  // Row 7-8: Customer Address
+  const addrLine1 = getCell(7, 0);
+  const addrLine2 = getCell(8, 0);
+  if (addrLine1 || addrLine2) {
+    invoice.customer_address = [addrLine1, addrLine2].filter(Boolean).join(', ');
+  }
+
+  // Row 11: Customer Phone (C0) - NOT C3 which is King City's billing number!
+  const phoneVal = getCell(11, 0);
+  if (phoneVal && /^\d{10}$/.test(phoneVal.replace(/\D/g, ''))) {
+    const digits = phoneVal.replace(/\D/g, '');
+    // Make sure it's not King City's phone
+    if (!['6182318481', '6182318380'].includes(digits)) {
+      invoice.customer_phone = digits;
     }
   }
 
-  // Extract date
-  for (const cell of allText) {
-    if (!invoice.invoice_date) {
-      if ((cell.lower.includes('date') && !cell.lower.includes('due date') && !cell.lower.includes('paid')) ||
-          cell.lower.match(/^date\s*[:#]/)) {
-        const extracted = extractValueAfterDelimiter(cell.value);
-        if (extracted) {
-          const parsed = parseDate(extracted);
-          if (parsed) invoice.invoice_date = parsed;
-        } else {
-          const nextCell = data[cell.row]?.[cell.col + 1];
-          if (nextCell) {
-            const parsed = parseDate(nextCell);
-            if (parsed) invoice.invoice_date = parsed;
-          }
-        }
-      }
+  // Row 12-15: Job info
+  // R12 is header row: "Purchase Order" | "Job" | "Payment Terms" | "Due Date"
+  // R13 C1 has job description
+  const jobDesc = getCell(13, 1);
+  if (jobDesc && !jobDesc.toLowerCase().includes('due upon') && !jobDesc.toLowerCase().includes('payment')) {
+    invoice.service_description = jobDesc;
+  }
+
+  // R15 C1 might have service address or contact info
+  const r15c1 = getCell(15, 1);
+  if (r15c1) {
+    if (r15c1.toLowerCase().startsWith('contact')) {
+      // It's contact info, store in notes
+      invoice.notes = r15c1;
+    } else if (r15c1.match(/\d+.*(?:st|rd|ave|blvd|dr|ln|way|ct|circle)/i) || r15c1.match(/[A-Z][a-z]+,?\s+[A-Z]{2}/)) {
+      // Looks like an address
+      invoice.service_address = r15c1;
     }
   }
 
-  // Extract due date
-  for (const cell of allText) {
-    if (!invoice.due_date) {
-      if (cell.lower.includes('due date')) {
-        const extracted = extractValueAfterDelimiter(cell.value);
-        if (extracted) {
-          const parsed = parseDate(extracted);
-          if (parsed) invoice.due_date = parsed;
-        } else {
-          const nextCell = data[cell.row]?.[cell.col + 1];
-          if (nextCell) {
-            const parsed = parseDate(nextCell);
-            if (parsed) invoice.due_date = parsed;
-          }
-        }
-      }
-    }
-  }
-
-  // Extract Customer ID
-  for (const cell of allText) {
-    if (!invoice.customer_id_code) {
-      if (cell.lower.includes('customer id') || cell.lower.includes('customer #') || cell.lower.includes('cust id')) {
-        const extracted = extractValueAfterDelimiter(cell.value);
-        if (extracted) {
-          invoice.customer_id_code = extracted;
-        } else {
-          const nextCell = data[cell.row]?.[cell.col + 1];
-          if (nextCell) {
-            invoice.customer_id_code = String(nextCell).trim();
-          }
-        }
-      }
-    }
-  }
-
-  // ============================================
-  // AUTO-DETECT PAID STATUS
-  // ============================================
-  // Look for payment indicators in the sheet
-  for (const cell of allText) {
-    const lower = cell.lower;
-
-    // Check for "PAID" stamp/label
-    if (lower === 'paid' || lower.includes('paid in full') || lower.includes('payment received')) {
-      invoice.is_paid = true;
-    }
-
-    // Check for balance due = $0 or 0.00
-    if (lower.includes('balance due') || lower.includes('amount due') || lower.includes('balance:')) {
-      const nextCell = data[cell.row]?.[cell.col + 1];
-      if (nextCell) {
-        const amount = parseCurrency(nextCell);
-        if (amount === 0) {
-          invoice.is_paid = true;
-        }
-      }
-      // Also check if value is in same cell after colon
-      const extracted = extractValueAfterDelimiter(cell.value);
-      if (extracted) {
-        const amount = parseCurrency(extracted);
-        if (amount === 0) {
-          invoice.is_paid = true;
-        }
-      }
-    }
-
-    // Check for payment date
-    if (lower.includes('date paid') || lower.includes('payment date') || lower.includes('paid on')) {
-      invoice.is_paid = true;
-      const extracted = extractValueAfterDelimiter(cell.value);
-      if (extracted) {
-        const parsed = parseDate(extracted);
-        if (parsed) invoice.date_paid = parsed;
-      } else {
-        const nextCell = data[cell.row]?.[cell.col + 1];
-        if (nextCell) {
-          const parsed = parseDate(nextCell);
-          if (parsed) invoice.date_paid = parsed;
-        }
-      }
-    }
-
-    // Check for check number
-    if (lower.includes('check #') || lower.includes('check no') || lower.includes('chk #') || lower.includes('ck #')) {
-      invoice.is_paid = true;
-      invoice.payment_method = 'check';
-      const extracted = extractValueAfterDelimiter(cell.value);
-      if (extracted) {
-        invoice.check_number = extracted;
-      } else {
-        const nextCell = data[cell.row]?.[cell.col + 1];
-        if (nextCell) {
-          invoice.check_number = String(nextCell).trim();
-        }
-      }
-    }
-
-    // Check for payment method indicators
-    if (lower.includes('paid by check') || lower.includes('paid via check')) {
-      invoice.is_paid = true;
-      invoice.payment_method = 'check';
-    }
-    if (lower.includes('paid by card') || lower.includes('paid via card') || lower.includes('credit card payment')) {
-      invoice.is_paid = true;
-      invoice.payment_method = 'card';
-    }
-    if (lower.includes('paid by cash') || lower.includes('paid via cash') || lower.includes('cash payment')) {
-      invoice.is_paid = true;
-      invoice.payment_method = 'cash';
-    }
-  }
-
-  // Extract customer name and address
-  // Customer info is typically in the left section, starting around row 6
-  // Format: Customer Name, then Address Line 1, then City/State/ZIP on subsequent rows
-  for (const cell of allText) {
-    if (cell.row < 15) {
-      if (cell.lower === 'bill to' || cell.lower.includes('bill to:')) {
-        const belowCell = data[cell.row + 1]?.[cell.col];
-        if (belowCell && String(belowCell).trim().length > 2) {
-          const candidateName = String(belowCell).trim();
-          if (!candidateName.toLowerCase().includes('king city') &&
-              !candidateName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family|address)/)) {
-            if (!invoice.customer_name) {
-              invoice.customer_name = candidateName;
-            }
-            // Get address lines (could be 1-2 lines below customer name)
-            const addrLine1 = data[cell.row + 2]?.[cell.col];
-            const addrLine2 = data[cell.row + 3]?.[cell.col];
-            let fullAddr = '';
-            if (addrLine1 && String(addrLine1).trim().length > 2) {
-              fullAddr = String(addrLine1).trim();
-            }
-            if (addrLine2 && String(addrLine2).trim().length > 2) {
-              fullAddr += (fullAddr ? ', ' : '') + String(addrLine2).trim();
-            }
-            if (fullAddr) {
-              invoice.customer_address = fullAddr;
-            }
-          }
-        }
-      }
-
-      if (cell.lower === 'job' || cell.lower.includes('job:')) {
-        // Job section format - the job description is in the ROW BELOW the "Job" header
-        // Row 0: "Purchase Order" | "Job"          | "Payment Terms"    | "Due Date"
-        // Row 1:                  | "Description"  | "Due upon receipt" | "Due upon receipt"
-        // Row 2:                  | "Address/Contact"
-
-        // The actual job description is in the row below, same column as "Job"
-        const jobDescCell = data[cell.row + 1]?.[cell.col]; // Job description (row below, same col)
-        const addrRow1 = data[cell.row + 2]?.[cell.col]; // Address line 1 or Contact (2 rows below)
-        const addrRow2 = data[cell.row + 3]?.[cell.col]; // Address line 2 (3 rows below)
-
-        // Skip values that are clearly from other columns (Payment Terms, Due Date, etc.)
-        const skipValues = ['payment terms', 'due upon receipt', 'due date', 'net 30', 'net 15', 'upon receipt', 'purchase order'];
-
-        // Store job description for service_description
-        if (jobDescCell && String(jobDescCell).trim().length > 2) {
-          const jobDesc = String(jobDescCell).trim();
-          if (!skipValues.some(sv => jobDesc.toLowerCase().includes(sv))) {
-            invoice.service_description = jobDesc;
-          }
-        }
-
-        // Build service address from the lines below the job description
-        // Skip "Contact:" lines and payment terms
-        let serviceAddr = '';
-        if (addrRow1 && String(addrRow1).trim().length > 2) {
-          const addr1 = String(addrRow1).trim();
-          // Skip if it's a contact line or payment terms
-          if (!addr1.toLowerCase().startsWith('contact') &&
-              !skipValues.some(sv => addr1.toLowerCase().includes(sv))) {
-            serviceAddr = addr1;
-          }
-        }
-        if (addrRow2 && String(addrRow2).trim().length > 2) {
-          const addr2 = String(addrRow2).trim();
-          if (!addr2.toLowerCase().startsWith('contact') &&
-              !skipValues.some(sv => addr2.toLowerCase().includes(sv))) {
-            serviceAddr += (serviceAddr ? ', ' : '') + addr2;
-          }
-        }
-        if (serviceAddr) {
-          invoice.service_address = serviceAddr;
-        }
-      }
-
-      if (!invoice.customer_name && cell.row >= 1 && cell.row <= 10) {
-        const belowCell = data[cell.row + 1]?.[cell.col];
-        const belowStr = String(belowCell || '').toLowerCase();
-        // Match addresses including PO BOX, street numbers, etc.
-        if (belowStr.match(/\d+\s+\w+|p\.?o\.?\s*box|ave|street|st\b|rd\b|blvd|suite|ste\b|lane|ln\b|drive|dr\b|center/i)) {
-          const companyName = cell.value;
-          const isNumericOnly = /^\d+$/.test(companyName);
-          const isDateLike = /^\d{1,2}\/\d{1,2}\/\d{4}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(companyName);
-          const isEmail = /@/.test(companyName);
-          const isPhoneNumber = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(companyName);
-          if (!isNumericOnly && !isDateLike && !isEmail && !isPhoneNumber &&
-              !companyName.toLowerCase().includes('king city') &&
-              companyName.length > 3 &&
-              !companyName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family)/)) {
-            invoice.customer_name = companyName;
-            invoice.customer_address = String(belowCell).trim();
-            const addr2 = data[cell.row + 2]?.[cell.col];
-            if (addr2 && String(addr2).match(/[a-z]{2}[\s.,]+\d{5}/i)) {
-              invoice.customer_address += ', ' + String(addr2).trim();
-            }
-          }
-        }
-      }
-
-      // Also look for company suffixes or known patterns (Village of, City of, etc.)
-      if (!invoice.customer_name && cell.row >= 1 && cell.row <= 12) {
-        if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals|Roofing|Plumbing|Electric|Excavating|Hauling|Landscaping|Dumpsters?|Village\s+of|City\s+of|Town\s+of|County\s+of)\b/i)) {
-          const candidateName = cell.value;
-          if (!candidateName.toLowerCase().includes('king city') && candidateName.length > 3) {
-            invoice.customer_name = candidateName;
-            // Try to get address from rows below
-            const addrLine1 = data[cell.row + 1]?.[cell.col];
-            const addrLine2 = data[cell.row + 2]?.[cell.col];
-            let fullAddr = '';
-            if (addrLine1 && String(addrLine1).trim().length > 2) {
-              const addr1 = String(addrLine1).trim();
-              // Skip if it's a phone number
-              if (!/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(addr1)) {
-                fullAddr = addr1;
-              }
-            }
-            if (addrLine2 && String(addrLine2).trim().length > 2) {
-              const addr2 = String(addrLine2).trim();
-              if (!/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(addr2)) {
-                fullAddr += (fullAddr ? ', ' : '') + addr2;
-              }
-            }
-            if (fullAddr && !invoice.customer_address) {
-              invoice.customer_address = fullAddr;
-            }
-          }
-        }
-      }
-
-      if (!invoice.customer_name && cell.row === 6 && cell.col === 0) {
-        const candidateName = cell.value;
-        if (!candidateName.toLowerCase().includes('king city') &&
-            !candidateName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family|address|kingcity)/) &&
-            candidateName.length > 2) {
-          invoice.customer_name = candidateName;
-        }
-      }
-    }
-  }
-
-  if (!invoice.customer_name && invoice.customer_id_code) {
-    invoice.customer_name = invoice.customer_id_code;
-  }
-
-  // ============================================
-  // PHONE NUMBER EXTRACTION - Skip King City's numbers
-  // ============================================
-  // King City Disposal phone numbers to skip
-  const kingCityPhones = ['6182318481', '6182318380', '618231848', '618231838'];
-
-  // Helper to check if a phone is King City's
-  const isKingCityPhone = (phone) => {
-    const digits = phone.replace(/\D/g, '');
-    return kingCityPhones.some(kcp => digits.includes(kcp) || kcp.includes(digits));
-  };
-
-  // Look for customer phone - only in customer section (after Bill To or in specific rows)
-  // The customer info is typically in the left section, rows 6-12, NOT in the King City header area (rows 1-5)
-  let billToRow = -1;
-  for (const cell of allText) {
-    if (cell.lower === 'bill to' || cell.lower.includes('bill to:')) {
-      billToRow = cell.row;
+  // Find line items - look for "Quantity" header row
+  let lineItemsStartRow = -1;
+  for (let row = 15; row < Math.min(25, data.length); row++) {
+    if (getCell(row, 0).toLowerCase() === 'quantity' && getCell(row, 1).toLowerCase() === 'description') {
+      lineItemsStartRow = row + 1;
       break;
     }
   }
 
-  // Only look for phone numbers in the customer section (after Bill To, or rows 6+)
-  // Skip any phone that matches King City's numbers
-  for (const cell of allText) {
-    if (!invoice.customer_phone) {
-      // Only check rows after Bill To or in customer area (rows 6-15)
-      const isInCustomerArea = (billToRow > 0 && cell.row >= billToRow && cell.row <= billToRow + 6) ||
-                               (billToRow < 0 && cell.row >= 6 && cell.row <= 15);
+  // Parse line items
+  if (lineItemsStartRow > 0) {
+    for (let row = lineItemsStartRow; row < data.length; row++) {
+      const qty = parseFloat(getCell(row, 0)) || 0;
+      const desc = getCell(row, 1);
+      const unitPrice = parseFloat(getCell(row, 2)) || 0;
+      const lineTotal = parseFloat(getCell(row, 3)) || 0;
 
-      if (!isInCustomerArea) continue;
-
-      const phoneMatch = cell.value.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-      if (phoneMatch) {
-        const phoneDigits = phoneMatch[0].replace(/\D/g, '');
-
-        // Skip if it's King City's phone number
-        if (isKingCityPhone(phoneDigits)) continue;
-
-        // Skip currency fields
-        const isCurrencyField = cell.lower.includes('total') || cell.lower.includes('amount') ||
-                                cell.lower.includes('price') || cell.lower.includes('subtotal') ||
-                                cell.lower.includes('$') || cell.value.includes('$');
-        if (isCurrencyField) continue;
-
-        invoice.customer_phone = phoneDigits;
+      // Stop if we hit subtotal/total section
+      if (getCell(row, 2).toLowerCase().includes('subtotal') ||
+          getCell(row, 0).toLowerCase().includes('total') ||
+          getCell(row, 0).toLowerCase().includes('payment')) {
+        break;
       }
+
+      // Skip rows without description or with 0 total
+      if (!desc || lineTotal <= 0) continue;
+
+      // Skip informational rows
+      if (desc.toLowerCase().includes('includes') ||
+          desc.toLowerCase().includes('overages may be') ||
+          desc.toLowerCase().includes('overage per ton')) {
+        continue;
+      }
+
+      // Extract dumpster size from description
+      const sizeMatch = desc.match(/(\d+)\s*[Yy](?:ar)?d/);
+      if (sizeMatch && !invoice.dumpster_size) {
+        invoice.dumpster_size = sizeMatch[1];
+      }
+
+      invoice.line_items.push({
+        description: desc,
+        quantity: qty || 1,
+        unit_price_cents: Math.round(unitPrice * 100),
+        amount_cents: Math.round(lineTotal * 100),
+      });
     }
   }
 
-  // DON'T do a fallback phone search - if we didn't find a customer phone, leave it empty
-  // The admin can add it during review if needed
+  // Find total - look for "TOTAL" in column 0 or "Subtotal" in column 2
+  for (let row = data.length - 1; row >= 20; row--) {
+    const c0 = getCell(row, 0).toLowerCase();
+    const c2 = getCell(row, 2).toLowerCase();
+    const c3val = parseFloat(getCell(row, 3)) || 0;
 
-  // Extract email - skip King City's email
-  for (const cell of allText) {
-    if (cell.lower.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/)) {
-      const emailMatch = cell.value.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-      if (emailMatch && !emailMatch[0].toLowerCase().includes('kingcitydisposal')) {
-        invoice.customer_email = emailMatch[0];
-      }
+    if (c0 === 'total' && c3val > 0) {
+      invoice.total_cents = Math.round(c3val * 100);
+      break;
+    }
+    if (c2 === 'subtotal' && c3val > 0 && !invoice.subtotal_cents) {
+      invoice.subtotal_cents = Math.round(c3val * 100);
     }
   }
 
-  // Find line items columns and the header row
-  let lineTotalColIdx = -1;
-  let unitPriceColIdx = -1;
-  let descriptionColIdx = -1;
-  let quantityColIdx = -1;
-  let headerRowIdx = -1;
-
-  for (const cell of allText) {
-    if (cell.lower === 'line total' || cell.lower.includes('line total')) {
-      lineTotalColIdx = cell.col;
-      headerRowIdx = cell.row;
-    }
-    if (cell.lower === 'unit price' || cell.lower.includes('unit price')) unitPriceColIdx = cell.col;
-    if (cell.lower === 'description') descriptionColIdx = cell.col;
-    if (cell.lower === 'quantity' || cell.lower === 'qty') quantityColIdx = cell.col;
-  }
-
-  // Extract line items
-  if (lineTotalColIdx >= 0 && headerRowIdx >= 0) {
-    for (let rowIdx = headerRowIdx + 1; rowIdx < data.length; rowIdx++) {
-      const row = data[rowIdx];
-      const lineTotalRaw = row[lineTotalColIdx];
-      const lineTotal = parseCurrency(lineTotalRaw);
-
-      const lineTotalStr = String(lineTotalRaw || '').replace(/\D/g, '');
-      const looksLikePhone = lineTotalStr.length === 10 && /^\d{10}$/.test(lineTotalStr);
-      const unrealisticallyLarge = lineTotal > 100000000;
-
-      if (lineTotal > 0 && !looksLikePhone && !unrealisticallyLarge) {
-        let description = '';
-        if (descriptionColIdx >= 0 && row[descriptionColIdx]) {
-          description = String(row[descriptionColIdx]).trim();
-        } else {
-          for (let c = 0; c < lineTotalColIdx; c++) {
-            const cellVal = String(row[c] || '').trim();
-            if (cellVal.length > 2 && !cellVal.match(/^\d+$/) &&
-                !cellVal.match(/^\$/) && cellVal.toLowerCase() !== 'quantity') {
-              description = cellVal;
-            }
-          }
-        }
-
-        const skipDescriptions = [
-          'description', 'billing', 'phone', 'fax', 'email', 'address', 'contact',
-          'total', 'subtotal', 'tax', 'quantity', 'unit price', 'line total',
-          'purchase order', 'job', 'payment terms', 'due date', 'customer id',
-          'invoice no', 'date', 'make all checks', 'thank you', 'payments over',
-          'credit card fee', 'family owned', 'king city'
-        ];
-        const descLower = description.toLowerCase();
-        const isSkippedDescription = skipDescriptions.some(skip =>
-          descLower === skip ||
-          descLower.startsWith(skip + ':') ||
-          descLower.startsWith(skip + ' ')
-        );
-
-        const hasPhoneNumber = /\(\d{3}\)\s*\d{3}[-.]?\d{4}|\d{3}[-.]?\d{3}[-.]?\d{4}/.test(description);
-
-        if (description && !isSkippedDescription && !hasPhoneNumber) {
-          const qty = quantityColIdx >= 0 ? parseFloat(row[quantityColIdx]) || 1 : 1;
-          const unitPrice = unitPriceColIdx >= 0 ? parseCurrency(row[unitPriceColIdx]) : lineTotal;
-
-          invoice.line_items.push({
-            description,
-            quantity: qty,
-            unit_price_cents: unitPrice,
-            amount_cents: lineTotal,
-          });
-
-          const sizeMatch = description.match(/(\d+)\s*(?:yard|yd|cu)/i);
-          if (sizeMatch && !invoice.dumpster_size) {
-            invoice.dumpster_size = sizeMatch[1];
-          }
-
-          if (description.toLowerCase().includes('delivery') ||
-              description.toLowerCase().includes('rental')) {
-            invoice.service_description = description;
-          }
-        }
-      }
-    }
-  }
-
-  // Extract TOTAL
-  for (let rowIdx = data.length - 1; rowIdx >= 0; rowIdx--) {
-    const row = data[rowIdx];
-    for (let colIdx = 0; colIdx < row.length; colIdx++) {
-      const cell = String(row[colIdx] || '').toLowerCase().trim();
-
-      if ((cell === 'total' || cell.startsWith('total ') || cell.startsWith('total:')) && !invoice.total_cents) {
-        const cellFull = String(row[colIdx] || '');
-        const inCellAmount = parseCurrency(cellFull);
-        if (inCellAmount > 0) {
-          invoice.total_cents = inCellAmount;
-        } else {
-          for (let i = colIdx + 1; i < row.length; i++) {
-            const val = row[i];
-            if (val !== '' && val !== null && val !== undefined) {
-              const amount = parseCurrency(val);
-              if (amount > 0) {
-                invoice.total_cents = amount;
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      if (cell === 'subtotal' && !invoice.subtotal_cents) {
-        for (let i = colIdx + 1; i < row.length; i++) {
-          const val = row[i];
-          if (val) {
-            const amount = parseCurrency(val);
-            if (amount > 0) {
-              invoice.subtotal_cents = amount;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
+  // If no total found, sum line items
   if (!invoice.total_cents && invoice.line_items.length > 0) {
     invoice.total_cents = invoice.line_items.reduce((sum, item) => sum + item.amount_cents, 0);
   }
@@ -550,82 +256,44 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     invoice.subtotal_cents = invoice.total_cents;
   }
 
-  if (!invoice.total_cents && !invoice.invoice_number) {
+  // Get payment info from Invoice Tracker
+  const trackerInfo = paymentInfo[invoice.invoice_number];
+  if (trackerInfo) {
+    invoice.is_paid = trackerInfo.is_paid;
+    invoice.date_paid = trackerInfo.date_paid;
+    invoice.payment_method = trackerInfo.payment_method;
+
+    // Extract check number from payment method (e.g., "Ck# 5144")
+    if (trackerInfo.payment_method) {
+      const ckMatch = trackerInfo.payment_method.match(/[Cc]k?#?\s*(\d+)/);
+      if (ckMatch) {
+        invoice.check_number = ckMatch[1];
+        invoice.payment_method = 'check';
+      } else if (trackerInfo.payment_method.toLowerCase().includes('ach')) {
+        invoice.payment_method = 'ach';
+      } else if (trackerInfo.payment_method.toLowerCase() === 'sq') {
+        invoice.payment_method = 'card'; // Square = card
+      }
+    }
+
+    // Use tracker total if our parsing didn't get it right
+    if (trackerInfo.total > 0 && (!invoice.total_cents || invoice.total_cents === 0)) {
+      invoice.total_cents = Math.round(trackerInfo.total * 100);
+      invoice.subtotal_cents = invoice.total_cents;
+    }
+  }
+
+  // Skip if no meaningful data
+  if (!invoice.customer_name && !invoice.total_cents) {
     return null;
   }
 
-  if (!invoice.customer_name && invoice.customer_id_code) {
-    invoice.customer_name = invoice.customer_id_code;
-  }
-
+  // Default customer name if empty
   if (!invoice.customer_name) {
-    invoice.customer_name = 'Unknown Customer';
+    invoice.customer_name = trackerInfo?.customer || 'Unknown Customer';
   }
 
   return invoice;
-}
-
-// ============================================
-// Helper: Parse date from various formats
-// ============================================
-function parseDate(value) {
-  if (!value) return null;
-
-  if (value instanceof Date) {
-    return value.toISOString().split('T')[0];
-  }
-
-  if (typeof value === 'number') {
-    const date = XLSX.SSF.parse_date_code(value);
-    if (date) {
-      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
-    }
-  }
-
-  const str = String(value).trim();
-
-  let match = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (match) {
-    const [, m, d, y] = match;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-
-  match = str.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (match) {
-    const [, y, m, d] = match;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
-  }
-
-  return null;
-}
-
-// ============================================
-// Helper: Parse currency value to cents
-// ============================================
-function parseCurrency(value) {
-  if (!value) return 0;
-
-  if (typeof value === 'number') {
-    if (value >= 1000000000 && value <= 9999999999 && Number.isInteger(value)) {
-      return 0;
-    }
-    return Math.round(value * 100);
-  }
-
-  const str = String(value).replace(/[$,\s]/g, '');
-
-  if (/^\d{10}$/.test(str)) {
-    return 0;
-  }
-
-  const num = parseFloat(str);
-
-  return isNaN(num) ? 0 : Math.round(num * 100);
 }
 
 // ============================================
@@ -637,10 +305,7 @@ export async function POST(request) {
     const file = formData.get('file');
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file uploaded' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
     const fileName = file.name || 'unknown';
@@ -654,24 +319,27 @@ export async function POST(request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: false });
+
+    // First, parse Invoice Tracker for payment info
+    const paymentInfo = parseInvoiceTracker(workbook);
+    console.log('Payment info loaded for', Object.keys(paymentInfo).length, 'invoices');
 
     const invoices = [];
     const skipped = [];
 
-    for (const sheetName of workbook.SheetNames) {
+    // Only process sheets that are invoice numbers (4-digit numbers)
+    const invoiceSheets = workbook.SheetNames.filter(name => /^\d{4}$/.test(name));
+    console.log('Found', invoiceSheets.length, 'invoice sheets');
+
+    for (const sheetName of invoiceSheets) {
       try {
         const sheet = workbook.Sheets[sheetName];
-        const invoiceData = parseCustomerInvoiceSheet(sheet, sheetName);
+        const invoiceData = parseInvoiceSheet(sheet, sheetName, paymentInfo);
 
         if (!invoiceData) {
           skipped.push({ sheet: sheetName, reason: 'Could not parse invoice data' });
           continue;
-        }
-
-        // Generate invoice number if not found
-        if (!invoiceData.invoice_number) {
-          invoiceData.invoice_number = `IMP-${Date.now()}-${invoices.length}`;
         }
 
         invoices.push({
@@ -680,13 +348,21 @@ export async function POST(request) {
         });
 
       } catch (sheetError) {
+        console.error(`Error parsing sheet ${sheetName}:`, sheetError);
         skipped.push({ sheet: sheetName, reason: sheetError.message });
       }
+    }
+
+    // Also note which sheets were intentionally skipped
+    const nonInvoiceSheets = workbook.SheetNames.filter(name => !/^\d{4}$/.test(name));
+    for (const name of nonInvoiceSheets) {
+      skipped.push({ sheet: name, reason: 'Not an invoice sheet (tracking/template)' });
     }
 
     return NextResponse.json({
       success: true,
       total_sheets: workbook.SheetNames.length,
+      invoice_sheets: invoiceSheets.length,
       parsed_count: invoices.length,
       skipped_count: skipped.length,
       skipped_sheets: skipped,
@@ -694,6 +370,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
+    console.error('Invoice parse error:', error);
     logger.error('Invoice parse error', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
