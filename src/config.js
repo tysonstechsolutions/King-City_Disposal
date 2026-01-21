@@ -30,8 +30,16 @@ export const config = {
   websiteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.kingcitydisposal.com",
   ein: "46-2094412",
 
-  // Google Search Console verification code
-  googleSiteVerification: "", // ← Add from Google Search Console
+  // ============================================
+  // 🔍 GOOGLE SEARCH CONSOLE (REQUIRED FOR SEO)
+  // ============================================
+  // TODO: Get this from Google Search Console:
+  //   1. Go to search.google.com/search-console
+  //   2. Add property → URL prefix → https://www.kingcitydisposal.com
+  //   3. Choose "HTML tag" verification method
+  //   4. Copy ONLY the content value (not the whole tag)
+  //   5. Paste it below
+  googleSiteVerification: "", // ← PASTE YOUR CODE HERE
 
   address: {
     street: "16544 East Knox Road", // Internal use only - not displayed publicly
