@@ -5,13 +5,15 @@ import { loadStripe } from '@stripe/stripe-js'
 import {
   Elements,
   PaymentElement,
+  CardElement,
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js'
 import { Loader2, CheckCircle2, AlertCircle, CreditCard } from 'lucide-react'
 
 // Initialize Stripe outside component to avoid recreating on re-render
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null
 
 // Inner form component that uses Stripe hooks
 function CheckoutForm({ amountCents, onSuccess, onError, customerName, customerEmail }) {
@@ -174,17 +176,37 @@ export default function CardPaymentForm({
     )
   }
 
-  if (error) {
+  if (!stripeKey) {
     return (
       <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
         <div className="flex items-center gap-2">
           <AlertCircle className="w-5 h-5" />
-          {error}
+          Stripe is not configured. Please add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to your environment variables.
         </div>
         {onCancel && (
           <button
             onClick={onCancel}
             className="mt-3 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
+          >
+            Go Back
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="flex items-center gap-2 mb-2">
+          <AlertCircle className="w-5 h-5" />
+          <span className="font-medium">Payment Error</span>
+        </div>
+        <p className="text-sm mb-3">{error}</p>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
           >
             Go Back
           </button>
