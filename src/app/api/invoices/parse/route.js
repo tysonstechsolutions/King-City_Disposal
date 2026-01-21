@@ -1,35 +1,29 @@
 // ============================================
-// CUSTOMER INVOICE IMPORT API - Import historical invoices from Excel
+// PARSE INVOICES API - Parse Excel without saving to database
 // ============================================
-// Parse Excel (XLSX) files containing customer invoices (revenue)
+// Returns parsed invoice data for review before import
 
 import { NextResponse } from 'next/server';
-import { config } from '../../../../config';
 import * as XLSX from 'xlsx';
 import { logger } from '../../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-const supabaseUrl = config.supabase.url;
-const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
-
 // ============================================
 // Parse a single Excel sheet into customer invoice data
 // ============================================
 function parseCustomerInvoiceSheet(sheet, sheetName) {
-  // Convert sheet to JSON array
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
   if (data.length < 2) {
-    return null; // Empty or header-only sheet
+    return null;
   }
 
-  // Initialize invoice data
   const invoice = {
     invoice_number: '',
     invoice_date: null,
     due_date: null,
-    customer_id_code: '', // Customer ID like "MOOND"
+    customer_id_code: '',
     customer_name: '',
     customer_phone: '',
     customer_email: '',
@@ -43,10 +37,13 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     discount_cents: 0,
     total_cents: 0,
     notes: `Imported from sheet: ${sheetName}`,
-    status: 'paid', // Historical invoices are likely paid
+    // Auto-detect paid status
+    is_paid: false,
+    date_paid: null,
+    check_number: null,
+    payment_method: null,
   };
 
-  // Helper: Extract value after colon/equals from a cell
   const extractValueAfterDelimiter = (cellValue) => {
     const str = String(cellValue || '');
     const match = str.match(/[:.]\s*(.+)$/);
@@ -65,7 +62,7 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     }
   }
 
-  // Extract invoice number - "Invoice No.: 4596"
+  // Extract invoice number
   for (const cell of allText) {
     if (!invoice.invoice_number) {
       if (cell.lower.includes('invoice no') || cell.lower.includes('invoice #') ||
@@ -81,10 +78,10 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     }
   }
 
-  // Extract date - "Date: 1/4/2026"
+  // Extract date
   for (const cell of allText) {
     if (!invoice.invoice_date) {
-      if ((cell.lower.includes('date') && !cell.lower.includes('due date')) ||
+      if ((cell.lower.includes('date') && !cell.lower.includes('due date') && !cell.lower.includes('paid')) ||
           cell.lower.match(/^date\s*[:#]/)) {
         const extracted = extractValueAfterDelimiter(cell.value);
         if (extracted) {
@@ -120,75 +117,134 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     }
   }
 
-  // Extract Customer ID - "Customer ID: MOOND"
+  // Extract Customer ID
   for (const cell of allText) {
     if (!invoice.customer_id_code) {
       if (cell.lower.includes('customer id') || cell.lower.includes('customer #') || cell.lower.includes('cust id')) {
-        console.log(`[${sheetName}] Found Customer ID label at row ${cell.row}, col ${cell.col}: "${cell.value}"`);
         const extracted = extractValueAfterDelimiter(cell.value);
         if (extracted) {
           invoice.customer_id_code = extracted;
-          console.log(`[${sheetName}] Extracted Customer ID from delimiter: "${extracted}"`);
         } else {
           const nextCell = data[cell.row]?.[cell.col + 1];
           if (nextCell) {
             invoice.customer_id_code = String(nextCell).trim();
-            console.log(`[${sheetName}] Extracted Customer ID from next cell: "${invoice.customer_id_code}"`);
           }
         }
       }
     }
   }
 
-  // Extract customer name - Look for company names that aren't King City
-  // Usually after a row containing address info, or in "Job" field
-  // Also look for "Bill To" section which contains customer info
+  // ============================================
+  // AUTO-DETECT PAID STATUS
+  // ============================================
+  // Look for payment indicators in the sheet
+  for (const cell of allText) {
+    const lower = cell.lower;
 
-  // First, try to use the Customer ID as a fallback for customer name lookup
-  // Then look for customer name in the standard positions
+    // Check for "PAID" stamp/label
+    if (lower === 'paid' || lower.includes('paid in full') || lower.includes('payment received')) {
+      invoice.is_paid = true;
+    }
 
+    // Check for balance due = $0 or 0.00
+    if (lower.includes('balance due') || lower.includes('amount due') || lower.includes('balance:')) {
+      const nextCell = data[cell.row]?.[cell.col + 1];
+      if (nextCell) {
+        const amount = parseCurrency(nextCell);
+        if (amount === 0) {
+          invoice.is_paid = true;
+        }
+      }
+      // Also check if value is in same cell after colon
+      const extracted = extractValueAfterDelimiter(cell.value);
+      if (extracted) {
+        const amount = parseCurrency(extracted);
+        if (amount === 0) {
+          invoice.is_paid = true;
+        }
+      }
+    }
+
+    // Check for payment date
+    if (lower.includes('date paid') || lower.includes('payment date') || lower.includes('paid on')) {
+      invoice.is_paid = true;
+      const extracted = extractValueAfterDelimiter(cell.value);
+      if (extracted) {
+        const parsed = parseDate(extracted);
+        if (parsed) invoice.date_paid = parsed;
+      } else {
+        const nextCell = data[cell.row]?.[cell.col + 1];
+        if (nextCell) {
+          const parsed = parseDate(nextCell);
+          if (parsed) invoice.date_paid = parsed;
+        }
+      }
+    }
+
+    // Check for check number
+    if (lower.includes('check #') || lower.includes('check no') || lower.includes('chk #') || lower.includes('ck #')) {
+      invoice.is_paid = true;
+      invoice.payment_method = 'check';
+      const extracted = extractValueAfterDelimiter(cell.value);
+      if (extracted) {
+        invoice.check_number = extracted;
+      } else {
+        const nextCell = data[cell.row]?.[cell.col + 1];
+        if (nextCell) {
+          invoice.check_number = String(nextCell).trim();
+        }
+      }
+    }
+
+    // Check for payment method indicators
+    if (lower.includes('paid by check') || lower.includes('paid via check')) {
+      invoice.is_paid = true;
+      invoice.payment_method = 'check';
+    }
+    if (lower.includes('paid by card') || lower.includes('paid via card') || lower.includes('credit card payment')) {
+      invoice.is_paid = true;
+      invoice.payment_method = 'card';
+    }
+    if (lower.includes('paid by cash') || lower.includes('paid via cash') || lower.includes('cash payment')) {
+      invoice.is_paid = true;
+      invoice.payment_method = 'cash';
+    }
+  }
+
+  // Extract customer name
   for (const cell of allText) {
     if (cell.row < 15) {
-      // Check for "Bill To" section - usually followed by customer name on next row
       if (cell.lower === 'bill to' || cell.lower.includes('bill to:')) {
-        // Check the row below for customer name
         const belowCell = data[cell.row + 1]?.[cell.col];
         if (belowCell && String(belowCell).trim().length > 2) {
           const candidateName = String(belowCell).trim();
-          // Make sure it's not King City or another header
           if (!candidateName.toLowerCase().includes('king city') &&
               !candidateName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family|address)/)) {
             if (!invoice.customer_name) {
               invoice.customer_name = candidateName;
-              console.log(`[${sheetName}] Found customer name from Bill To: ${candidateName}`);
             }
-            // Check for address below
             const addrCell = data[cell.row + 2]?.[cell.col];
             if (addrCell) invoice.customer_address = String(addrCell).trim();
           }
         }
       }
 
-      // Check for "Job" field
       if (cell.lower === 'job' || cell.lower.includes('job:')) {
         const nextCell = data[cell.row]?.[cell.col + 1];
         const belowCell = data[cell.row + 1]?.[cell.col];
         if (nextCell && String(nextCell).trim().length > 2) {
           if (!invoice.customer_name) invoice.customer_name = String(nextCell).trim();
-          // Check below for address
           if (belowCell) invoice.service_address = String(belowCell).trim();
         } else if (belowCell && String(belowCell).trim().length > 2) {
           if (!invoice.customer_name) invoice.customer_name = String(belowCell).trim();
         }
       }
 
-      // Look for company names with addresses below (not King City)
       if (!invoice.customer_name && cell.row >= 1 && cell.row <= 10) {
         const belowCell = data[cell.row + 1]?.[cell.col];
         const belowStr = String(belowCell || '').toLowerCase();
         if (belowStr.match(/\d+\s+\w+|ave|street|st\b|rd\b|blvd|suite|ste\b|lane|ln\b|drive|dr\b|center/i)) {
           const companyName = cell.value;
-          // Skip if it's purely numeric (invoice number), or if it matches common date patterns, or is an email
           const isNumericOnly = /^\d+$/.test(companyName);
           const isDateLike = /^\d{1,2}\/\d{1,2}\/\d{4}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(companyName);
           const isEmail = /@/.test(companyName);
@@ -199,8 +255,6 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
               !companyName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family)/)) {
             invoice.customer_name = companyName;
             invoice.customer_address = String(belowCell).trim();
-            console.log(`[${sheetName}] Found customer name from address pattern: ${companyName}`);
-            // Check for city/state/zip line
             const addr2 = data[cell.row + 2]?.[cell.col];
             if (addr2 && String(addr2).match(/[a-z]{2}[\s.,]+\d{5}/i)) {
               invoice.customer_address += ', ' + String(addr2).trim();
@@ -209,34 +263,28 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
         }
       }
 
-      // Also check for common company suffixes (LLC, Inc, Corp, etc.) as a name indicator
       if (!invoice.customer_name && cell.row >= 1 && cell.row <= 12) {
         if (cell.value.match(/\b(LLC|Inc\.?|Corp\.?|Company|Co\.?|Properties|Construction|Contracting|Services|Rentals|Roofing|Plumbing|Electric|Excavating|Hauling|Landscaping|Dumpsters?)\b/i)) {
           const candidateName = cell.value;
           if (!candidateName.toLowerCase().includes('king city') && candidateName.length > 3) {
             invoice.customer_name = candidateName;
-            console.log(`[${sheetName}] Found customer name from company suffix: ${candidateName}`);
           }
         }
       }
 
-      // Check row 6 specifically - this is where customer name typically appears in these invoices
       if (!invoice.customer_name && cell.row === 6 && cell.col === 0) {
         const candidateName = cell.value;
         if (!candidateName.toLowerCase().includes('king city') &&
             !candidateName.toLowerCase().match(/^(invoice|date|email|phone|fax|billing|purchase|family|address|kingcity)/) &&
             candidateName.length > 2) {
           invoice.customer_name = candidateName;
-          console.log(`[${sheetName}] Found customer name from row 6: ${candidateName}`);
         }
       }
     }
   }
 
-  // If still no customer name, use customer ID code
   if (!invoice.customer_name && invoice.customer_id_code) {
     invoice.customer_name = invoice.customer_id_code;
-    console.log(`[${sheetName}] Using customer_id_code as name: ${invoice.customer_id_code}`);
   }
 
   // ============================================
@@ -319,25 +367,22 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     if (cell.lower === 'quantity' || cell.lower === 'qty') quantityColIdx = cell.col;
   }
 
-  // Extract line items - start AFTER the header row
+  // Extract line items
   if (lineTotalColIdx >= 0 && headerRowIdx >= 0) {
     for (let rowIdx = headerRowIdx + 1; rowIdx < data.length; rowIdx++) {
       const row = data[rowIdx];
       const lineTotalRaw = row[lineTotalColIdx];
       const lineTotal = parseCurrency(lineTotalRaw);
 
-      // Skip if line total is 0 or looks like a phone number (10 digits, or value over $1M which is unrealistic)
       const lineTotalStr = String(lineTotalRaw || '').replace(/\D/g, '');
       const looksLikePhone = lineTotalStr.length === 10 && /^\d{10}$/.test(lineTotalStr);
-      const unrealisticallyLarge = lineTotal > 100000000; // Over $1,000,000 in cents = likely phone number
+      const unrealisticallyLarge = lineTotal > 100000000;
 
       if (lineTotal > 0 && !looksLikePhone && !unrealisticallyLarge) {
-        // Find description
         let description = '';
         if (descriptionColIdx >= 0 && row[descriptionColIdx]) {
           description = String(row[descriptionColIdx]).trim();
         } else {
-          // Look for text in earlier columns
           for (let c = 0; c < lineTotalColIdx; c++) {
             const cellVal = String(row[c] || '').trim();
             if (cellVal.length > 2 && !cellVal.match(/^\d+$/) &&
@@ -347,7 +392,6 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
           }
         }
 
-        // Skip non-service descriptions (billing info, phone labels, header rows, etc.)
         const skipDescriptions = [
           'description', 'billing', 'phone', 'fax', 'email', 'address', 'contact',
           'total', 'subtotal', 'tax', 'quantity', 'unit price', 'line total',
@@ -362,7 +406,6 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
           descLower.startsWith(skip + ' ')
         );
 
-        // Also skip if description contains a phone number pattern
         const hasPhoneNumber = /\(\d{3}\)\s*\d{3}[-.]?\d{4}|\d{3}[-.]?\d{3}[-.]?\d{4}/.test(description);
 
         if (description && !isSkippedDescription && !hasPhoneNumber) {
@@ -376,13 +419,11 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
             amount_cents: lineTotal,
           });
 
-          // Check for dumpster size in description
           const sizeMatch = description.match(/(\d+)\s*(?:yard|yd|cu)/i);
           if (sizeMatch && !invoice.dumpster_size) {
             invoice.dumpster_size = sizeMatch[1];
           }
 
-          // Check for delivery/rental description
           if (description.toLowerCase().includes('delivery') ||
               description.toLowerCase().includes('rental')) {
             invoice.service_description = description;
@@ -398,22 +439,16 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     for (let colIdx = 0; colIdx < row.length; colIdx++) {
       const cell = String(row[colIdx] || '').toLowerCase().trim();
 
-      // Look for "TOTAL" cell (exact match or starts with total)
       if ((cell === 'total' || cell.startsWith('total ') || cell.startsWith('total:')) && !invoice.total_cents) {
-        console.log(`[${sheetName}] Found TOTAL at row ${rowIdx}, col ${colIdx}`);
-        // First check if there's a $ amount in the same cell after "TOTAL"
         const cellFull = String(row[colIdx] || '');
         const inCellAmount = parseCurrency(cellFull);
         if (inCellAmount > 0) {
           invoice.total_cents = inCellAmount;
-          console.log(`[${sheetName}] Total from same cell: ${inCellAmount}`);
         } else {
-          // Look in subsequent columns
           for (let i = colIdx + 1; i < row.length; i++) {
             const val = row[i];
             if (val !== '' && val !== null && val !== undefined) {
               const amount = parseCurrency(val);
-              console.log(`[${sheetName}] Checking col ${i}: ${val} => ${amount}`);
               if (amount > 0) {
                 invoice.total_cents = amount;
                 break;
@@ -423,7 +458,6 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
         }
       }
 
-      // Look for Subtotal
       if (cell === 'subtotal' && !invoice.subtotal_cents) {
         for (let i = colIdx + 1; i < row.length; i++) {
           const val = row[i];
@@ -439,36 +473,24 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
     }
   }
 
-  // If no total found, sum line items
   if (!invoice.total_cents && invoice.line_items.length > 0) {
     invoice.total_cents = invoice.line_items.reduce((sum, item) => sum + item.amount_cents, 0);
   }
 
-  // If no subtotal, use total
   if (!invoice.subtotal_cents) {
     invoice.subtotal_cents = invoice.total_cents;
   }
 
-  // Only return if we have essential data
   if (!invoice.total_cents && !invoice.invoice_number) {
-    console.log(`[${sheetName}] SKIP - no total (${invoice.total_cents}) or invoice number (${invoice.invoice_number})`);
     return null;
   }
 
-  // Debug log
-  console.log(`[${sheetName}] PARSED: #${invoice.invoice_number}, Total: ${invoice.total_cents}, Items: ${invoice.line_items.length}`);
-  console.log(`[${sheetName}] Customer ID Code: "${invoice.customer_id_code}", Customer Name: "${invoice.customer_name}"`);
-
-  // Use customer ID code as name fallback
   if (!invoice.customer_name && invoice.customer_id_code) {
     invoice.customer_name = invoice.customer_id_code;
-    console.log(`[${sheetName}] Fallback: using customer_id_code "${invoice.customer_id_code}" as customer name`);
   }
 
-  // Final fallback - use invoice number if still no name (shouldn't happen)
   if (!invoice.customer_name) {
-    console.log(`[${sheetName}] WARNING: No customer name found, using invoice number as fallback`);
-    invoice.customer_name = invoice.invoice_number;
+    invoice.customer_name = 'Unknown Customer';
   }
 
   return invoice;
@@ -493,14 +515,12 @@ function parseDate(value) {
 
   const str = String(value).trim();
 
-  // MM/DD/YYYY
   let match = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if (match) {
     const [, m, d, y] = match;
     return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
 
-  // YYYY-MM-DD
   match = str.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
   if (match) {
     const [, y, m, d] = match;
@@ -522,18 +542,16 @@ function parseCurrency(value) {
   if (!value) return 0;
 
   if (typeof value === 'number') {
-    // Skip if it looks like a phone number (10 digits, large number with no cents)
     if (value >= 1000000000 && value <= 9999999999 && Number.isInteger(value)) {
-      return 0; // Likely a phone number
+      return 0;
     }
     return Math.round(value * 100);
   }
 
   const str = String(value).replace(/[$,\s]/g, '');
 
-  // Skip if it looks like a phone number (10 consecutive digits)
   if (/^\d{10}$/.test(str)) {
-    return 0; // Likely a phone number
+    return 0;
   }
 
   const num = parseFloat(str);
@@ -542,167 +560,12 @@ function parseCurrency(value) {
 }
 
 // ============================================
-// Try to find matching customer in database
-// Checks: customer_code, name+address, phone, name alone
-// ============================================
-async function findCustomer(invoice) {
-  try {
-    // Try to match by customer ID code first
-    if (invoice.customer_id_code) {
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/customers?customer_code=ilike.${encodeURIComponent(invoice.customer_id_code)}`,
-        {
-          headers: {
-            'apikey': getSupabaseKey(),
-            'Authorization': `Bearer ${getSupabaseKey()}`,
-          },
-        }
-      );
-      if (response.ok) {
-        const customers = await response.json();
-        if (customers.length > 0) return customers[0];
-      }
-    }
-
-    // Try to match by name AND address (most reliable for repeat customers)
-    if (invoice.customer_name && invoice.customer_address) {
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/customers?name=ilike.%${encodeURIComponent(invoice.customer_name)}%&address=ilike.%${encodeURIComponent(invoice.customer_address.split(',')[0])}%`,
-        {
-          headers: {
-            'apikey': getSupabaseKey(),
-            'Authorization': `Bearer ${getSupabaseKey()}`,
-          },
-        }
-      );
-      if (response.ok) {
-        const customers = await response.json();
-        if (customers.length > 0) return customers[0];
-      }
-    }
-
-    // Try to match by phone
-    if (invoice.customer_phone) {
-      const phone = invoice.customer_phone.replace(/\D/g, '');
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/customers?phone=like.%${phone}%`,
-        {
-          headers: {
-            'apikey': getSupabaseKey(),
-            'Authorization': `Bearer ${getSupabaseKey()}`,
-          },
-        }
-      );
-      if (response.ok) {
-        const customers = await response.json();
-        if (customers.length > 0) return customers[0];
-      }
-    }
-
-    // Try to match by name alone (less reliable but useful)
-    if (invoice.customer_name) {
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/customers?name=ilike.%${encodeURIComponent(invoice.customer_name)}%`,
-        {
-          headers: {
-            'apikey': getSupabaseKey(),
-            'Authorization': `Bearer ${getSupabaseKey()}`,
-          },
-        }
-      );
-      if (response.ok) {
-        const customers = await response.json();
-        if (customers.length > 0) return customers[0];
-      }
-    }
-  } catch (e) {
-    logger.error('Error finding customer', e);
-  }
-
-  return null;
-}
-
-// ============================================
-// Create a new customer from invoice data
-// ============================================
-async function createCustomer(invoice) {
-  try {
-    // Don't create if no name
-    if (!invoice.customer_name || invoice.customer_name === 'Unknown Customer') {
-      return null;
-    }
-
-    const customerData = {
-      name: invoice.customer_name,
-      phone: invoice.customer_phone || null,
-      email: invoice.customer_email || null,
-      address: invoice.customer_address || null,
-      customer_code: invoice.customer_id_code || null,
-      notes: `Auto-created from invoice import`,
-      created_at: new Date().toISOString(),
-    };
-
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/customers`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
-          'Prefer': 'return=representation',
-        },
-        body: JSON.stringify(customerData),
-      }
-    );
-
-    if (response.ok) {
-      const [newCustomer] = await response.json();
-      logger.info(`Created new customer: ${newCustomer.name} (ID: ${newCustomer.id})`);
-      return newCustomer;
-    } else {
-      const errorText = await response.text();
-      logger.error('Failed to create customer:', errorText);
-    }
-  } catch (e) {
-    logger.error('Error creating customer', e);
-  }
-
-  return null;
-}
-
-// ============================================
-// Check if invoice already exists
-// ============================================
-async function invoiceExists(invoiceNumber) {
-  try {
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/invoices?invoice_number=eq.${encodeURIComponent(invoiceNumber)}`,
-      {
-        headers: {
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
-        },
-      }
-    );
-    if (response.ok) {
-      const invoices = await response.json();
-      return invoices.length > 0;
-    }
-  } catch (e) {
-    logger.error('Error checking invoice existence', e);
-  }
-  return false;
-}
-
-// ============================================
-// POST - Import Excel file with customer invoices
+// POST - Parse Excel file and return data for review
 // ============================================
 export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
-    const markAsPaid = formData.get('mark_as_paid') !== 'false'; // Default true for historical
 
     if (!file) {
       return NextResponse.json(
@@ -724,149 +587,45 @@ export async function POST(request) {
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
 
-    const results = {
-      total_sheets: workbook.SheetNames.length,
-      imported: 0,
-      skipped: 0,
-      duplicates: 0,
-      customers_created: 0,
-      customers_matched: 0,
-      errors: [],
-      invoices: [],
-    };
+    const invoices = [];
+    const skipped = [];
 
-    console.log('Processing', workbook.SheetNames.length, 'sheets:', workbook.SheetNames.slice(0, 5).join(', '), '...');
-
-    // Process each sheet
     for (const sheetName of workbook.SheetNames) {
       try {
         const sheet = workbook.Sheets[sheetName];
-        console.log(`\n=== Processing sheet: ${sheetName} ===`);
         const invoiceData = parseCustomerInvoiceSheet(sheet, sheetName);
 
         if (!invoiceData) {
-          results.skipped++;
-          results.errors.push({ sheet: sheetName, error: 'Could not parse invoice data' });
-          console.log(`[${sheetName}] Skipped - no invoice data returned`);
+          skipped.push({ sheet: sheetName, reason: 'Could not parse invoice data' });
           continue;
         }
-
-        console.log(`[${sheetName}] Got invoice data:`, invoiceData.invoice_number, invoiceData.total_cents);
 
         // Generate invoice number if not found
         if (!invoiceData.invoice_number) {
-          invoiceData.invoice_number = `IMP-${Date.now()}-${results.imported}`;
+          invoiceData.invoice_number = `IMP-${Date.now()}-${invoices.length}`;
         }
 
-        // Check for duplicates
-        const exists = await invoiceExists(invoiceData.invoice_number);
-        if (exists) {
-          results.duplicates++;
-          results.errors.push({ sheet: sheetName, error: `Invoice ${invoiceData.invoice_number} already exists` });
-          continue;
-        }
-
-        // Try to find matching customer, or create a new one
-        let customer = await findCustomer(invoiceData);
-        let customerCreated = false;
-
-        console.log(`[${sheetName}] Customer name for lookup/create: "${invoiceData.customer_name}"`);
-
-        if (customer) {
-          results.customers_matched++;
-          console.log(`[${sheetName}] Matched existing customer: ${customer.name} (ID: ${customer.id})`);
-        } else {
-          // No existing customer found - create a new one
-          console.log(`[${sheetName}] No matching customer found, creating new one...`);
-          customer = await createCustomer(invoiceData);
-          if (customer) {
-            customerCreated = true;
-            results.customers_created++;
-            console.log(`[${sheetName}] Created customer: ${customer.name} (ID: ${customer.id})`);
-          } else {
-            console.log(`[${sheetName}] Failed to create customer, will import invoice without customer link`);
-          }
-        }
-
-        // Build invoice record
-        const invoiceRecord = {
-          invoice_number: invoiceData.invoice_number,
-          customer_id: customer?.id || null,
-          customer_name: invoiceData.customer_name || customer?.name || 'Unknown Customer',
-          customer_phone: invoiceData.customer_phone || customer?.phone || null,
-          customer_email: invoiceData.customer_email || customer?.email || null,
-          customer_address: invoiceData.customer_address || customer?.address || null,
-          service_address: invoiceData.service_address || invoiceData.customer_address || null,
-          service_description: invoiceData.service_description || null,
-          dumpster_size: invoiceData.dumpster_size || null,
-          line_items: JSON.stringify(invoiceData.line_items),
-          subtotal_cents: invoiceData.subtotal_cents,
-          tax_cents: invoiceData.tax_cents,
-          discount_cents: invoiceData.discount_cents,
-          total_cents: invoiceData.total_cents,
-          amount_paid_cents: markAsPaid ? invoiceData.total_cents : 0,
-          balance_due_cents: markAsPaid ? 0 : invoiceData.total_cents,
-          // Due date: use parsed due date, or null for "Due Upon Receipt"
-          // Late fees don't apply until 30 days after invoice date (handled by late fee cron)
-          due_date: invoiceData.due_date || null,
-          invoice_date: invoiceData.invoice_date || new Date().toISOString().split('T')[0],
-          notes: invoiceData.notes,
-          status: markAsPaid ? 'paid' : 'sent',
-          paid_at: markAsPaid ? new Date().toISOString() : null,
-          created_at: invoiceData.invoice_date ? new Date(invoiceData.invoice_date).toISOString() : new Date().toISOString(),
-        };
-
-        // Insert invoice
-        const response = await fetch(
-          `${supabaseUrl}/rest/v1/invoices`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': getSupabaseKey(),
-              'Authorization': `Bearer ${getSupabaseKey()}`,
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify(invoiceRecord),
-          }
-        );
-
-        console.log(`[${sheetName}] Inserting invoice...`);
-        if (response.ok) {
-          const [created] = await response.json();
-          results.imported++;
-          results.invoices.push({
-            id: created.id,
-            invoice_number: invoiceData.invoice_number,
-            customer: invoiceData.customer_name,
-            customer_id: customer?.id || null,
-            customer_created: customerCreated,
-            date: invoiceData.invoice_date,
-            total: invoiceData.total_cents / 100,
-            matched_customer: customer && !customerCreated,
-          });
-          console.log(`[${sheetName}] SUCCESS - Invoice ${invoiceData.invoice_number} imported`);
-        } else {
-          const errorText = await response.text();
-          console.log(`[${sheetName}] FAILED to insert invoice:`, errorText);
-          results.errors.push({ sheet: sheetName, error: errorText });
-          results.skipped++;
-        }
+        invoices.push({
+          ...invoiceData,
+          _sheetName: sheetName,
+        });
 
       } catch (sheetError) {
-        results.errors.push({ sheet: sheetName, error: sheetError.message });
-        results.skipped++;
+        skipped.push({ sheet: sheetName, reason: sheetError.message });
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Imported ${results.imported} of ${results.total_sheets} invoices`,
-      ...results,
+      total_sheets: workbook.SheetNames.length,
+      parsed_count: invoices.length,
+      skipped_count: skipped.length,
+      skipped_sheets: skipped,
+      invoices,
     });
 
   } catch (error) {
-    logger.error('Invoice import error', error);
+    logger.error('Invoice parse error', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
