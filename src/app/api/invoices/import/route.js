@@ -128,6 +128,13 @@ function parseInvoiceSheet(sheet, sheetName, paymentInfo) {
   if (dateLabel.includes('date')) {
     const dateVal = data[3]?.[3];
     invoice.invoice_date = parseExcelDate(dateVal);
+
+    // Set due date to invoice date + 30 days (Due Upon Receipt with 30 day grace period)
+    if (invoice.invoice_date) {
+      const dueDate = new Date(invoice.invoice_date);
+      dueDate.setDate(dueDate.getDate() + 30);
+      invoice.due_date = dueDate.toISOString().split('T')[0];
+    }
   }
 
   // Row 4: Customer ID
