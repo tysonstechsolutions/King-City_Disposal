@@ -282,12 +282,25 @@ function parseInvoiceSheet(sheet, sheetName, paymentInfo) {
 }
 
 // ============================================
+// Normalize customer name for comparison
+// ============================================
+function normalizeCustomerName(name) {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/[,.\-'"]/g, '') // Remove punctuation
+    .replace(/\s+(inc|llc|ltd|corp|co|company)\.?\s*$/i, '') // Remove common suffixes
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+}
+
+// ============================================
 // Find or create customer
 // ============================================
 async function findOrCreateCustomer(invoice) {
   const key = getSupabaseKey();
 
-  // Try to find by customer code
+  // Try to find by customer code first (most reliable)
   if (invoice.customer_id_code) {
     const response = await fetch(
       `${supabaseUrl}/rest/v1/customers?customer_code=ilike.${encodeURIComponent(invoice.customer_id_code)}`,
@@ -304,7 +317,7 @@ async function findOrCreateCustomer(invoice) {
     }
   }
 
-  // Try to find by name (exact match first)
+  // Try to find by exact name match
   if (invoice.customer_name) {
     const response = await fetch(
       `${supabaseUrl}/rest/v1/customers?name=ilike.${encodeURIComponent(invoice.customer_name)}`,
@@ -318,6 +331,29 @@ async function findOrCreateCustomer(invoice) {
     if (response.ok) {
       const customers = await response.json();
       if (customers.length > 0) return customers[0];
+    }
+  }
+
+  // Try fuzzy matching - fetch all customers and compare normalized names
+  if (invoice.customer_name) {
+    const normalizedInvoiceName = normalizeCustomerName(invoice.customer_name);
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/customers?select=id,name,phone,email,address,customer_code`,
+      {
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`,
+        },
+      }
+    );
+    if (response.ok) {
+      const customers = await response.json();
+      // Find customer with matching normalized name
+      const match = customers.find(c => normalizeCustomerName(c.name) === normalizedInvoiceName);
+      if (match) {
+        console.log(`Fuzzy matched "${invoice.customer_name}" to existing customer "${match.name}"`);
+        return match;
+      }
     }
   }
 
