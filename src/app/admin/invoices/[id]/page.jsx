@@ -1190,7 +1190,13 @@ export default function InvoiceDetailPage() {
                   </button>
                   {paymentMethod === 'card' ? (
                     <button
-                      onClick={() => setShowCardForm(true)}
+                      onClick={() => {
+                        // Set default payment amount to balance due if empty
+                        if (!paymentAmount) {
+                          setPaymentAmount((balanceDue / 100).toFixed(2))
+                        }
+                        setShowCardForm(true)
+                      }}
                       className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
                     >
                       <CreditCard className="w-4 h-4" />

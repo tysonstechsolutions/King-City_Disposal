@@ -19,6 +19,7 @@ function CheckoutForm({ amountCents, onSuccess, onError, customerName, customerE
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
   const [message, setMessage] = useState('')
+  const [elementReady, setElementReady] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -58,11 +59,23 @@ function CheckoutForm({ amountCents, onSuccess, onError, customerName, customerE
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement
-        options={{
-          layout: 'tabs',
-        }}
-      />
+      {!elementReady && (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+          <span className="text-dark-300">Loading payment form...</span>
+        </div>
+      )}
+      <div className={elementReady ? '' : 'opacity-0 h-0 overflow-hidden'}>
+        <PaymentElement
+          options={{
+            layout: 'accordion',
+            defaultCollapsed: false,
+            radios: false,
+            spacedAccordionItems: true,
+          }}
+          onReady={() => setElementReady(true)}
+        />
+      </div>
 
       {message && (
         <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
@@ -81,7 +94,7 @@ function CheckoutForm({ amountCents, onSuccess, onError, customerName, customerE
 
       <button
         type="submit"
-        disabled={!stripe || isProcessing}
+        disabled={!stripe || !elementReady || isProcessing}
         className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
       >
         {isProcessing ? (
