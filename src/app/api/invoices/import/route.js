@@ -162,9 +162,19 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
               invoice.customer_name = candidateName;
               console.log(`[${sheetName}] Found customer name from Bill To: ${candidateName}`);
             }
-            // Check for address below
-            const addrCell = data[cell.row + 2]?.[cell.col];
-            if (addrCell) invoice.customer_address = String(addrCell).trim();
+            // Get address lines (could be 1-2 lines below customer name)
+            const addrLine1 = data[cell.row + 2]?.[cell.col];
+            const addrLine2 = data[cell.row + 3]?.[cell.col];
+            let fullAddr = '';
+            if (addrLine1 && String(addrLine1).trim().length > 2) {
+              fullAddr = String(addrLine1).trim();
+            }
+            if (addrLine2 && String(addrLine2).trim().length > 2) {
+              fullAddr += (fullAddr ? ', ' : '') + String(addrLine2).trim();
+            }
+            if (fullAddr) {
+              invoice.customer_address = fullAddr;
+            }
           }
         }
       }
@@ -172,25 +182,40 @@ function parseCustomerInvoiceSheet(sheet, sheetName) {
       // Check for "Job" field
       if (cell.lower === 'job' || cell.lower.includes('job:')) {
         // Job section format:
-        // Row 1: "Job" | "Description (e.g. Remodel, Construction Debris)"
-        // Row 2:       | "Street Address (e.g. 215 SE 3rd St)"
-        // Row 3:       | "City, State ZIP (e.g. Fairfield, IL 62837)"
+        // Row 1: "Job" | "Description (e.g. Remodel, Mobile Home Park - 2 demos)" | "Payment Terms" | "Due Date"
+        // Row 2:       | "Street Address or Contact info"                          | "Due upon receipt" | "Due upon receipt"
+        // Row 3:       | "City, State ZIP"
         const nextCell = data[cell.row]?.[cell.col + 1]; // Job description (same row, next col)
-        const addrRow1 = data[cell.row + 1]?.[cell.col + 1]; // Address line 1 (below description)
+        const addrRow1 = data[cell.row + 1]?.[cell.col + 1]; // Address line 1 or Contact (below description)
         const addrRow2 = data[cell.row + 2]?.[cell.col + 1]; // Address line 2 (city/state/zip)
+
+        // Skip values that are clearly from other columns (Payment Terms, Due Date, etc.)
+        const skipValues = ['payment terms', 'due upon receipt', 'due date', 'net 30', 'net 15', 'upon receipt'];
 
         // Store job description for service_description
         if (nextCell && String(nextCell).trim().length > 2) {
-          invoice.service_description = String(nextCell).trim();
+          const jobDesc = String(nextCell).trim();
+          if (!skipValues.some(sv => jobDesc.toLowerCase().includes(sv))) {
+            invoice.service_description = jobDesc;
+          }
         }
 
         // Build service address from the lines below the job description
+        // Skip "Contact:" lines and payment terms
         let serviceAddr = '';
         if (addrRow1 && String(addrRow1).trim().length > 2) {
-          serviceAddr = String(addrRow1).trim();
+          const addr1 = String(addrRow1).trim();
+          if (!addr1.toLowerCase().startsWith('contact') &&
+              !skipValues.some(sv => addr1.toLowerCase().includes(sv))) {
+            serviceAddr = addr1;
+          }
         }
         if (addrRow2 && String(addrRow2).trim().length > 2) {
-          serviceAddr += (serviceAddr ? ', ' : '') + String(addrRow2).trim();
+          const addr2 = String(addrRow2).trim();
+          if (!addr2.toLowerCase().startsWith('contact') &&
+              !skipValues.some(sv => addr2.toLowerCase().includes(sv))) {
+            serviceAddr += (serviceAddr ? ', ' : '') + addr2;
+          }
         }
         if (serviceAddr) {
           invoice.service_address = serviceAddr;

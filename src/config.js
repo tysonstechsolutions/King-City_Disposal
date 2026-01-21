@@ -331,17 +331,29 @@ export const config = {
   },
   
   // ============================================
-  // 🌐 SOCIAL MEDIA & REVIEWS (Add when ready)
+  // 🌐 SOCIAL MEDIA & REVIEWS (IMPORTANT FOR SEO)
   // ============================================
+  // TODO: Add your social media URLs for schema.org sameAs links:
+  //
+  // Facebook: Create a business page at facebook.com/pages/create
+  // Google: Claim your business at business.google.com
+  // Instagram: Optional but recommended
+  //
   social: {
-    facebook: "", // ← ADD FACEBOOK PAGE URL
-    instagram: "", // ← ADD INSTAGRAM URL
-    google: "", // ← ADD GOOGLE BUSINESS PROFILE URL
+    facebook: "", // ← ADD: https://www.facebook.com/kingcitydisposal
+    instagram: "", // ← ADD: https://www.instagram.com/kingcitydisposal
+    google: "", // ← ADD: Your Google Business Profile URL
   },
 
-  // Google Place ID for review links
-  // Find yours: https://developers.google.com/maps/documentation/places/web-service/place-id
-  googlePlaceId: "", // ← ADD YOUR GOOGLE PLACE ID FOR REVIEW LINKS
+  // ============================================
+  // 📍 GOOGLE PLACE ID (For Review Links)
+  // ============================================
+  // TODO: Find your Google Place ID:
+  //   1. Go to: https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder
+  //   2. Search for "King City Disposal Mount Vernon IL"
+  //   3. Copy the Place ID (looks like: ChIJ...)
+  //   4. Paste it below
+  googlePlaceId: "", // ← PASTE YOUR PLACE ID HERE
 
   // ============================================
   // ⭐ REVIEWS (Update as you get Google reviews)
