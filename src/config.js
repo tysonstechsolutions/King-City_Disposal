@@ -340,9 +340,9 @@ export const config = {
   // Instagram: Optional but recommended
   //
   social: {
-    facebook: "", // ← ADD: https://www.facebook.com/kingcitydisposal
-    instagram: "", // ← ADD: https://www.instagram.com/kingcitydisposal
-    google: "", // ← ADD: Your Google Business Profile URL
+    facebook: "#", // Placeholder - Add your Facebook page URL
+    instagram: "#", // Placeholder - Add your Instagram URL
+    google: "#", // Placeholder - Add your Google Business Profile URL
   },
 
   // ============================================
