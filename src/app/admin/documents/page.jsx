@@ -498,7 +498,7 @@ export default function DocumentsPage() {
                     {doc.file_type?.startsWith('image/') && doc.id ? (
                       <img
                         src={`/api/documents/image/${doc.id}`}
-                        alt=""
+                        alt={`Document thumbnail: ${doc.title || doc.file_name}`}
                         className="w-full h-full object-cover rounded-lg"
                         onError={(e) => { e.target.style.display = 'none' }}
                       />

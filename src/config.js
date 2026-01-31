@@ -31,15 +31,26 @@ export const config = {
   ein: "46-2094412",
 
   // ============================================
-  // 🔍 GOOGLE SEARCH CONSOLE (REQUIRED FOR SEO)
+  // 🔍 GOOGLE SEARCH CONSOLE (CRITICAL FOR SEO!)
   // ============================================
-  // TODO: Get this from Google Search Console:
-  //   1. Go to search.google.com/search-console
-  //   2. Add property → URL prefix → https://www.kingcitydisposal.com
-  //   3. Choose "HTML tag" verification method
-  //   4. Copy ONLY the content value (not the whole tag)
-  //   5. Paste it below
-  googleSiteVerification: "", // ← PASTE YOUR CODE HERE
+  // ⚠️  THIS IS REQUIRED - Without this, you cannot:
+  //     - See what keywords bring traffic to your site
+  //     - Monitor your search rankings
+  //     - Get alerts about crawl errors
+  //     - Submit your sitemap to Google
+  //
+  // 📋 STEP-BY-STEP INSTRUCTIONS:
+  //   1. Go to: https://search.google.com/search-console
+  //   2. Click "Add property" → Choose "URL prefix"
+  //   3. Enter: https://www.kingcitydisposal.com
+  //   4. Select "HTML tag" verification method
+  //   5. You'll see: <meta name="google-site-verification" content="XXXXXXX" />
+  //   6. Copy ONLY the content value (the XXXXXXX part)
+  //   7. Paste it below between the quotes
+  //   8. Deploy your site, then click "Verify" in Search Console
+  //
+  // Example: googleSiteVerification: "abc123XYZ_your-verification-code",
+  googleSiteVerification: "", // ← PASTE YOUR VERIFICATION CODE HERE
 
   address: {
     street: "16544 East Knox Road", // Internal use only - not displayed publicly
@@ -331,18 +342,33 @@ export const config = {
   },
   
   // ============================================
-  // 🌐 SOCIAL MEDIA & REVIEWS (IMPORTANT FOR SEO)
+  // 🌐 SOCIAL MEDIA & REVIEWS (IMPORTANT FOR SEO!)
   // ============================================
-  // TODO: Add your social media URLs for schema.org sameAs links:
+  // ⚠️  THESE LINKS APPEAR IN GOOGLE'S KNOWLEDGE PANEL
+  //     Having real links improves your local search presence
   //
-  // Facebook: Create a business page at facebook.com/pages/create
-  // Google: Claim your business at business.google.com
-  // Instagram: Optional but recommended
+  // 📋 STEP-BY-STEP:
+  //   FACEBOOK:
+  //   1. Go to: facebook.com/pages/create
+  //   2. Choose "Local Business or Place"
+  //   3. Fill in your business info
+  //   4. Copy your page URL (e.g., facebook.com/kingcitydisposal)
+  //
+  //   GOOGLE BUSINESS:
+  //   1. Go to: business.google.com
+  //   2. Search for "King City Disposal Mount Vernon IL"
+  //   3. Claim your listing or create a new one
+  //   4. Complete your profile with hours, photos, services
+  //   5. Copy your profile URL from the dashboard
+  //
+  //   INSTAGRAM (optional):
+  //   1. Create an account at instagram.com
+  //   2. Post photos of your dumpsters, jobs, team
   //
   social: {
-    facebook: "#", // Placeholder - Add your Facebook page URL
-    instagram: "#", // Placeholder - Add your Instagram URL
-    google: "#", // Placeholder - Add your Google Business Profile URL
+    facebook: "#", // ← Replace with: "https://facebook.com/kingcitydisposal"
+    instagram: "#", // ← Replace with: "https://instagram.com/kingcitydisposal"
+    google: "#", // ← Replace with your Google Business Profile URL
   },
 
   // ============================================

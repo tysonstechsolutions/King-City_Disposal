@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -20,15 +20,37 @@ export default function Header() {
     { name: 'Contact', href: '/contact' },
   ]
 
+  const toggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen(prev => !prev)
+  }, [])
+
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuOpen(false)
+  }, [])
+
+  // Handle keyboard navigation for mobile menu
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Escape' && mobileMenuOpen) {
+      setMobileMenuOpen(false)
+    }
+  }, [mobileMenuOpen])
+
   return (
-    <header className="bg-accent-950 border-b border-accent-800 sticky top-0 z-50">
-      <nav className="container-custom">
+    <header
+      className="bg-accent-950 border-b border-accent-800 sticky top-0 z-50"
+      onKeyDown={handleKeyDown}
+    >
+      <nav className="container-custom" aria-label="Main navigation">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link
+            href="/"
+            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg"
+            aria-label={`${config.businessName} - Go to homepage`}
+          >
             <Image
               src="/images/logo.png"
-              alt={config.businessName}
+              alt="King City Disposal logo - Dumpster rental in Southern Illinois"
               width={60}
               height={60}
               className="h-12 md:h-14 w-auto"
@@ -40,16 +62,17 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-6" role="navigation">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`text-sm font-medium transition-colors ${
+                className={`text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded px-2 py-1 ${
                   pathname === item.href
                     ? 'text-primary-400'
                     : 'text-white/70 hover:text-white'
                 }`}
+                aria-current={pathname === item.href ? 'page' : undefined}
               >
                 {item.name}
               </Link>
@@ -60,14 +83,15 @@ export default function Header() {
           <div className="hidden md:flex items-center gap-4">
             <a
               href={`tel:${config.phoneRaw}`}
-              className="flex items-center gap-2 font-semibold text-white"
+              className="flex items-center gap-2 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded px-2 py-1"
+              aria-label={`Call us at ${config.phone}`}
             >
-              <Phone className="w-4 h-4" />
+              <Phone className="w-4 h-4" aria-hidden="true" />
               <span>{config.phone}</span>
             </a>
             <Link
               href="/book"
-              className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-lg transition-colors shadow-md"
+              className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-lg transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950"
             >
               Book Now
             </Link>
@@ -75,31 +99,41 @@ export default function Header() {
 
           {/* Mobile menu button */}
           <button
-            className="lg:hidden p-2 text-white"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            type="button"
+            className="lg:hidden p-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg"
+            onClick={toggleMobileMenu}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
           >
             {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
+              <X className="w-6 h-6" aria-hidden="true" />
             ) : (
-              <Menu className="w-6 h-6" />
+              <Menu className="w-6 h-6" aria-hidden="true" />
             )}
           </button>
         </div>
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-accent-800">
+          <div
+            id="mobile-menu"
+            className="lg:hidden py-4 border-t border-accent-800"
+            role="navigation"
+            aria-label="Mobile navigation"
+          >
             <div className="flex flex-col gap-1">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                  className={`px-4 py-3 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset ${
                     pathname === item.href
                       ? 'bg-accent-800 text-primary-400'
                       : 'text-white/80 hover:bg-accent-800 hover:text-white'
                   }`}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={closeMobileMenu}
+                  aria-current={pathname === item.href ? 'page' : undefined}
                 >
                   {item.name}
                 </Link>
@@ -107,15 +141,16 @@ export default function Header() {
               <div className="border-t border-accent-800 mt-3 pt-4 px-4">
                 <a
                   href={`tel:${config.phoneRaw}`}
-                  className="flex items-center gap-2 text-primary-400 font-semibold mb-4"
+                  className="flex items-center gap-2 text-primary-400 font-semibold mb-4 focus:outline-none focus:ring-2 focus:ring-primary-400 rounded px-2 py-1"
+                  aria-label={`Call us at ${config.phone}`}
                 >
-                  <Phone className="w-5 h-5" />
+                  <Phone className="w-5 h-5" aria-hidden="true" />
                   {config.phone}
                 </a>
                 <Link
                   href="/book"
-                  className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full text-center bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
+                  onClick={closeMobileMenu}
                 >
                   Book Now
                 </Link>

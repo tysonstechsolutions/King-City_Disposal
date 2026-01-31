@@ -7,16 +7,20 @@ export default function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-neutral-900 text-white">
+    <footer className="bg-neutral-900 text-white" role="contentinfo">
       <div className="container-custom py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
 
           {/* Company Info */}
           <div className="lg:col-span-1">
-            <Link href="/" className="inline-flex items-center gap-3 mb-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-3 mb-4 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-neutral-900 rounded-lg"
+              aria-label={`${config.businessName} - Go to homepage`}
+            >
               <Image
                 src="/images/logo.png"
-                alt={config.businessName}
+                alt="King City Disposal logo - Dumpster rental in Southern Illinois"
                 width={50}
                 height={50}
                 className="h-12 w-auto"
@@ -29,96 +33,98 @@ export default function Footer() {
               Reliable dumpster rentals for Southern Illinois. Fast delivery, transparent pricing.
             </p>
             <div className="flex items-center gap-2 text-neutral-400">
-              <MapPin className="w-4 h-4" />
+              <MapPin className="w-4 h-4" aria-hidden="true" />
               <span className="text-sm">{config.address.city}, {config.address.state}</span>
             </div>
           </div>
 
           {/* Quick Links */}
-          <div>
+          <nav aria-label="Quick links">
             <h3 className="font-semibold text-white mb-4">Quick Links</h3>
-            <ul className="space-y-2">
+            <ul className="space-y-2" role="list">
               <li>
-                <Link href="/dumpsters" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                <Link href="/dumpsters" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Dumpster Sizes
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                <Link href="/pricing" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/service-area" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                <Link href="/service-area" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Service Area
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                <Link href="/faq" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                <Link href="/contact" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="/my-rentals" className="text-primary-400 hover:text-primary-300 text-sm font-medium transition-colors">
+                <Link href="/my-rentals" className="text-primary-400 hover:text-primary-300 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   My Rentals
                 </Link>
               </li>
             </ul>
-          </div>
+          </nav>
 
           {/* Services */}
-          <div>
+          <nav aria-label="Dumpster rental options">
             <h3 className="font-semibold text-white mb-4">Dumpster Rentals</h3>
-            <ul className="space-y-2">
+            <ul className="space-y-2" role="list">
               {config.dumpsters.map((dumpster) => (
                 <li key={dumpster.id}>
-                  <Link href={`/book?size=${dumpster.id}`} className="text-neutral-400 hover:text-white text-sm transition-colors">
+                  <Link href={`/book?size=${dumpster.id}`} className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                     {dumpster.name}
                   </Link>
                 </li>
               ))}
               <li>
-                <Link href="/guides/dumpster-sizes" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                <Link href="/guides/dumpster-sizes" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Size Guide
                 </Link>
               </li>
               <li>
-                <Link href="/guides/dumpster-rental-cost" className="text-neutral-400 hover:text-white text-sm transition-colors">
+                <Link href="/guides/dumpster-rental-cost" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Pricing Guide
                 </Link>
               </li>
               <li>
-                <Link href="/book" className="text-primary-400 hover:text-primary-300 text-sm font-medium transition-colors">
+                <Link href="/book" className="text-primary-400 hover:text-primary-300 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Book Online →
                 </Link>
               </li>
             </ul>
-          </div>
+          </nav>
 
           {/* Contact Info */}
           <div>
             <h3 className="font-semibold text-white mb-4">Contact Us</h3>
-            <ul className="space-y-3">
+            <ul className="space-y-3" role="list">
               <li>
                 <a
                   href={`tel:${config.phoneRaw}`}
-                  className="flex items-center gap-3 text-white font-semibold hover:text-primary-400 transition-colors"
+                  className="flex items-center gap-3 text-white font-semibold hover:text-primary-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded"
+                  aria-label={`Call us at ${config.phone}`}
                 >
-                  <Phone className="w-4 h-4" />
+                  <Phone className="w-4 h-4" aria-hidden="true" />
                   <span>{config.phone}</span>
                 </a>
               </li>
               <li>
                 <a
                   href={`mailto:${config.email}`}
-                  className="flex items-center gap-3 text-neutral-400 hover:text-white transition-colors"
+                  className="flex items-center gap-3 text-neutral-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded"
+                  aria-label={`Email us at ${config.email}`}
                 >
-                  <Mail className="w-4 h-4" />
+                  <Mail className="w-4 h-4" aria-hidden="true" />
                   <span className="text-sm">{config.email}</span>
                 </a>
               </li>
@@ -136,18 +142,24 @@ export default function Footer() {
           <p className="text-dark-400 text-sm">
             © {currentYear} {config.businessName}. All rights reserved.
           </p>
-          <div className="flex items-center gap-6">
-            <Link href="/privacy" className="text-dark-400 hover:text-neutral-300 text-sm transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="text-dark-400 hover:text-neutral-300 text-sm transition-colors">
-              Terms of Service
-            </Link>
-          </div>
+          <nav aria-label="Legal links">
+            <ul className="flex items-center gap-6" role="list">
+              <li>
+                <Link href="/privacy" className="text-dark-400 hover:text-neutral-300 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-dark-400 hover:text-neutral-300 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
+                  Terms of Service
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
         <div className="text-center mt-6 pt-4 border-t border-neutral-800">
           <p className="text-neutral-500 text-sm">
-            Website by <a href="https://tysonstechsolutions.com" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:text-primary-300 transition-colors">Tyson's Tech Solutions</a>
+            Website by <a href="https://tysonstechsolutions.com" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:text-primary-300 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">Tyson's Tech Solutions</a>
           </p>
         </div>
       </div>

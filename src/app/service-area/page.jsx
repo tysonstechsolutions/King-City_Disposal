@@ -93,6 +93,14 @@ export default function ServiceAreaPage() {
       return () => clearInterval(checkGoogle)
     }
   }, [])
+  // Helper to create URL-friendly slug from town name
+  const slugify = (town) => {
+    return town
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+  }
+
   // Group towns by first letter for easy scanning
   const groupedTowns = config.serviceTowns.reduce((acc, town) => {
     const letter = town[0].toUpperCase()
@@ -220,8 +228,14 @@ export default function ServiceAreaPage() {
                 </h3>
                 <ul className="space-y-1">
                   {towns.sort().map((town) => (
-                    <li key={town} className="text-dark-300 hover:text-white transition-colors">
-                      {town}, IL
+                    <li key={town}>
+                      <Link
+                        href={`/dumpster-rental/${slugify(town)}-il`}
+                        className="text-dark-300 hover:text-primary transition-colors inline-flex items-center gap-1 group"
+                      >
+                        <MapPin className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {town}, IL
+                      </Link>
                     </li>
                   ))}
                 </ul>
@@ -252,25 +266,41 @@ export default function ServiceAreaPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {config.serviceTowns.slice(0, 12).map((town) => (
-              <div
+              <Link
                 key={town}
-                className="bg-dark-900 rounded-xl p-6 border border-dark-700 hover:border-primary-300 hover:shadow-md transition-all"
+                href={`/dumpster-rental/${slugify(town)}-il`}
+                className="bg-dark-900 rounded-xl p-6 border border-dark-700 hover:border-primary transition-all group"
               >
-                <h3 className="font-semibold text-white mb-2">
+                <h3 className="font-semibold text-white mb-2 group-hover:text-primary transition-colors">
                   Dumpster Rental in {town}, IL
                 </h3>
                 <p className="text-dark-400 text-sm mb-4">
                   Fast, affordable dumpster rentals delivered to {town} and surrounding areas.
                 </p>
-                <Link
-                  href="/book"
-                  className="text-primary hover:text-primary-700 text-sm inline-flex items-center gap-1 font-medium"
-                >
-                  Get pricing
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
+                <span className="text-primary group-hover:text-primary-300 text-sm inline-flex items-center gap-1 font-medium">
+                  View {town} pricing
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
             ))}
+          </div>
+
+          {/* Show all cities link */}
+          <div className="text-center mt-8">
+            <p className="text-dark-400 mb-2">
+              We serve {config.serviceTowns.length}+ towns across Southern Illinois
+            </p>
+            <Link
+              href="#towns"
+              className="text-primary hover:text-primary-300 font-medium inline-flex items-center gap-1"
+              onClick={(e) => {
+                e.preventDefault()
+                document.querySelector('.grid.md\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            >
+              View all service areas
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>
