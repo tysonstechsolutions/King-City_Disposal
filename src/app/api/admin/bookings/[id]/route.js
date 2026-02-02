@@ -8,10 +8,23 @@ const getServiceKey = () => {
   return process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey
 }
 
-// Validate booking ID
+// Validate booking ID (supports both numeric IDs and UUIDs)
 function validateBookingId(id) {
+  if (!id || typeof id !== 'string') return null
+
+  // Check if it's a valid UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (uuidRegex.test(id)) {
+    return id
+  }
+
+  // Check if it's a valid numeric ID
   const numId = parseInt(id, 10)
-  return !isNaN(numId) && numId > 0 ? numId : null
+  if (!isNaN(numId) && numId > 0) {
+    return numId
+  }
+
+  return null
 }
 
 // PATCH - Update booking (status, notes)

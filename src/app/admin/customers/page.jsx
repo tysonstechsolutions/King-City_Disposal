@@ -295,23 +295,20 @@ function AddCustomerModal({ onClose, onSuccess }) {
     setLoading(true)
 
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify(formData),
-        }
-      )
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
+        body: JSON.stringify(formData),
+      })
 
       if (response.ok) {
         onSuccess()
       } else {
-        alert('Failed to create customer')
+        const err = await response.json()
+        alert(err.error || 'Failed to create customer')
       }
     } catch (err) {
       console.error('Error creating customer:', err)

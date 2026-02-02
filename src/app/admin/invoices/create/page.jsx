@@ -17,7 +17,13 @@ import {
   Calendar,
   DollarSign,
   Truck,
-  Scale
+  Scale,
+  Eye,
+  X,
+  Phone,
+  Mail,
+  MapPin,
+  Printer
 } from 'lucide-react'
 
 function CreateInvoiceContent() {
@@ -31,6 +37,7 @@ function CreateInvoiceContent() {
   const [bookings, setBookings] = useState([])
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
 
   const [invoice, setInvoice] = useState({
     customer_id: null,
@@ -545,6 +552,14 @@ function CreateInvoiceContent() {
           {/* Actions */}
           <div className="flex gap-3 justify-end">
             <button
+              onClick={() => setShowPreview(true)}
+              disabled={!invoice.customer_name}
+              className="flex items-center gap-2 px-6 py-3 bg-dark-600 text-dark-100 rounded-lg font-medium hover:bg-dark-500 disabled:opacity-50"
+            >
+              <Eye className="w-5 h-5" />
+              Preview
+            </button>
+            <button
               onClick={() => handleSubmit(false)}
               disabled={saving}
               className="flex items-center gap-2 px-6 py-3 bg-dark-700 text-dark-200 rounded-lg font-medium hover:bg-dark-600 disabled:opacity-50"
@@ -568,6 +583,358 @@ function CreateInvoiceContent() {
       {showCustomerSearch && (
         <div className="fixed inset-0 z-10" onClick={() => setShowCustomerSearch(false)} />
       )}
+
+      {/* Invoice Preview Modal */}
+      {showPreview && (
+        <InvoicePreviewModal
+          invoice={invoice}
+          subtotal={subtotal}
+          config={config}
+          onClose={() => setShowPreview(false)}
+          onSendNow={() => {
+            setShowPreview(false)
+            handleSubmit(true)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Invoice Preview Modal Component
+function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow }) {
+  const formatCurrency = (cents) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format((cents || 0) / 100)
+  }
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ''
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  const dueDate = new Date()
+  dueDate.setDate(dueDate.getDate() + (invoice.payment_terms || 15))
+
+  const lineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice Preview - ${config.businessName}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1a1a1a; }
+          .header { background: #f97316; color: white; padding: 24px; margin: -40px -40px 24px; }
+          .header h1 { font-size: 24px; margin-bottom: 4px; }
+          .header p { opacity: 0.8; }
+          .header-right { float: right; text-align: right; }
+          .header-right .label { font-size: 12px; opacity: 0.6; }
+          .header-right .value { font-size: 20px; font-weight: bold; font-family: monospace; }
+          .section { margin-bottom: 24px; }
+          .section-title { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 8px; }
+          .grid { display: flex; gap: 24px; }
+          .grid > div { flex: 1; }
+          .service-box { background: #f5f5f5; padding: 16px; border-radius: 8px; }
+          table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+          th { text-align: left; padding: 12px; border-bottom: 2px solid #e5e5e5; font-size: 12px; color: #666; text-transform: uppercase; }
+          th:last-child { text-align: right; }
+          td { padding: 12px; border-bottom: 1px solid #e5e5e5; }
+          td:last-child { text-align: right; font-weight: 500; }
+          .totals { text-align: right; margin-top: 16px; }
+          .totals .row { display: flex; justify-content: flex-end; gap: 24px; margin-bottom: 8px; }
+          .totals .label { color: #666; }
+          .totals .total { font-size: 18px; font-weight: bold; padding-top: 8px; border-top: 2px solid #e5e5e5; }
+          .notes { background: #f5f5f5; padding: 16px; border-radius: 8px; margin-top: 24px; }
+          .notes-title { font-size: 12px; color: #666; margin-bottom: 4px; }
+          .footer { text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5; color: #666; }
+          @media print { body { padding: 20px; } .header { margin: -20px -20px 24px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="header-right">
+            <div class="label">INVOICE</div>
+            <div class="value">PREVIEW</div>
+          </div>
+          <h1>${config.businessName}</h1>
+          <p>${config.phone}</p>
+          ${config.email ? `<p>${config.email}</p>` : ''}
+        </div>
+
+        <div class="section">
+          <div class="grid">
+            <div>
+              <div class="section-title">Bill To</div>
+              <p style="font-weight: 600; font-size: 18px;">${invoice.customer_name}</p>
+              ${invoice.customer_address ? `<p>${invoice.customer_address}</p>` : ''}
+              ${invoice.customer_phone ? `<p>📞 ${invoice.customer_phone}</p>` : ''}
+              ${invoice.customer_email ? `<p>✉️ ${invoice.customer_email}</p>` : ''}
+            </div>
+            <div style="text-align: right;">
+              <p><span style="color: #666;">Invoice Date:</span> ${formatDate(new Date())}</p>
+              <p><span style="color: #666;">Due Date:</span> ${invoice.payment_terms === 0 ? 'Due Upon Receipt' : formatDate(dueDate)}</p>
+            </div>
+          </div>
+        </div>
+
+        ${(invoice.service_address || invoice.dumpster_size) ? `
+        <div class="section">
+          <div class="service-box">
+            <div class="section-title">Service Details</div>
+            <div class="grid">
+              ${invoice.service_address ? `
+              <div>
+                <p style="font-size: 12px; color: #666;">Service Address</p>
+                <p style="font-weight: 500;">📍 ${invoice.service_address}</p>
+              </div>
+              ` : ''}
+              ${invoice.dumpster_size ? `
+              <div>
+                <p style="font-size: 12px; color: #666;">Dumpster</p>
+                <p style="font-weight: 500;">🚛 ${invoice.dumpster_size}</p>
+                ${invoice.rental_duration ? `<p style="font-size: 12px; color: #666;">${invoice.rental_duration}</p>` : ''}
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        <div class="section">
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItems.map(item => `
+              <tr>
+                <td>${item.description}</td>
+                <td>${formatCurrency(item.amount_cents)}</td>
+              </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="row">
+              <span class="label">Subtotal</span>
+              <span>${formatCurrency(subtotal)}</span>
+            </div>
+            <div class="row total">
+              <span>Total</span>
+              <span>${formatCurrency(subtotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        ${invoice.notes ? `
+        <div class="notes">
+          <div class="notes-title">Notes</div>
+          <p>${invoice.notes}</p>
+        </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>Thank you for your business!</p>
+          <p style="margin-top: 4px;">${config.businessName} • ${config.phone}</p>
+        </div>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.print()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-dark-900 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-4 border-b border-dark-700">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Eye className="w-5 h-5 text-primary" />
+            Invoice Preview
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-3 py-1.5 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600 text-sm"
+            >
+              <Printer className="w-4 h-4" />
+              Print
+            </button>
+            <button onClick={onClose} className="text-dark-400 hover:text-white p-1">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Invoice Preview Card */}
+          <div className="bg-white text-neutral-900 rounded-xl shadow-lg overflow-hidden">
+            {/* Header */}
+            <div className="bg-primary text-white p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-2xl font-bold">{config.businessName}</h1>
+                  <p className="text-white/80">{config.phone}</p>
+                  {config.email && <p className="text-white/80">{config.email}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="text-white/60 text-sm">INVOICE</p>
+                  <p className="text-xl font-bold font-mono">PREVIEW</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {/* Bill To & Invoice Details */}
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div>
+                  <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide mb-2">Bill To</h2>
+                  <p className="font-semibold text-lg">{invoice.customer_name}</p>
+                  {invoice.customer_address && <p className="text-neutral-600">{invoice.customer_address}</p>}
+                  {invoice.customer_phone && (
+                    <p className="text-neutral-600 flex items-center gap-1 mt-1">
+                      <Phone className="w-4 h-4" /> {invoice.customer_phone}
+                    </p>
+                  )}
+                  {invoice.customer_email && (
+                    <p className="text-neutral-600 flex items-center gap-1">
+                      <Mail className="w-4 h-4" /> {invoice.customer_email}
+                    </p>
+                  )}
+                </div>
+                <div className="md:text-right">
+                  <div className="space-y-1">
+                    <div className="flex md:justify-end gap-2">
+                      <span className="text-neutral-400">Invoice Date:</span>
+                      <span className="font-medium">{formatDate(new Date())}</span>
+                    </div>
+                    <div className="flex md:justify-end gap-2">
+                      <span className="text-neutral-400">Due Date:</span>
+                      <span className="font-medium">
+                        {invoice.payment_terms === 0 ? 'Due Upon Receipt' : formatDate(dueDate)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Details */}
+              {(invoice.service_address || invoice.dumpster_size) && (
+                <div className="bg-neutral-100 rounded-lg p-4 mb-6">
+                  <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide mb-3">Service Details</h2>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {invoice.service_address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-5 h-5 text-neutral-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-neutral-400">Service Address</p>
+                          <p className="font-medium">{invoice.service_address}</p>
+                        </div>
+                      </div>
+                    )}
+                    {invoice.dumpster_size && (
+                      <div className="flex items-start gap-2">
+                        <Truck className="w-5 h-5 text-neutral-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-neutral-400">Dumpster</p>
+                          <p className="font-medium">{invoice.dumpster_size}</p>
+                          {invoice.rental_duration && <p className="text-sm text-neutral-400">{invoice.rental_duration}</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Line Items */}
+              <div className="mb-6">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-neutral-200">
+                      <th className="text-left py-3 text-sm font-semibold text-neutral-400">Description</th>
+                      <th className="text-right py-3 text-sm font-semibold text-neutral-400 w-32">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {lineItems.map((item, index) => (
+                      <tr key={index}>
+                        <td className="py-3">{item.description}</td>
+                        <td className="py-3 text-right font-medium">{formatCurrency(item.amount_cents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Totals */}
+              <div className="border-t-2 border-neutral-200 pt-4">
+                <div className="flex justify-end">
+                  <div className="w-64 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">Subtotal</span>
+                      <span className="font-medium">{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-neutral-200">
+                      <span>Total</span>
+                      <span>{formatCurrency(subtotal)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {invoice.notes && (
+                <div className="mt-6 p-4 bg-neutral-100 rounded-lg">
+                  <p className="text-sm text-neutral-400 mb-1">Notes</p>
+                  <p className="text-neutral-700">{invoice.notes}</p>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="mt-8 pt-6 border-t border-neutral-200 text-center text-sm text-neutral-400">
+                <p>Thank you for your business!</p>
+                <p className="mt-1">{config.businessName} • {config.phone}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="flex gap-3 justify-end p-4 border-t border-dark-700 bg-dark-800">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 bg-dark-700 text-dark-200 rounded-lg font-medium hover:bg-dark-600"
+          >
+            Close
+          </button>
+          <button
+            onClick={onSendNow}
+            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90"
+          >
+            <Send className="w-4 h-4" />
+            Save & Send Invoice
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
