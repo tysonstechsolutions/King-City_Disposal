@@ -367,8 +367,17 @@ function CreateInvoiceContent() {
                         onClick={() => selectCustomer(customer)}
                         className="w-full text-left px-4 py-2 hover:bg-dark-700 text-white"
                       >
-                        <p className="font-medium">{customer.name}</p>
-                        <p className="text-sm text-dark-400">{customer.phone}</p>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{customer.name}</p>
+                            <p className="text-sm text-dark-400">{customer.phone}</p>
+                          </div>
+                          {customer.credit_balance_cents > 0 && (
+                            <span className="text-xs bg-emerald-900/50 text-emerald-400 px-2 py-1 rounded">
+                              ${(customer.credit_balance_cents / 100).toFixed(2)} credit
+                            </span>
+                          )}
+                        </div>
                       </button>
                     ))
                   ) : (

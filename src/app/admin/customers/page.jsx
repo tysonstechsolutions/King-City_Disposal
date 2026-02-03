@@ -242,8 +242,13 @@ export default function CustomersPage() {
                     <p className="font-semibold text-white">
                       {formatCurrency(customer.total_spent_cents)}
                     </p>
+                    {customer.credit_balance_cents > 0 && (
+                      <p className="text-sm text-emerald-500 font-medium">
+                        {formatCurrency(customer.credit_balance_cents)} credit
+                      </p>
+                    )}
                     {customer.outstanding_balance_cents > 0 && (
-                      <p className="text-sm text-red-600 font-medium">
+                      <p className="text-sm text-red-500 font-medium">
                         {formatCurrency(customer.outstanding_balance_cents)} due
                       </p>
                     )}
@@ -437,8 +442,10 @@ function AddCustomerModal({ onClose, onSuccess }) {
               >
                 <option value="upfront">Pay Upfront</option>
                 <option value="invoice">Invoice After</option>
-                <option value="cash">Cash</option>
                 <option value="check">Check</option>
+                <option value="ach">ACH Transfer</option>
+                <option value="card">Credit/Debit Card</option>
+                <option value="paypal">PayPal</option>
               </select>
             </div>
             <div>

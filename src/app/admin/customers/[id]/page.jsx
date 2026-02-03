@@ -26,7 +26,10 @@ import {
   Truck,
   Send,
   ExternalLink,
-  Trash2
+  Trash2,
+  CreditCard,
+  Banknote,
+  X
 } from 'lucide-react'
 
 export default function CustomerDetailPage() {
@@ -44,6 +47,13 @@ export default function CustomerDetailPage() {
   const [showNewInvoice, setShowNewInvoice] = useState(false)
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('check')
+  const [paymentNotes, setPaymentNotes] = useState('')
+  const [paymentCheckNumber, setPaymentCheckNumber] = useState('')
+  const [paymentDate, setPaymentDate] = useState('')
+  const [recordingPayment, setRecordingPayment] = useState(false)
 
   const fetchCustomer = useCallback(async () => {
     try {
@@ -227,6 +237,168 @@ export default function CustomerDetailPage() {
     }
   }
 
+  // Calculate outstanding invoices
+  const outstandingInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'void')
+  const totalOutstanding = outstandingInvoices.reduce((sum, inv) => {
+    const balance = inv.balance_due_cents ?? (inv.total_cents - (inv.amount_paid_cents || 0))
+    return sum + balance
+  }, 0)
+
+  // Record bulk payment across all outstanding invoices
+  const handleRecordBulkPayment = async () => {
+    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+      toast.warning('Enter a valid payment amount')
+      return
+    }
+
+    setRecordingPayment(true)
+    try {
+      let remainingPayment = Math.round(parseFloat(paymentAmount) * 100)
+      const paidAtDate = paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString()
+
+      // Sort invoices by date (oldest first) to pay off oldest debts first
+      const sortedInvoices = [...outstandingInvoices].sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      )
+
+      for (const inv of sortedInvoices) {
+        if (remainingPayment <= 0) break
+
+        const invoiceBalance = inv.balance_due_cents ?? (inv.total_cents - (inv.amount_paid_cents || 0))
+        if (invoiceBalance <= 0) continue
+
+        const paymentForThisInvoice = Math.min(remainingPayment, invoiceBalance)
+        remainingPayment -= paymentForThisInvoice
+
+        const newAmountPaid = (inv.amount_paid_cents || 0) + paymentForThisInvoice
+        const newBalanceDue = inv.total_cents - newAmountPaid
+        const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
+
+        // Build notes
+        let fullNotes = inv.notes || ''
+        if (paymentCheckNumber && paymentMethod === 'check') {
+          fullNotes += `${fullNotes ? '\n' : ''}Payment: Check #${paymentCheckNumber} - ${formatCurrency(paymentForThisInvoice)} on ${new Date(paidAtDate).toLocaleDateString()}`
+        } else if (paymentNotes) {
+          fullNotes += `${fullNotes ? '\n' : ''}Payment: ${paymentNotes} - ${formatCurrency(paymentForThisInvoice)} on ${new Date(paidAtDate).toLocaleDateString()}`
+        }
+
+        const updateData = {
+          amount_paid_cents: newAmountPaid,
+          balance_due_cents: Math.max(0, newBalanceDue),
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+          notes: fullNotes,
+        }
+
+        if (newStatus === 'paid') {
+          updateData.paid_at = paidAtDate
+        }
+
+        await fetch(
+          `${config.supabase.url}/rest/v1/invoices?id=eq.${inv.id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': config.supabase.anonKey,
+              'Authorization': `Bearer ${config.supabase.anonKey}`,
+            },
+            body: JSON.stringify(updateData),
+          }
+        )
+      }
+
+      // If there's remaining payment after all invoices are paid, add to customer credit
+      if (remainingPayment > 0) {
+        const newCreditBalance = (customer.credit_balance_cents || 0) + remainingPayment
+        await fetch(
+          `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': config.supabase.anonKey,
+              'Authorization': `Bearer ${config.supabase.anonKey}`,
+            },
+            body: JSON.stringify({ credit_balance_cents: newCreditBalance }),
+          }
+        )
+        toast.success(`Payment recorded. ${formatCurrency(remainingPayment)} added to account credit.`)
+      } else {
+        toast.success('Payment recorded successfully')
+      }
+
+      setShowPaymentModal(false)
+      setPaymentAmount('')
+      setPaymentNotes('')
+      setPaymentCheckNumber('')
+      setPaymentDate('')
+      fetchCustomer()
+    } catch (err) {
+      console.error('Error recording payment:', err)
+      toast.error('Error recording payment')
+    }
+    setRecordingPayment(false)
+  }
+
+  // Toggle customer flagged status
+  const toggleFlag = async () => {
+    try {
+      const newFlaggedStatus = !customer.is_flagged
+      const response = await fetch(
+        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': config.supabase.anonKey,
+            'Authorization': `Bearer ${config.supabase.anonKey}`,
+          },
+          body: JSON.stringify({ is_flagged: newFlaggedStatus }),
+        }
+      )
+      if (response.ok) {
+        setCustomer({ ...customer, is_flagged: newFlaggedStatus })
+        setFormData({ ...formData, is_flagged: newFlaggedStatus })
+        toast.success(newFlaggedStatus ? 'Customer flagged' : 'Flag removed')
+      } else {
+        toast.error('Failed to update customer')
+      }
+    } catch (err) {
+      console.error('Error toggling flag:', err)
+      toast.error('Error updating customer')
+    }
+  }
+
+  // Toggle customer VIP status
+  const toggleVIP = async () => {
+    try {
+      const newVIPStatus = !customer.is_vip
+      const response = await fetch(
+        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': config.supabase.anonKey,
+            'Authorization': `Bearer ${config.supabase.anonKey}`,
+          },
+          body: JSON.stringify({ is_vip: newVIPStatus }),
+        }
+      )
+      if (response.ok) {
+        setCustomer({ ...customer, is_vip: newVIPStatus })
+        setFormData({ ...formData, is_vip: newVIPStatus })
+        toast.success(newVIPStatus ? 'Customer marked as VIP' : 'VIP status removed')
+      } else {
+        toast.error('Failed to update customer')
+      }
+    } catch (err) {
+      console.error('Error toggling VIP:', err)
+      toast.error('Error updating customer')
+    }
+  }
+
   const formatCurrency = (cents) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -304,6 +476,30 @@ export default function CustomerDetailPage() {
                 </>
               ) : (
                 <>
+                  <button
+                    onClick={toggleFlag}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                      customer.is_flagged
+                        ? 'bg-red-600 text-white hover:bg-red-700'
+                        : 'bg-dark-700 text-dark-200 hover:bg-dark-600'
+                    }`}
+                    title={customer.is_flagged ? 'Remove flag' : 'Flag customer'}
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    {customer.is_flagged ? 'Flagged' : 'Flag'}
+                  </button>
+                  <button
+                    onClick={toggleVIP}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                      customer.is_vip
+                        ? 'bg-amber-500 text-white hover:bg-amber-600'
+                        : 'bg-dark-700 text-dark-200 hover:bg-dark-600'
+                    }`}
+                    title={customer.is_vip ? 'Remove VIP' : 'Mark as VIP'}
+                  >
+                    <Star className={`w-4 h-4 ${customer.is_vip ? 'fill-white' : ''}`} />
+                    VIP
+                  </button>
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
@@ -431,12 +627,41 @@ export default function CustomerDetailPage() {
                     {formatCurrency(invoices.reduce((sum, inv) => sum + (inv.total_cents || 0), 0))}
                   </p>
                 </div>
-                {invoices.filter(i => i.status !== 'paid').length > 0 && (
+                {/* Credit Balance - show prominently if customer has credit */}
+                {customer.credit_balance_cents > 0 && (
+                  <div className="col-span-2 p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-emerald-400" />
+                      <div>
+                        <p className="text-sm text-emerald-400">Account Credit</p>
+                        <p className="text-xl font-bold text-emerald-400">
+                          {formatCurrency(customer.credit_balance_cents)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {totalOutstanding > 0 && (
                   <div className="col-span-2 p-3 bg-red-900/30 border border-red-800 rounded-lg">
-                    <p className="text-sm text-red-400">Outstanding Balance</p>
-                    <p className="text-xl font-bold text-red-400">
-                      {formatCurrency(invoices.filter(i => i.status !== 'paid').reduce((sum, inv) => sum + (inv.balance_due_cents || inv.total_cents || 0), 0))}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-red-400">Outstanding Balance ({outstandingInvoices.length} invoice{outstandingInvoices.length !== 1 ? 's' : ''})</p>
+                        <p className="text-xl font-bold text-red-400">
+                          {formatCurrency(totalOutstanding)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPaymentAmount((totalOutstanding / 100).toFixed(2))
+                          setPaymentDate(new Date().toISOString().split('T')[0])
+                          setShowPaymentModal(true)
+                        }}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        Make Payment
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -565,6 +790,119 @@ export default function CustomerDetailPage() {
           loading={creatingInvoice}
           onValidationError={(msg) => toast.warning(msg)}
         />
+      )}
+
+      {/* Bulk Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Record Payment</h2>
+              <button onClick={() => setShowPaymentModal(false)} className="text-dark-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-dark-700 rounded-lg">
+              <p className="text-sm text-dark-400">Paying {outstandingInvoices.length} outstanding invoice{outstandingInvoices.length !== 1 ? 's' : ''}</p>
+              <p className="text-lg font-bold text-white">Total Due: {formatCurrency(totalOutstanding)}</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      placeholder={`${(totalOutstanding / 100).toFixed(2)}`}
+                      className="w-full pl-7 pr-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Date Paid</label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Payment Method</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  >
+                    <option value="check">Check</option>
+                    <option value="ach">ACH Transfer</option>
+                    <option value="card">Credit/Debit Card</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="venmo">Venmo</option>
+                    <option value="zelle">Zelle</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {paymentMethod === 'check' && (
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1">Check #</label>
+                    <input
+                      type="text"
+                      value={paymentCheckNumber}
+                      onChange={(e) => setPaymentCheckNumber(e.target.value)}
+                      placeholder="Enter check number"
+                      className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Notes (optional)</label>
+                <input
+                  type="text"
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder="Additional notes..."
+                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+              </div>
+
+              {/* Info about how payment will be applied */}
+              <div className="text-xs text-dark-400 p-2 bg-dark-900 rounded">
+                Payment will be applied to oldest invoices first.
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRecordBulkPayment}
+                disabled={recordingPayment}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+                Record Payment
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -149,8 +149,9 @@ export async function POST(request) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error('Supabase customer create error', null, { error: errorText })
-      return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 })
+      logger.error('Supabase customer create error', null, { error: errorText, customerData })
+      console.error('Supabase customer create error:', errorText)
+      return NextResponse.json({ error: `Failed to create customer: ${errorText}` }, { status: 500 })
     }
 
     const [customer] = await response.json()

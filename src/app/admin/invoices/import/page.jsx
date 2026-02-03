@@ -514,8 +514,11 @@ export default function ImportInvoicesPage() {
                             >
                               <option value="">Select...</option>
                               <option value="check">Check</option>
-                              <option value="card">Card</option>
-                              <option value="cash">Cash</option>
+                              <option value="ach">ACH Transfer</option>
+                              <option value="card">Credit/Debit Card</option>
+                              <option value="paypal">PayPal</option>
+                              <option value="venmo">Venmo</option>
+                              <option value="zelle">Zelle</option>
                               <option value="other">Other</option>
                             </select>
                           </div>

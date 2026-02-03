@@ -49,7 +49,7 @@ export default function InvoiceDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [paymentMethod, setPaymentMethod] = useState('check')
   const [paymentNotes, setPaymentNotes] = useState('')
   const [paymentCheckNumber, setPaymentCheckNumber] = useState('')
   const [paymentDate, setPaymentDate] = useState('')
@@ -1122,9 +1122,10 @@ export default function InvoiceDetailPage() {
                         onChange={(e) => setPaymentMethod(e.target.value)}
                         className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
-                        <option value="cash">Cash</option>
                         <option value="check">Check</option>
+                        <option value="ach">ACH Transfer</option>
                         <option value="card">Credit/Debit Card</option>
+                        <option value="paypal">PayPal</option>
                         <option value="venmo">Venmo</option>
                         <option value="zelle">Zelle</option>
                         <option value="other">Other</option>
