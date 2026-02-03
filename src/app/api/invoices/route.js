@@ -81,8 +81,11 @@ export async function POST(request) {
       );
     }
 
-    // Generate invoice number
-    const invoice_number = await generateInvoiceNumber();
+    // Use custom invoice number if provided, otherwise auto-generate
+    let invoice_number = body.invoice_number;
+    if (!invoice_number) {
+      invoice_number = await generateInvoiceNumber();
+    }
 
     // Calculate overage if weight provided
     let overage_lbs = null;

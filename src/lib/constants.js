@@ -18,10 +18,24 @@ import {
   Receipt,
 } from 'lucide-react';
 
-// Document categories (for uploads)
+// Document/Expense categories (for uploads and parsed documents)
+// These are the common ones - AI can create any category dynamically
 export const DOCUMENT_CATEGORIES = [
-  { id: 'weight_ticket', label: 'Weight Ticket', icon: Scale, color: 'blue' },
-  { id: 'fuel_receipt', label: 'Fuel Receipt', icon: Droplet, color: 'amber' },
+  { id: 'landfill', label: 'Landfill/Dump', icon: Truck, color: 'blue' },
+  { id: 'fuel', label: 'Fuel', icon: Droplet, color: 'amber' },
+  { id: 'maintenance', label: 'Maintenance', icon: Wrench, color: 'orange' },
+  { id: 'parts', label: 'Parts', icon: Package, color: 'cyan' },
+  { id: 'repairs', label: 'Repairs', icon: Wrench, color: 'red' },
+  { id: 'supplies', label: 'Supplies', icon: Package, color: 'green' },
+  { id: 'meals', label: 'Meals', icon: Receipt, color: 'pink' },
+  { id: 'travel', label: 'Travel', icon: Truck, color: 'indigo' },
+  { id: 'phone', label: 'Phone', icon: Receipt, color: 'violet' },
+  { id: 'utilities', label: 'Utilities', icon: Receipt, color: 'yellow' },
+  { id: 'insurance', label: 'Insurance', icon: FileText, color: 'slate' },
+  { id: 'office', label: 'Office', icon: Package, color: 'gray' },
+  { id: 'software', label: 'Software', icon: Receipt, color: 'purple' },
+  { id: 'equipment', label: 'Equipment', icon: Wrench, color: 'emerald' },
+  { id: 'dumpster_rental', label: 'Dumpster Rental', icon: Truck, color: 'teal' },
   { id: 'photo', label: 'Job Photo', icon: Camera, color: 'green' },
   { id: 'invoice', label: 'Invoice', icon: FileText, color: 'purple' },
   { id: 'contract', label: 'Contract', icon: FileText, color: 'indigo' },
@@ -62,9 +76,28 @@ export const CATEGORY_LABELS = {
   other: 'Other',
 };
 
+// Helper to format category ID into a nice label (for dynamic categories)
+export function formatCategoryLabel(categoryId) {
+  if (!categoryId) return 'Other';
+  // Convert snake_case to Title Case
+  return categoryId
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 // Helper functions
 export function getDocumentCategory(categoryId) {
-  return DOCUMENT_CATEGORIES.find(c => c.id === categoryId) || DOCUMENT_CATEGORIES[DOCUMENT_CATEGORIES.length - 1];
+  const found = DOCUMENT_CATEGORIES.find(c => c.id === categoryId);
+  if (found) return found;
+
+  // Return a dynamic category object for unknown categories
+  return {
+    id: categoryId || 'other',
+    label: formatCategoryLabel(categoryId),
+    icon: File, // Default icon
+    color: 'neutral',
+  };
 }
 
 export function getExpenseCategory(categoryId) {

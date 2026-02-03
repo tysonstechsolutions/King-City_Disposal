@@ -40,6 +40,7 @@ function CreateInvoiceContent() {
   const [showPreview, setShowPreview] = useState(false)
 
   const [invoice, setInvoice] = useState({
+    invoice_number: '', // Custom invoice number (optional - auto-generated if blank)
     customer_id: null,
     customer_name: '',
     customer_phone: '',
@@ -52,8 +53,8 @@ function CreateInvoiceContent() {
     rental_duration: '10-day',
     delivery_date: '',
     pickup_date: '',
-    weight_lbs: '',
-    weight_included_lbs: 6000, // 3 tons default (matches config)
+    weight_tons: '',
+    weight_included_tons: 3, // 3 tons default (matches config)
     line_items: [
       { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: 47500 }
     ],
@@ -119,6 +120,8 @@ function CreateInvoiceContent() {
   const prefillFromBooking = (booking) => {
     const dumpster = config.dumpsters?.find(d => d.id === booking.dumpster_size)
     const basePrice = dumpster?.pricing?.[booking.rental_duration] || booking.price_cents / 100
+    // Convert lbs from booking to tons for display
+    const weightTons = booking.actual_weight_lbs ? (booking.actual_weight_lbs / 2000).toFixed(2) : ''
 
     setInvoice(prev => ({
       ...prev,
@@ -130,7 +133,7 @@ function CreateInvoiceContent() {
       dumpster_size: dumpster?.name || booking.dumpster_size,
       rental_duration: booking.rental_duration,
       delivery_date: booking.delivery_date,
-      weight_lbs: booking.actual_weight_lbs || '',
+      weight_tons: weightTons,
       line_items: [
         {
           description: `${dumpster?.name || booking.dumpster_size} - ${booking.rental_duration} Rental`,
@@ -180,9 +183,8 @@ function CreateInvoiceContent() {
   }
 
   const calculateOverage = () => {
-    if (!invoice.weight_lbs || !invoice.weight_included_lbs) return 0
-    const overageLbs = Math.max(0, parseInt(invoice.weight_lbs) - parseInt(invoice.weight_included_lbs))
-    const overageTons = overageLbs / 2000
+    if (!invoice.weight_tons || !invoice.weight_included_tons) return 0
+    const overageTons = Math.max(0, parseFloat(invoice.weight_tons) - parseFloat(invoice.weight_included_tons))
     const overageRate = config.pricing?.overagePerTon || 75
     return Math.round(overageTons * overageRate * 100)
   }
@@ -191,8 +193,7 @@ function CreateInvoiceContent() {
     const overageCents = calculateOverage()
     if (overageCents <= 0) return
 
-    const overageLbs = parseInt(invoice.weight_lbs) - parseInt(invoice.weight_included_lbs)
-    const overageTons = (overageLbs / 2000).toFixed(2)
+    const overageTons = (parseFloat(invoice.weight_tons) - parseFloat(invoice.weight_included_tons)).toFixed(2)
     setInvoice(prev => ({
       ...prev,
       line_items: [
@@ -225,6 +226,7 @@ function CreateInvoiceContent() {
       dueDate.setDate(dueDate.getDate() + invoice.payment_terms)
 
       const payload = {
+        invoice_number: invoice.invoice_number.trim() || null, // null = auto-generate
         customer_id: invoice.customer_id,
         booking_id: invoice.booking_id,
         customer_name: invoice.customer_name,
@@ -237,8 +239,8 @@ function CreateInvoiceContent() {
         rental_duration: invoice.rental_duration,
         delivery_date: invoice.delivery_date || null,
         pickup_date: invoice.pickup_date || null,
-        weight_lbs: invoice.weight_lbs ? parseInt(invoice.weight_lbs) : null,
-        weight_included_lbs: invoice.weight_included_lbs ? parseInt(invoice.weight_included_lbs) : null,
+        weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
+        weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
         line_items: invoice.line_items.filter(item => item.description && item.amount_cents > 0),
         notes: invoice.notes,
         due_date: dueDate.toISOString().split('T')[0],
@@ -310,6 +312,26 @@ function CreateInvoiceContent() {
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="space-y-6">
+          {/* Invoice Number */}
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Invoice Number
+            </h2>
+            <div>
+              <input
+                type="text"
+                value={invoice.invoice_number}
+                onChange={(e) => setInvoice({ ...invoice, invoice_number: e.target.value })}
+                placeholder="Leave blank to auto-generate (e.g., INV-2025-0001)"
+                className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none placeholder:text-dark-500"
+              />
+              <p className="text-sm text-dark-500 mt-2">
+                Enter a custom invoice number or leave blank to auto-generate the next number in sequence.
+              </p>
+            </div>
+          </div>
+
           {/* Customer Section */}
           <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -321,20 +343,20 @@ function CreateInvoiceContent() {
             <div className="relative mb-4">
               <button
                 onClick={() => setShowCustomerSearch(!showCustomerSearch)}
-                className="w-full text-left px-4 py-3 border border-dark-600 rounded-lg hover:border-primary focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full text-left px-4 py-3 bg-dark-700 text-white border border-dark-600 rounded-lg hover:border-primary focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               >
-                {invoice.customer_name || 'Select or enter customer...'}
+                {invoice.customer_name || <span className="text-dark-500">Select or enter customer...</span>}
               </button>
 
               {showCustomerSearch && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-dark-700 z-20 max-h-64 overflow-y-auto">
-                  <div className="p-2 border-b border-neutral-100">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-dark-800 rounded-lg shadow-lg border border-dark-600 z-20 max-h-64 overflow-y-auto">
+                  <div className="p-2 border-b border-dark-700">
                     <input
                       type="text"
                       placeholder="Search customers..."
                       value={customerSearch}
                       onChange={(e) => setCustomerSearch(e.target.value)}
-                      className="w-full px-3 py-2 border border-dark-600 rounded-lg text-sm"
+                      className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg text-sm placeholder:text-dark-500"
                       autoFocus
                     />
                   </div>
@@ -343,14 +365,14 @@ function CreateInvoiceContent() {
                       <button
                         key={customer.id}
                         onClick={() => selectCustomer(customer)}
-                        className="w-full text-left px-4 py-2 hover:bg-dark-700"
+                        className="w-full text-left px-4 py-2 hover:bg-dark-700 text-white"
                       >
                         <p className="font-medium">{customer.name}</p>
                         <p className="text-sm text-dark-400">{customer.phone}</p>
                       </button>
                     ))
                   ) : (
-                    <p className="px-4 py-2 text-sm text-dark-400">No customers found</p>
+                    <p className="px-4 py-2 text-sm text-dark-500">No customers found</p>
                   )}
                 </div>
               )}
@@ -440,28 +462,32 @@ function CreateInvoiceContent() {
             </div>
 
             {/* Weight & Overage */}
-            <div className="mt-4 p-4 bg-neutral-50 rounded-lg">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
-                <Scale className="w-4 h-4" />
+            <div className="mt-4 p-4 bg-dark-700 rounded-lg border border-dark-600">
+              <h3 className="font-medium mb-3 flex items-center gap-2 text-white">
+                <Scale className="w-4 h-4 text-primary" />
                 Weight & Overage
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm text-dark-300 mb-1">Actual Weight (lbs)</label>
+                  <label className="block text-sm text-dark-300 mb-1">Actual Weight (tons)</label>
                   <input
                     type="number"
-                    value={invoice.weight_lbs}
-                    onChange={(e) => setInvoice({ ...invoice, weight_lbs: e.target.value })}
-                    className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
+                    step="0.01"
+                    value={invoice.weight_tons}
+                    onChange={(e) => setInvoice({ ...invoice, weight_tons: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 bg-dark-800 text-white border border-dark-600 rounded-lg placeholder:text-dark-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-dark-300 mb-1">Included (lbs)</label>
+                  <label className="block text-sm text-dark-300 mb-1">Included (tons)</label>
                   <input
                     type="number"
-                    value={invoice.weight_included_lbs}
-                    onChange={(e) => setInvoice({ ...invoice, weight_included_lbs: e.target.value })}
-                    className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
+                    step="0.01"
+                    value={invoice.weight_included_tons}
+                    onChange={(e) => setInvoice({ ...invoice, weight_included_tons: e.target.value })}
+                    placeholder="3.00"
+                    className="w-full px-3 py-2 bg-dark-800 text-white border border-dark-600 rounded-lg placeholder:text-dark-500"
                   />
                 </div>
                 <div className="flex items-end">
@@ -469,7 +495,7 @@ function CreateInvoiceContent() {
                     <button
                       type="button"
                       onClick={addOverageLineItem}
-                      className="px-4 py-2 bg-amber-100 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-200"
+                      className="px-4 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-sm font-medium hover:bg-amber-500/30"
                     >
                       Add ${(calculateOverage() / 100).toFixed(2)} Overage
                     </button>
@@ -489,13 +515,49 @@ function CreateInvoiceContent() {
             <div className="space-y-3">
               {invoice.line_items.map((item, index) => (
                 <div key={index} className="flex gap-3">
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={(e) => updateLineItem(index, 'description', e.target.value)}
-                    placeholder="Description"
-                    className="flex-1 px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  />
+                  <div className="flex-1 flex gap-2">
+                    <select
+                      value={item.preset || 'custom'}
+                      onChange={(e) => {
+                        const preset = e.target.value
+                        const presets = {
+                          'extended': { description: 'Extended Use Charge', amount_cents: 5000 },
+                          '20yd': { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: 47500 },
+                          '30yd': { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 },
+                          'haul': { description: 'Haul Fee', amount_cents: 0 },
+                          'custom': { description: item.description, amount_cents: item.amount_cents },
+                        }
+                        const selected = presets[preset] || presets.custom
+                        setInvoice(prev => ({
+                          ...prev,
+                          line_items: prev.line_items.map((li, i) =>
+                            i === index ? { ...selected, preset } : li
+                          )
+                        }))
+                      }}
+                      className="w-48 px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    >
+                      <option value="custom">Custom...</option>
+                      <option value="extended">Extended Use Charge - $50</option>
+                      <option value="20yd">20yd Dumpster - $475</option>
+                      <option value="30yd">30yd Dumpster - $575</option>
+                      <option value="haul">Haul Fee</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e) => {
+                        setInvoice(prev => ({
+                          ...prev,
+                          line_items: prev.line_items.map((li, i) =>
+                            i === index ? { ...li, description: e.target.value, preset: 'custom' } : li
+                          )
+                        }))
+                      }}
+                      placeholder="Description"
+                      className="flex-1 px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                  </div>
                   <div className="relative w-32">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
                     <input
@@ -545,7 +607,7 @@ function CreateInvoiceContent() {
               onChange={(e) => setInvoice({ ...invoice, notes: e.target.value })}
               placeholder="Notes to appear on invoice..."
               rows={3}
-              className="w-full px-3 py-2 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+              className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none placeholder:text-dark-500"
             />
           </div>
 

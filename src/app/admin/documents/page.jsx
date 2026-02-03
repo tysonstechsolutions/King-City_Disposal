@@ -6,7 +6,7 @@ import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
 import { useToast } from '../../../components/Toast'
 import ParsedInvoiceReview from '../../../components/ParsedInvoiceReview'
-import { DOCUMENT_CATEGORIES, formatCurrency, formatDate, formatWeight, getDocumentCategory } from '../../../lib/constants'
+import { DOCUMENT_CATEGORIES, formatCurrency, formatDate, formatWeight, getDocumentCategory, formatCategoryLabel } from '../../../lib/constants'
 import {
   FileText,
   Search,
@@ -176,6 +176,21 @@ export default function DocumentsPage() {
     totalWeight: documents.reduce((sum, d) => sum + (d.weight_lbs || 0), 0),
     totalAmount: documents.reduce((sum, d) => sum + (d.amount_cents || 0), 0),
   }), [documents])
+
+  // Build dynamic category list from actual documents
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set()
+    documents.forEach(doc => {
+      if (doc.category) categories.add(doc.category)
+    })
+    // Convert to array of {id, label} and sort alphabetically
+    return Array.from(categories)
+      .map(cat => ({
+        id: cat,
+        label: getDocumentCategory(cat).label
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [documents])
 
   // Filtered and sorted documents
   const filteredDocs = useMemo(() => {
@@ -350,7 +365,7 @@ export default function DocumentsPage() {
               />
             </div>
 
-            {/* Category Filter */}
+            {/* Category Filter - uses dynamic categories from actual documents */}
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
               <select
@@ -359,7 +374,7 @@ export default function DocumentsPage() {
                 className="pl-10 pr-8 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer min-w-[150px]"
               >
                 <option value="all">All Types</option>
-                {DOCUMENT_CATEGORIES.map(cat => (
+                {uniqueCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.label}</option>
                 ))}
               </select>

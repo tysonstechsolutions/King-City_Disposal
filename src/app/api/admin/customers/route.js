@@ -11,7 +11,7 @@ const supabaseUrl = config.supabase.url
 const getServiceKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey
 
 // ============================================
-// GET - List customers
+// GET - List customers with invoice stats
 // ============================================
 export async function GET(request) {
   try {
@@ -30,7 +30,8 @@ export async function GET(request) {
       query += `&or=(name.ilike.*${search}*,phone.ilike.*${search}*,email.ilike.*${search}*,company_name.ilike.*${search}*)`
     }
 
-    const response = await fetch(
+    // Fetch customers
+    const customersResponse = await fetch(
       `${supabaseUrl}/rest/v1/customers?${query}`,
       {
         headers: {
@@ -40,14 +41,56 @@ export async function GET(request) {
       }
     )
 
-    if (!response.ok) {
-      const errorText = await response.text()
+    if (!customersResponse.ok) {
+      const errorText = await customersResponse.text()
       logger.error('Supabase customer fetch error', null, { error: errorText })
       return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 })
     }
 
-    const customers = await response.json()
-    return NextResponse.json(customers)
+    const customers = await customersResponse.json()
+
+    // Fetch all invoices to calculate stats per customer
+    const invoicesResponse = await fetch(
+      `${supabaseUrl}/rest/v1/invoices?select=customer_id,total_cents,balance_due_cents,status`,
+      {
+        headers: {
+          'apikey': getServiceKey(),
+          'Authorization': `Bearer ${getServiceKey()}`,
+        },
+      }
+    )
+
+    let invoicesByCustomer = {}
+    if (invoicesResponse.ok) {
+      const invoices = await invoicesResponse.json()
+      // Group invoices by customer_id
+      invoices.forEach(inv => {
+        if (!inv.customer_id) return
+        if (!invoicesByCustomer[inv.customer_id]) {
+          invoicesByCustomer[inv.customer_id] = {
+            total_jobs: 0,
+            total_spent_cents: 0,
+            outstanding_balance_cents: 0,
+          }
+        }
+        invoicesByCustomer[inv.customer_id].total_jobs += 1
+        invoicesByCustomer[inv.customer_id].total_spent_cents += (inv.total_cents || 0)
+        // Only count unpaid invoices for outstanding balance
+        if (inv.status !== 'paid' && inv.status !== 'void') {
+          invoicesByCustomer[inv.customer_id].outstanding_balance_cents += (inv.balance_due_cents || inv.total_cents || 0)
+        }
+      })
+    }
+
+    // Merge invoice stats into customers
+    const customersWithStats = customers.map(customer => ({
+      ...customer,
+      total_jobs: invoicesByCustomer[customer.id]?.total_jobs || 0,
+      total_spent_cents: invoicesByCustomer[customer.id]?.total_spent_cents || 0,
+      outstanding_balance_cents: invoicesByCustomer[customer.id]?.outstanding_balance_cents || 0,
+    }))
+
+    return NextResponse.json(customersWithStats)
 
   } catch (error) {
     logger.error('Get customers error', error)

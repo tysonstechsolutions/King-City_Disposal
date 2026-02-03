@@ -482,25 +482,26 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-neutral-500">Weight (lbs)</label>
+                    <label className="text-xs text-neutral-500">Weight (tons)</label>
                     {editing ? (
                       <input
                         type="number"
-                        value={formData.weight_lbs || ''}
-                        onChange={(e) => setFormData({ ...formData, weight_lbs: parseInt(e.target.value) || null })}
+                        step="0.01"
+                        value={formData.weight_lbs ? (formData.weight_lbs / 2000).toFixed(2) : ''}
+                        onChange={(e) => setFormData({ ...formData, weight_lbs: e.target.value ? Math.round(parseFloat(e.target.value) * 2000) : null })}
                         className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
-                        placeholder="e.g., 4500"
+                        placeholder="e.g., 2.25"
                       />
                     ) : (
                       <p className="text-lg font-bold text-blue-700">
-                        {formData.weight_lbs ? `${formData.weight_lbs.toLocaleString()} lbs` : '-'}
+                        {formData.weight_lbs ? formatWeight(formData.weight_lbs) : '-'}
                       </p>
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-neutral-500">Weight (tons)</label>
+                    <label className="text-xs text-neutral-500">Weight (lbs)</label>
                     <p className="text-lg font-bold text-blue-700">
-                      {formData.weight_lbs ? formatWeight(formData.weight_lbs) : '-'}
+                      {formData.weight_lbs ? `${formData.weight_lbs.toLocaleString()} lbs` : '-'}
                     </p>
                   </div>
                 </div>

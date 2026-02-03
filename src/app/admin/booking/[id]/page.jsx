@@ -89,10 +89,12 @@ export default function BookingDetailPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
+      const token = sessionStorage.getItem('adminToken')
       const response = await fetch(`/api/admin/bookings/${params.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ notes, status }),
       })
@@ -113,8 +115,12 @@ export default function BookingDetailPage() {
   // Delete booking
   const handleDelete = async () => {
     try {
+      const token = sessionStorage.getItem('adminToken')
       const response = await fetch(`/api/admin/bookings/${params.id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       })
 
       if (response.ok) {

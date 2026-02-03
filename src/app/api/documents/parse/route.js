@@ -207,7 +207,7 @@ Return a JSON object with this exact structure:
   "fees_cents": 0,
   "discount_cents": 0,
   "total_cents": 10000,
-  "expense_category": "landfill" or "fuel" or "maintenance" or "parts" or "repairs" or "supplies" or "dumpster_rental" or "other",
+  "expense_category": "landfill/fuel/maintenance/parts/repairs/supplies/dumpster_rental/meals/travel/phone/utilities/insurance/office/software/advertising/professional_services/equipment/uniforms/subscriptions/other - use the most specific category that fits",
   "notes": "Any additional notes, weight tickets, reference numbers, or important info",
   "confidence": 0.95
 }
@@ -224,7 +224,27 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
   * If "King City Disposal" appears in the TO/recipient/billing section, this is a "vendor_expense" (bill FROM a vendor)
 - All monetary amounts must be in cents (multiply dollars by 100). Example: $525.00 = 52500 cents
 - DATE FORMAT: Convert dates to YYYY-MM-DD. Example: 1/4/2026 becomes 2026-01-04
-- For expense_category: landfill (dump fees/waste disposal), fuel (gas/diesel), maintenance (oil changes, tires, tune-ups, inspections), parts, repairs, supplies, dumpster_rental, or other
+- For expense_category: Choose the most specific category that fits:
+  * landfill - dump fees, waste disposal
+  * fuel - gas, diesel
+  * maintenance - oil changes, tires, tune-ups, inspections
+  * parts - vehicle/equipment parts
+  * repairs - repair services
+  * supplies - office supplies, cleaning supplies
+  * dumpster_rental - rental fees for dumpsters
+  * meals - food, restaurants, coffee
+  * travel - hotels, flights, parking, tolls
+  * phone - cell phone, phone service
+  * utilities - electric, water, gas, internet
+  * insurance - vehicle, business, liability insurance
+  * office - office supplies, printing, postage
+  * software - software subscriptions, apps
+  * advertising - marketing, ads, promotional items
+  * professional_services - legal, accounting, consulting
+  * equipment - tools, machinery purchases
+  * uniforms - work clothing, safety gear
+  * subscriptions - recurring services
+  * other - if nothing else fits
 - Include weight/tonnage info in the notes field even if it appears elsewhere
 - Set confidence between 0 and 1 based on data clarity and your certainty
 - If a field is not visible or unclear, use null
@@ -528,21 +548,9 @@ export async function POST(request) {
     // Extract amount (total from any parsed document)
     const amountCents = parsedData.total_cents || null;
 
-    // Determine the best category from parsed data
-    let finalCategory = parsedData.expense_category || docCategory;
-    // Map expense_category to document category format
-    const categoryMap = {
-      'landfill': 'weight_ticket',
-      'fuel': 'fuel_receipt',
-      'maintenance': 'maintenance',
-      'parts': 'maintenance',
-      'repairs': 'maintenance',
-      'supplies': 'receipt',
-      'insurance': 'insurance',
-      'dumpster_rental': 'invoice',
-      'other': docCategory || 'other',
-    };
-    finalCategory = categoryMap[finalCategory] || finalCategory;
+    // Use the expense_category directly from AI - it's already specific enough
+    // This allows dynamic categories like meals, phone, travel, etc.
+    let finalCategory = parsedData.expense_category || docCategory || 'other';
 
     // Build document update with all parsed info
     const documentUpdate = {

@@ -482,7 +482,13 @@ export default function InvoiceDetailPage() {
                   </button>
                   {invoice.status !== 'paid' && (
                     <button
-                      onClick={() => setShowPaymentModal(true)}
+                      onClick={() => {
+                        // Pre-fill with balance due and today's date
+                        const balance = invoice.total_cents - (invoice.amount_paid_cents || 0)
+                        setPaymentAmount((balance / 100).toFixed(2))
+                        setPaymentDate(new Date().toISOString().split('T')[0])
+                        setShowPaymentModal(true)
+                      }}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
                     >
                       <CreditCard className="w-4 h-4" />
@@ -606,21 +612,25 @@ export default function InvoiceDetailPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-dark-200 mb-1">Actual Weight (lbs)</label>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Actual Weight (tons)</label>
                       <input
                         type="number"
-                        value={editedInvoice.weight_lbs || ''}
-                        onChange={(e) => setEditedInvoice({ ...editedInvoice, weight_lbs: parseInt(e.target.value) || null })}
+                        step="0.01"
+                        value={editedInvoice.weight_lbs ? (editedInvoice.weight_lbs / 2000).toFixed(2) : ''}
+                        onChange={(e) => setEditedInvoice({ ...editedInvoice, weight_lbs: e.target.value ? Math.round(parseFloat(e.target.value) * 2000) : null })}
                         className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        placeholder="0.00"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-dark-200 mb-1">Included Weight (lbs)</label>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Included Weight (tons)</label>
                       <input
                         type="number"
-                        value={editedInvoice.weight_included_lbs || ''}
-                        onChange={(e) => setEditedInvoice({ ...editedInvoice, weight_included_lbs: parseInt(e.target.value) || null })}
+                        step="0.01"
+                        value={editedInvoice.weight_included_lbs ? (editedInvoice.weight_included_lbs / 2000).toFixed(2) : ''}
+                        onChange={(e) => setEditedInvoice({ ...editedInvoice, weight_included_lbs: e.target.value ? Math.round(parseFloat(e.target.value) * 2000) : null })}
                         className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        placeholder="0.00"
                       />
                     </div>
                   </div>
