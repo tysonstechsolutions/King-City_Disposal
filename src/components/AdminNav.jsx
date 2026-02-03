@@ -10,7 +10,8 @@ import {
   Users,
   FileText,
   CreditCard,
-  Camera,
+  Upload,
+  FolderOpen,
   Receipt,
   BarChart3,
 } from 'lucide-react'
@@ -22,7 +23,8 @@ const navItems = [
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/invoices', label: 'Invoices', icon: FileText },
   { href: '/admin/payments', label: 'Payments', icon: CreditCard },
-  { href: '/admin/documents', label: 'Docs', icon: Camera },
+  { href: '/admin/upload', label: 'Upload', icon: Upload },
+  { href: '/admin/documents', label: 'Docs', icon: FolderOpen },
   { href: '/admin/expenses', label: 'Expenses', icon: Receipt },
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ]

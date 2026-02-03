@@ -44,18 +44,14 @@ export default function InvoicesPage() {
       return
     }
     fetchInvoices()
-  }, [statusFilter])
+  }, [])
 
   const fetchInvoices = async () => {
     setLoading(true)
     try {
-      let query = 'order=created_at.desc'
-      if (statusFilter !== 'all') {
-        query += `&status=eq.${statusFilter}`
-      }
-
+      // Always fetch ALL invoices so stats remain accurate
       const response = await fetch(
-        `${config.supabase.url}/rest/v1/invoices?${query}`,
+        `${config.supabase.url}/rest/v1/invoices?order=created_at.desc`,
         {
           headers: {
             'apikey': config.supabase.anonKey,
@@ -183,6 +179,18 @@ export default function InvoicesPage() {
 
   const filteredInvoices = invoices
     .filter(i => {
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'overdue') {
+          if (!isInvoiceOverdue(i)) return false
+        } else if (statusFilter === 'sent') {
+          // "Sent/Pending" includes both sent and viewed
+          if (!['sent', 'viewed'].includes(i.status)) return false
+        } else {
+          if (i.status !== statusFilter) return false
+        }
+      }
+
       // Customer filter
       if (customerFilter !== 'all' && i.customer_name !== customerFilter) return false
 
