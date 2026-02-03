@@ -40,37 +40,37 @@ export default function Header() {
       className="bg-accent-950 border-b border-accent-800 sticky top-0 z-50"
       onKeyDown={handleKeyDown}
     >
-      <nav className="container-custom" aria-label="Main navigation">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg"
+            className="flex-shrink-0 flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg"
             aria-label={`${config.businessName} - Go to homepage`}
           >
             <Image
               src="/images/logo.png"
-              alt="King City Disposal logo - Dumpster rental in Southern Illinois"
-              width={60}
-              height={60}
-              className="h-12 md:h-14 w-auto"
+              alt="King City Disposal"
+              width={48}
+              height={48}
+              className="h-10 md:h-12 w-auto"
               priority
             />
-            <span className="text-lg md:text-xl font-bold text-white hidden sm:inline">
+            <span className="text-lg md:text-xl font-bold text-white whitespace-nowrap">
               {config.businessName}
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6" role="navigation">
+          {/* Desktop Navigation - centered */}
+          <div className="hidden lg:flex items-center gap-1 xl:gap-2" role="navigation">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded px-2 py-1 ${
+                className={`text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-md px-3 py-2 whitespace-nowrap ${
                   pathname === item.href
-                    ? 'text-primary-400'
-                    : 'text-white/70 hover:text-white'
+                    ? 'text-primary-400 bg-accent-900'
+                    : 'text-white/80 hover:text-white hover:bg-accent-900/50'
                 }`}
                 aria-current={pathname === item.href ? 'page' : undefined}
               >
@@ -80,18 +80,19 @@ export default function Header() {
           </div>
 
           {/* CTA Button + Phone */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4 flex-shrink-0">
             <a
               href={`tel:${config.phoneRaw}`}
-              className="flex items-center gap-2 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded px-2 py-1"
+              className="flex items-center gap-2 font-semibold text-white hover:text-primary-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded px-2 py-1 whitespace-nowrap"
               aria-label={`Call us at ${config.phone}`}
             >
               <Phone className="w-4 h-4" aria-hidden="true" />
-              <span>{config.phone}</span>
+              <span className="hidden xl:inline">{config.phone}</span>
+              <span className="xl:hidden">Call</span>
             </a>
             <Link
               href="/book"
-              className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-lg transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950"
+              className="bg-primary-600 hover:bg-primary-500 text-white font-bold py-2.5 px-5 rounded-lg transition-all shadow-lg hover:shadow-primary-600/25 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 whitespace-nowrap"
             >
               Book Now
             </Link>
@@ -100,7 +101,7 @@ export default function Header() {
           {/* Mobile menu button */}
           <button
             type="button"
-            className="lg:hidden p-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg"
+            className="lg:hidden p-2 text-white hover:bg-accent-900 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg transition-colors"
             onClick={toggleMobileMenu}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"
