@@ -336,12 +336,12 @@ export default function DocumentsPage() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-6 bg-amber-400 rounded-xl font-bold text-xl flex items-center justify-center gap-3 hover:bg-amber-500 active:scale-[0.98] transition-all shadow-lg text-white"
+              className="w-full py-6 bg-dark-800 border-2 border-dashed border-dark-600 hover:border-primary-500 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 hover:bg-dark-750 active:scale-[0.98] transition-all text-dark-200 hover:text-primary-400"
             >
-              <Camera className="w-8 h-8" />
+              <Camera className="w-7 h-7" />
               Upload Photo or Document
             </button>
-            <p className="text-center text-sm text-dark-400 mt-2">
+            <p className="text-center text-sm text-dark-500 mt-2">
               Tap to take a photo or choose from gallery
             </p>
           </div>
@@ -426,7 +426,7 @@ export default function DocumentsPage() {
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               filterCategory === 'all'
                 ? 'bg-primary text-white'
-                : 'bg-white border border-dark-700 text-dark-200'
+                : 'bg-dark-800 border border-dark-600 text-dark-300 hover:border-dark-500 hover:text-dark-200'
             }`}
           >
             All
@@ -438,7 +438,7 @@ export default function DocumentsPage() {
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 filterCategory === cat.id
                   ? 'bg-primary text-white'
-                  : 'bg-white border border-dark-700 text-dark-200'
+                  : 'bg-dark-800 border border-dark-600 text-dark-300 hover:border-dark-500 hover:text-dark-200'
               }`}
             >
               {cat.label}
@@ -454,7 +454,7 @@ export default function DocumentsPage() {
             placeholder="Search documents..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-dark-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
           />
         </div>
 

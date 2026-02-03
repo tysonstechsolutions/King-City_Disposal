@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { config } from '../../config'
 import AdminNav from '../../components/AdminNav'
 import { useRealtimeBookings } from '../../hooks/useRealtimeBookings'
+import { useToast } from '../../components/Toast'
 import {
   Truck,
   Phone,
@@ -31,6 +32,7 @@ import {
 
 export default function AdminPage() {
   const router = useRouter()
+  const toast = useToast()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [password, setPassword] = useState('')
@@ -126,11 +128,13 @@ export default function AdminPage() {
 
       if (response.ok) {
         fetchBookings()
+        toast.success(`Booking status updated to ${newStatus}`)
       } else {
-        console.error('Failed to update status')
+        toast.error('Failed to update status')
       }
     } catch (error) {
       console.error('Error updating status:', error)
+      toast.error('Error updating status')
     }
   }
 

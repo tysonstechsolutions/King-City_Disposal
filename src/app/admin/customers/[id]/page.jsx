@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { config } from '../../../../config'
 import AdminNav from '../../../../components/AdminNav'
+import { useToast } from '../../../../components/Toast'
 import {
   ArrowLeft,
   User,
@@ -31,6 +32,7 @@ import {
 export default function CustomerDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const toast = useToast()
 
   const [customer, setCustomer] = useState(null)
   const [bookings, setBookings] = useState([])
@@ -123,9 +125,13 @@ export default function CustomerDetailPage() {
       if (response.ok) {
         setCustomer(formData)
         setEditing(false)
+        toast.success('Customer updated')
+      } else {
+        toast.error('Failed to save changes')
       }
     } catch (err) {
       console.error('Error saving:', err)
+      toast.error('Error saving changes')
     }
     setSaving(false)
   }
@@ -147,13 +153,14 @@ export default function CustomerDetailPage() {
         }
       )
       if (response.ok) {
+        toast.success('Customer deleted')
         router.push('/admin/customers')
       } else {
-        alert('Failed to delete customer')
+        toast.error('Failed to delete customer')
       }
     } catch (err) {
       console.error('Error deleting:', err)
-      alert('Error deleting customer')
+      toast.error('Error deleting customer')
     }
     setDeleting(false)
   }
@@ -188,13 +195,15 @@ export default function CustomerDetailPage() {
 
       if (response.ok) {
         setShowNewInvoice(false)
+        toast.success('Invoice created')
         fetchCustomer()
       } else {
         const err = await response.json()
-        alert(err.error || 'Failed to create invoice')
+        toast.error(err.error || 'Failed to create invoice')
       }
     } catch (err) {
       console.error('Error creating invoice:', err)
+      toast.error('Error creating invoice')
     }
     setCreatingInvoice(false)
   }
@@ -207,11 +216,14 @@ export default function CustomerDetailPage() {
         body: JSON.stringify({ invoice_id: invoiceId }),
       })
       if (response.ok) {
-        alert('Invoice sent!')
+        toast.success('Invoice sent!')
         fetchCustomer()
+      } else {
+        toast.error('Failed to send invoice')
       }
     } catch (err) {
       console.error('Error sending invoice:', err)
+      toast.error('Error sending invoice')
     }
   }
 
@@ -551,6 +563,7 @@ export default function CustomerDetailPage() {
           onClose={() => setShowNewInvoice(false)}
           onSubmit={createQuickInvoice}
           loading={creatingInvoice}
+          onValidationError={(msg) => toast.warning(msg)}
         />
       )}
     </div>
@@ -558,7 +571,7 @@ export default function CustomerDetailPage() {
 }
 
 // New Invoice Modal
-function NewInvoiceModal({ customer, onClose, onSubmit, loading }) {
+function NewInvoiceModal({ customer, onClose, onSubmit, loading, onValidationError }) {
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -570,7 +583,7 @@ function NewInvoiceModal({ customer, onClose, onSubmit, loading }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.description || !formData.amount) {
-      alert('Please fill in description and amount')
+      onValidationError?.('Please fill in description and amount')
       return
     }
     onSubmit(formData)

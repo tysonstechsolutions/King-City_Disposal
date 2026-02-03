@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { config } from '../../../../config'
 import BookingDetailMap from '../../../../components/BookingDetailMap'
+import { useToast } from '../../../../components/Toast'
 import {
   ArrowLeft,
   Phone,
@@ -31,6 +32,7 @@ import {
 export default function BookingDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const toast = useToast()
 
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -97,11 +99,13 @@ export default function BookingDetailPage() {
 
       if (response.ok) {
         setBooking({ ...booking, notes, status })
+        toast.success('Changes saved successfully')
       } else {
-        console.error('Failed to save changes')
+        toast.error('Failed to save changes')
       }
     } catch (err) {
       console.error('Error saving:', err)
+      toast.error('Error saving changes')
     }
     setSaving(false)
   }
@@ -114,12 +118,14 @@ export default function BookingDetailPage() {
       })
 
       if (response.ok) {
+        toast.success('Booking deleted')
         router.push('/admin')
       } else {
-        console.error('Failed to delete booking')
+        toast.error('Failed to delete booking')
       }
     } catch (err) {
       console.error('Error deleting:', err)
+      toast.error('Error deleting booking')
     }
   }
 
@@ -128,6 +134,7 @@ export default function BookingDetailPage() {
     const url = `${window.location.origin}/admin/booking/${params.id}`
     navigator.clipboard.writeText(url)
     setCopied(true)
+    toast.success('Link copied to clipboard')
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -185,15 +192,16 @@ export default function BookingDetailPage() {
       if (response.ok) {
         const result = await response.json()
         setInvoiceCreated(result.invoice || result)
+        toast.success('Invoice created successfully')
         // Refresh booking to show invoice link
         fetchBooking()
       } else {
         const err = await response.json()
-        alert(err.error || 'Failed to create invoice')
+        toast.error(err.error || 'Failed to create invoice')
       }
     } catch (err) {
       console.error('Error creating invoice:', err)
-      alert('Error creating invoice')
+      toast.error('Error creating invoice')
     }
 
     setCreatingInvoice(false)

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { config } from '../../../../config'
 import AdminNav from '../../../../components/AdminNav'
 import { formatWeight } from '../../../../lib/constants'
+import { useToast } from '../../../../components/Toast'
 import {
   ArrowLeft,
   Phone,
@@ -36,6 +37,7 @@ import CardPaymentForm from '../../../../components/CardPaymentForm'
 export default function InvoiceDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const toast = useToast()
 
   const [invoice, setInvoice] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -237,12 +239,13 @@ export default function InvoiceDetailPage() {
         setInvoice(updated)
         setEditedInvoice(updated)
         setIsEditing(false)
+        toast.success('Invoice saved')
       } else {
-        alert('Failed to save changes')
+        toast.error('Failed to save changes')
       }
     } catch (err) {
       console.error('Error saving:', err)
-      alert('Error saving changes')
+      toast.error('Error saving changes')
     }
     setSaving(false)
   }
@@ -250,7 +253,7 @@ export default function InvoiceDetailPage() {
   // Send invoice
   const handleSend = async () => {
     if (!invoice.customer_phone && !invoice.customer_email) {
-      alert('No phone or email on this invoice')
+      toast.warning('No phone or email on this invoice')
       return
     }
 
@@ -263,13 +266,14 @@ export default function InvoiceDetailPage() {
       })
 
       if (response.ok) {
-        alert('Invoice sent!')
+        toast.success('Invoice sent!')
         fetchInvoice()
       } else {
-        alert('Failed to send invoice')
+        toast.error('Failed to send invoice')
       }
     } catch (err) {
       console.error('Error sending:', err)
+      toast.error('Error sending invoice')
     }
     setSending(false)
   }
@@ -277,7 +281,7 @@ export default function InvoiceDetailPage() {
   // Record payment
   const handleRecordPayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      alert('Enter a valid payment amount')
+      toast.warning('Enter a valid payment amount')
       return
     }
 
@@ -306,6 +310,28 @@ export default function InvoiceDetailPage() {
         fullNotes = `CC Fee: $${(ccFeeCents / 100).toFixed(2)}${fullNotes ? ' - ' + fullNotes : ''}`
       }
 
+      // Build update object - only include fields that exist in the schema
+      const updateData = {
+        amount_paid_cents: newAmountPaid,
+        balance_due_cents: Math.max(0, newBalanceDue),
+        cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
+        total_cents: newTotalWithFee,
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      }
+
+      // Only set paid_at if fully paid
+      if (newStatus === 'paid') {
+        updateData.paid_at = paidAtDate
+      }
+
+      // Store payment details in notes if check payment
+      if (paymentMethod === 'check' && paymentCheckNumber) {
+        updateData.notes = invoice.notes
+          ? `${invoice.notes}\n---\nPayment: Check #${paymentCheckNumber} - ${formatCurrency(totalAmountCents)} on ${new Date(paidAtDate).toLocaleDateString()}`
+          : `Payment: Check #${paymentCheckNumber} - ${formatCurrency(totalAmountCents)} on ${new Date(paidAtDate).toLocaleDateString()}`
+      }
+
       const response = await fetch(
         `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
         {
@@ -315,54 +341,26 @@ export default function InvoiceDetailPage() {
             'apikey': config.supabase.anonKey,
             'Authorization': `Bearer ${config.supabase.anonKey}`,
           },
-          body: JSON.stringify({
-            amount_paid_cents: newAmountPaid,
-            balance_due_cents: Math.max(0, newBalanceDue),
-            cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
-            total_cents: newTotalWithFee,
-            status: newStatus,
-            paid_at: newStatus === 'paid' ? paidAtDate : null,
-            check_number: paymentMethod === 'check' ? paymentCheckNumber : null,
-            updated_at: new Date().toISOString(),
-          }),
+          body: JSON.stringify(updateData),
         }
       )
 
       if (response.ok) {
-        // Record payment in payments table
-        await fetch(
-          `${config.supabase.url}/rest/v1/payments`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': config.supabase.anonKey,
-              'Authorization': `Bearer ${config.supabase.anonKey}`,
-            },
-            body: JSON.stringify({
-              invoice_id: invoice.id,
-              customer_id: invoice.customer_id,
-              amount_cents: totalAmountCents,
-              method: paymentMethod,
-              check_number: paymentMethod === 'check' ? paymentCheckNumber : null,
-              notes: fullNotes,
-              paid_at: paidAtDate,
-            }),
-          }
-        )
-
         setShowPaymentModal(false)
         setPaymentAmount('')
         setPaymentNotes('')
         setPaymentCheckNumber('')
         setPaymentDate('')
+        toast.success('Payment recorded successfully')
         fetchInvoice()
       } else {
-        alert('Failed to record payment')
+        const errorText = await response.text()
+        console.error('Payment update failed:', errorText)
+        toast.error('Failed to record payment. Please try again.')
       }
     } catch (err) {
       console.error('Error recording payment:', err)
-      alert('Error recording payment')
+      toast.error('Error recording payment')
     }
     setRecordingPayment(false)
   }
@@ -382,12 +380,14 @@ export default function InvoiceDetailPage() {
       )
 
       if (response.ok) {
+        toast.success('Invoice deleted')
         router.push('/admin/invoices')
       } else {
-        alert('Failed to delete invoice')
+        toast.error('Failed to delete invoice')
       }
     } catch (err) {
       console.error('Error deleting:', err)
+      toast.error('Error deleting invoice')
     }
   }
 
@@ -1035,6 +1035,19 @@ export default function InvoiceDetailPage() {
                     const newBalanceDue = newTotalWithFee - newAmountPaid
                     const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
 
+                    // Build update data
+                    const cardUpdateData = {
+                      amount_paid_cents: newAmountPaid,
+                      balance_due_cents: Math.max(0, newBalanceDue),
+                      cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
+                      total_cents: newTotalWithFee,
+                      status: newStatus,
+                      updated_at: new Date().toISOString(),
+                    }
+                    if (newStatus === 'paid') {
+                      cardUpdateData.paid_at = new Date().toISOString()
+                    }
+
                     await fetch(
                       `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
                       {
@@ -1044,36 +1057,7 @@ export default function InvoiceDetailPage() {
                           'apikey': config.supabase.anonKey,
                           'Authorization': `Bearer ${config.supabase.anonKey}`,
                         },
-                        body: JSON.stringify({
-                          amount_paid_cents: newAmountPaid,
-                          balance_due_cents: Math.max(0, newBalanceDue),
-                          cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
-                          total_cents: newTotalWithFee,
-                          status: newStatus,
-                          paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
-                          updated_at: new Date().toISOString(),
-                        }),
-                      }
-                    )
-
-                    // Record in payments table
-                    await fetch(
-                      `${config.supabase.url}/rest/v1/payments`,
-                      {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'apikey': config.supabase.anonKey,
-                          'Authorization': `Bearer ${config.supabase.anonKey}`,
-                        },
-                        body: JSON.stringify({
-                          invoice_id: invoice.id,
-                          customer_id: invoice.customer_id,
-                          amount_cents: totalAmountCents,
-                          method: 'card',
-                          notes: `Stripe: ${paymentIntent.id} | CC Fee: $${(ccFeeCents / 100).toFixed(2)}`,
-                          paid_at: new Date().toISOString(),
-                        }),
+                        body: JSON.stringify(cardUpdateData),
                       }
                     )
 

@@ -345,6 +345,12 @@ export default function ChatbotWidget() {
     setMessages(prev => [...prev, { type: 'user', text }])
   }
 
+  // Use refs for booking data to avoid stale state in async callbacks
+  const bookingDataRef = useRef(bookingData)
+  useEffect(() => {
+    bookingDataRef.current = bookingData
+  }, [bookingData])
+
   // Initial message
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -449,15 +455,17 @@ export default function ChatbotWidget() {
     addUserMessage('Confirm booking')
     setIsTyping(true)
 
-    const dumpster = config.dumpsters.find(d => d.id === bookingData.size)
+    // Use ref to get latest booking data to avoid stale closure
+    const currentBookingData = bookingDataRef.current
+    const dumpster = config.dumpsters.find(d => d.id === currentBookingData.size)
     let surchargeTotal = 0
-    Object.entries(bookingData.surcharges).forEach(([item, count]) => {
+    Object.entries(currentBookingData.surcharges).forEach(([item, count]) => {
       const surcharge = config.surchargeItems.find(s => s.item === item)
       if (surcharge?.fee && count > 0) {
         surchargeTotal += surcharge.fee * count
       }
     })
-    const basePrice = dumpster?.pricing[bookingData.duration] || 0
+    const basePrice = dumpster?.pricing[currentBookingData.duration] || 0
     const totalPrice = basePrice + surchargeTotal
 
     try {
@@ -465,21 +473,21 @@ export default function ChatbotWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: bookingData.name,
-          customerPhone: bookingData.phone,
+          customerName: currentBookingData.name,
+          customerPhone: currentBookingData.phone,
           customerEmail: null,
-          address: bookingData.address,
-          city: bookingData.city,
-          zip: bookingData.zip,
-          placementLat: bookingData.placementLat,
-          placementLng: bookingData.placementLng,
-          placementNotes: bookingData.placementNotes,
-          dumpsterSize: bookingData.size,
-          rentalDuration: bookingData.duration,
-          deliveryDate: bookingData.deliveryDate,
+          address: currentBookingData.address,
+          city: currentBookingData.city,
+          zip: currentBookingData.zip,
+          placementLat: currentBookingData.placementLat,
+          placementLng: currentBookingData.placementLng,
+          placementNotes: currentBookingData.placementNotes,
+          dumpsterSize: currentBookingData.size,
+          rentalDuration: currentBookingData.duration,
+          deliveryDate: currentBookingData.deliveryDate,
           priceCents: totalPrice * 100,
-          projectType: bookingData.projectType,
-          surcharges: bookingData.surcharges,
+          projectType: currentBookingData.projectType,
+          surcharges: currentBookingData.surcharges,
         }),
       })
 
@@ -487,7 +495,7 @@ export default function ChatbotWidget() {
       setIsTyping(false)
 
       if (result.success) {
-        await addBotMessage(`Booking confirmed!\n\n${config.businessName} will call or text you at ${bookingData.phone} to confirm your ${dumpster.name} delivery on ${bookingData.deliveryDate}.\n\nTotal: $${totalPrice}\n\nQuestions? Call ${config.phone}`)
+        await addBotMessage(`Booking confirmed!\n\n${config.businessName} will call or text you at ${currentBookingData.phone} to confirm your ${dumpster.name} delivery on ${currentBookingData.deliveryDate}.\n\nTotal: $${totalPrice}\n\nQuestions? Call ${config.phone}`)
       } else {
         await addBotMessage(`Something went wrong, but don't worry!\n\nCall us at ${config.phone} and we'll get you set up.`)
       }

@@ -36,7 +36,7 @@ export default function ReportsPage() {
     }
   }, [router])
 
-  // Fetch data
+  // Fetch data using Promise.allSettled for resilient loading
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
@@ -46,7 +46,8 @@ export default function ReportsPage() {
           'Authorization': `Bearer ${config.supabase.anonKey}`,
         }
 
-        const [bookingsRes, invoicesRes, expensesRes, documentsRes] = await Promise.all([
+        // Use Promise.allSettled to handle partial failures gracefully
+        const results = await Promise.allSettled([
           fetch(`${config.supabase.url}/rest/v1/bookings?order=created_at.desc`, { headers }),
           fetch(`${config.supabase.url}/rest/v1/invoices?order=created_at.desc`, { headers }),
           fetch(`${config.supabase.url}/rest/v1/expenses?order=date.desc`, { headers }),
@@ -54,10 +55,38 @@ export default function ReportsPage() {
           fetch(`${config.supabase.url}/rest/v1/documents?amount_cents=not.is.null&order=document_date.desc`, { headers }),
         ])
 
-        if (bookingsRes.ok) setBookings(await bookingsRes.json())
-        if (invoicesRes.ok) setInvoices(await invoicesRes.json())
-        if (expensesRes.ok) setExpenses(await expensesRes.json())
-        if (documentsRes.ok) setDocuments(await documentsRes.json())
+        // Process each result independently
+        if (results[0].status === 'fulfilled' && results[0].value.ok) {
+          try {
+            setBookings(await results[0].value.json())
+          } catch (e) {
+            console.error('Error parsing bookings:', e)
+          }
+        }
+
+        if (results[1].status === 'fulfilled' && results[1].value.ok) {
+          try {
+            setInvoices(await results[1].value.json())
+          } catch (e) {
+            console.error('Error parsing invoices:', e)
+          }
+        }
+
+        if (results[2].status === 'fulfilled' && results[2].value.ok) {
+          try {
+            setExpenses(await results[2].value.json())
+          } catch (e) {
+            console.error('Error parsing expenses:', e)
+          }
+        }
+
+        if (results[3].status === 'fulfilled' && results[3].value.ok) {
+          try {
+            setDocuments(await results[3].value.json())
+          } catch (e) {
+            console.error('Error parsing documents:', e)
+          }
+        }
       } catch (error) {
         console.error('Error fetching data:', error)
       }

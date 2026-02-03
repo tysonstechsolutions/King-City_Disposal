@@ -38,18 +38,17 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers?order=name.asc`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch('/api/admin/customers', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
-        setCustomers(data)
+        setCustomers(data.customers || data || [])
+      } else {
+        console.error('Failed to fetch customers:', response.status)
       }
     } catch (err) {
       console.error('Error fetching customers:', err)

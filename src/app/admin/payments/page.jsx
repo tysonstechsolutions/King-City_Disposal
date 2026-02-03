@@ -292,40 +292,40 @@ export default function AdminPaymentsPage() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <DollarSign className="w-5 h-5 text-green-400" />
               </div>
               <span className="text-sm text-dark-400">Today</span>
             </div>
             <p className="text-2xl font-bold text-white">{formatCurrency(stats.today)}</p>
           </div>
 
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Calendar className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Calendar className="w-5 h-5 text-blue-400" />
               </div>
               <span className="text-sm text-dark-400">This Week</span>
             </div>
             <p className="text-2xl font-bold text-white">{formatCurrency(stats.thisWeek)}</p>
           </div>
 
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-purple-600" />
+              <div className="p-2 bg-purple-500/20 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-purple-400" />
               </div>
               <span className="text-sm text-dark-400">This Month</span>
             </div>
             <p className="text-2xl font-bold text-white">{formatCurrency(stats.thisMonth)}</p>
           </div>
 
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 border border-dark-700">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Receipt className="w-5 h-5 text-amber-600" />
+              <div className="p-2 bg-amber-500/20 rounded-lg">
+                <Receipt className="w-5 h-5 text-amber-400" />
               </div>
               <span className="text-sm text-dark-400">This Year</span>
             </div>
@@ -399,7 +399,7 @@ export default function AdminPaymentsPage() {
               {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-neutral-50 border-b border-dark-700">
+                  <thead className="bg-dark-700 border-b border-dark-600">
                     <tr>
                       <th className="text-left px-4 py-3 text-sm font-medium text-dark-400">Receipt #</th>
                       <th className="text-left px-4 py-3 text-sm font-medium text-dark-400">Date</th>

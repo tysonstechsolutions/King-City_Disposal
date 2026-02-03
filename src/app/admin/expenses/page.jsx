@@ -472,9 +472,9 @@ export default function ExpensesPage() {
         </div>
 
         {/* Tax Note */}
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <h3 className="font-semibold text-amber-900 mb-2">Tax Deduction Note</h3>
-          <p className="text-sm text-amber-800">
+        <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+          <h3 className="font-semibold text-amber-400 mb-2">Tax Deduction Note</h3>
+          <p className="text-sm text-amber-300/80">
             These expenses have been categorized as business expenses. Export the CSV file and provide it to your accountant for tax filing.
             Make sure all expenses are confirmed before exporting.
           </p>
@@ -506,9 +506,9 @@ export default function ExpensesPage() {
             <div className="p-6 space-y-4">
               {!importResult ? (
                 <>
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <h3 className="font-medium text-purple-900 mb-2">Multi-Sheet Invoice Import</h3>
-                    <p className="text-sm text-purple-800">
+                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                    <h3 className="font-medium text-purple-300 mb-2">Multi-Sheet Invoice Import</h3>
+                    <p className="text-sm text-purple-300/80">
                       Upload an Excel file (.xlsx) with multiple sheets. Each sheet should contain one invoice.
                       The system will parse vendor name, date, amounts, and categorize expenses automatically.
                     </p>
@@ -557,11 +557,11 @@ export default function ExpensesPage() {
                 <div className="space-y-4">
                   {importResult.success ? (
                     <>
-                      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                        <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-start gap-3">
+                        <CheckCircle2 className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" />
                         <div>
-                          <h3 className="font-semibold text-green-900">Import Complete</h3>
-                          <p className="text-sm text-green-800">
+                          <h3 className="font-semibold text-green-400">Import Complete</h3>
+                          <p className="text-sm text-green-300/80">
                             Successfully imported {importResult.imported} of {importResult.total_sheets} sheets
                           </p>
                         </div>
@@ -592,19 +592,19 @@ export default function ExpensesPage() {
                       )}
 
                       {importResult.skipped > 0 && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                          <p className="text-sm text-amber-800">
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                          <p className="text-sm text-amber-300">
                             <strong>{importResult.skipped}</strong> sheets were skipped (empty or couldn't parse)
                           </p>
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-                      <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+                      <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
                       <div>
-                        <h3 className="font-semibold text-red-900">Import Failed</h3>
-                        <p className="text-sm text-red-800">{importResult.error}</p>
+                        <h3 className="font-semibold text-red-400">Import Failed</h3>
+                        <p className="text-sm text-red-300/80">{importResult.error}</p>
                       </div>
                     </div>
                   )}
