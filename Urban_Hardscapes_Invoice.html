@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice - Urban Hardscapes LLC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 40px;
+      max-width: 850px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #2563eb;
+    }
+
+    .company-name {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2563eb;
+      margin-bottom: 5px;
+    }
+
+    .company-info {
+      color: #666;
+      font-size: 10px;
+    }
+
+    .invoice-title {
+      text-align: right;
+    }
+
+    .invoice-title h1 {
+      font-size: 32px;
+      color: #1a1a1a;
+      margin-bottom: 5px;
+    }
+
+    .invoice-meta {
+      color: #666;
+      font-size: 10px;
+    }
+
+    .invoice-meta strong {
+      color: #1a1a1a;
+    }
+
+    .addresses {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+
+    .address-block {
+      width: 45%;
+    }
+
+    .address-block h3 {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    .address-block p {
+      font-size: 12px;
+      color: #1a1a1a;
+    }
+
+    .client-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: #2563eb;
+    }
+
+    .project-title {
+      background: #f8fafc;
+      padding: 15px 20px;
+      margin-bottom: 25px;
+      border-left: 4px solid #2563eb;
+    }
+
+    .project-title h2 {
+      font-size: 16px;
+      color: #1a1a1a;
+      margin-bottom: 5px;
+    }
+
+    .project-title p {
+      color: #666;
+      font-size: 11px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+
+    th {
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 15px;
+      text-align: left;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    th:last-child {
+      text-align: right;
+    }
+
+    td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+
+    td:last-child {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .item-title {
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 3px;
+    }
+
+    .item-desc {
+      color: #666;
+      font-size: 10px;
+    }
+
+    .section-header td {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: #2563eb;
+      font-size: 11px;
+      padding: 8px 15px;
+    }
+
+    .totals-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 30px;
+    }
+
+    .totals-table {
+      width: 300px;
+    }
+
+    .totals-table td {
+      padding: 8px 15px;
+      border: none;
+    }
+
+    .totals-table tr:last-child {
+      background: #2563eb;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .totals-table tr:last-child td {
+      padding: 12px 15px;
+    }
+
+    .info-section {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .info-box {
+      flex: 1;
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 5px;
+    }
+
+    .info-box h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #2563eb;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .info-box ul {
+      list-style: none;
+      font-size: 10px;
+      color: #444;
+    }
+
+    .info-box li {
+      padding: 3px 0;
+      padding-left: 15px;
+      position: relative;
+    }
+
+    .info-box li:before {
+      content: "•";
+      color: #2563eb;
+      position: absolute;
+      left: 0;
+    }
+
+    .payment-terms {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      padding: 15px 20px;
+      margin-bottom: 30px;
+      border-radius: 5px;
+    }
+
+    .payment-terms h3 {
+      color: #b45309;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .payment-terms p {
+      font-size: 11px;
+      color: #92400e;
+    }
+
+    .signature-section {
+      display: flex;
+      gap: 50px;
+      margin-top: 40px;
+      padding-top: 20px;
+    }
+
+    .signature-block {
+      flex: 1;
+    }
+
+    .signature-block label {
+      display: block;
+      font-size: 10px;
+      color: #666;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .signature-line {
+      border-bottom: 1px solid #1a1a1a;
+      margin-bottom: 5px;
+      height: 25px;
+    }
+
+    .signature-block p {
+      font-size: 10px;
+      color: #666;
+    }
+
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      color: #666;
+      font-size: 10px;
+    }
+
+    @media print {
+      body {
+        padding: 20px;
+      }
+
+      .page-break {
+        page-break-before: always;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="company-name">Tyson's Tech Solutions</div>
+      <div class="company-info">
+        Tyson Bruce<br>
+        Mount Vernon, IL 62864<br>
+        admin@tysonstechsolutions.com
+      </div>
+    </div>
+    <div class="invoice-title">
+      <h1>INVOICE</h1>
+      <div class="invoice-meta">
+        <strong>Invoice #:</strong> INV-2026-001<br>
+        <strong>Date:</strong> February 3, 2026<br>
+        <strong>Due:</strong> Upon Completion
+      </div>
+    </div>
+  </div>
+
+  <div class="addresses">
+    <div class="address-block">
+      <h3>Bill To</h3>
+      <p class="client-name">Nick Renado</p>
+      <p>Urban Hardscapes LLC</p>
+    </div>
+    <div class="address-block">
+      <h3>Project</h3>
+      <p>
+        <strong>Custom Business Website</strong><br>
+        Full-featured website with admin dashboard,<br>
+        booking system, and customer management
+      </p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Website Design -->
+      <tr class="section-header">
+        <td colspan="2">Website Design & Development</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="item-title">Custom Responsive Website Design</div>
+          <div class="item-desc">Modern, mobile-first design that works on all devices. Includes homepage, services, pricing, contact, about, FAQ, and service area pages.</div>
+        </td>
+        <td>$400.00</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="item-title">Frontend Development (6+ Pages)</div>
+          <div class="item-desc">Professional homepage with hero section, services overview, call-to-action buttons. Detailed service pages, pricing display, contact form, FAQ section, and interactive service area map.</div>
+        </td>
+        <td>$350.00</td>
+      </tr>
+
+      <!-- Admin Dashboard -->
+      <tr class="section-header">
+        <td colspan="2">Admin Dashboard & Backend System</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="item-title">Complete Admin Dashboard</div>
+          <div class="item-desc">Secure admin panel with booking/lead management, customer database, invoice creation and tracking, document management, payment recording, and business analytics dashboard.</div>
+        </td>
+        <td>$400.00</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="item-title">Database & API Integration</div>
+          <div class="item-desc">Secure database setup for customers, bookings, invoices, and documents. RESTful API endpoints for all data operations.</div>
+        </td>
+        <td>$150.00</td>
+      </tr>
+
+      <!-- Technical Features -->
+      <tr class="section-header">
+        <td colspan="2">Technical Features & Optimization</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="item-title">SEO & Performance Optimization</div>
+          <div class="item-desc">Search engine optimization with meta tags, structured data, XML sitemap. Image optimization, code minification, and fast loading speeds.</div>
+        </td>
+        <td>$100.00</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="item-title">Deployment & Launch</div>
+          <div class="item-desc">Production deployment, SSL certificate setup, domain connection, and initial configuration. Includes testing across browsers and devices.</div>
+        </td>
+        <td>$100.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals-section">
+    <table class="totals-table">
+      <tr>
+        <td>Subtotal</td>
+        <td>$1,500.00</td>
+      </tr>
+      <tr>
+        <td>Discount</td>
+        <td>$0.00</td>
+      </tr>
+      <tr>
+        <td>TOTAL DUE</td>
+        <td>$1,500.00</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="info-section">
+    <div class="info-box">
+      <h3>What's Included</h3>
+      <ul>
+        <li>Full source code ownership</li>
+        <li>30 days post-launch support</li>
+        <li>Admin dashboard training</li>
+        <li>Mobile-responsive design</li>
+        <li>Initial SEO setup</li>
+        <li>SSL security certificate</li>
+        <li>Click-to-call integration</li>
+        <li>Contact form with email alerts</li>
+        <li>Google Maps integration</li>
+      </ul>
+    </div>
+    <div class="info-box">
+      <h3>Bonus Features</h3>
+      <ul>
+        <li>AI-powered document parsing</li>
+        <li>Email notification system</li>
+        <li>Dark mode admin panel</li>
+        <li>Customer credit tracking</li>
+        <li>Invoice PDF generation</li>
+        <li>Payment history tracking</li>
+        <li>Document upload system</li>
+      </ul>
+    </div>
+    <div class="info-box">
+      <h3>Not Included</h3>
+      <ul>
+        <li>Monthly hosting (~$10-20/mo)</li>
+        <li>Domain registration (~$12-15/yr)</li>
+        <li>Potential API costs (AI, etc.)</li>
+        <li>Ongoing maintenance</li>
+        <li>Additional pages</li>
+        <li>Logo design</li>
+        <li>Paid advertising setup</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="payment-terms">
+    <h3>Terms & Conditions</h3>
+    <p>
+      <strong>Estimated Timeline:</strong> 2-3 weeks from project start with ongoing 30-day support period.<br><br>
+      <strong>Support Requirements:</strong> Customer must be available during development and must report all errors and issues to admin@tysonstechsolutions.com within the 30-day support period.<br><br>
+      <strong>Customer Requirement:</strong> Customer must provide business photos/images for use on the website.<br><br>
+      <strong>Special Pricing Notice:</strong> This $1,500 one-time pricing is exclusively available to Nick Renado and 2 other select clients. All other business website pricing will be subscription-based.
+    </p>
+  </div>
+
+  <div class="signature-section">
+    <div class="signature-block">
+      <label>Client Approval</label>
+      <div class="signature-line"></div>
+      <p>Nick Renado, Urban Hardscapes LLC &nbsp;&nbsp;&nbsp;&nbsp; Date: ____________</p>
+    </div>
+    <div class="signature-block">
+      <label>Developer</label>
+      <div class="signature-line"></div>
+      <p>Tyson Bruce, Tyson's Tech Solutions &nbsp;&nbsp;&nbsp;&nbsp; Date: ____________</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    Thank you for your business!<br>
+    Tyson's Tech Solutions | Mount Vernon, IL 62864 | admin@tysonstechsolutions.com
+  </div>
+</body>
+</html>

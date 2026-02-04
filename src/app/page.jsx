@@ -104,7 +104,7 @@ export default function HomePage() {
                 <span className="text-sm font-medium">Southern Illinois&apos; Most Trusted</span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-6 font-display uppercase tracking-wide">
                 Dumpster Rentals
                 <span className="block text-primary-400">Made Simple</span>
               </h1>
@@ -188,7 +188,7 @@ export default function HomePage() {
       <section className="bg-accent-900 py-16 md:py-24">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-display uppercase tracking-wide">
               How It Works
             </h2>
             <p className="text-accent-300 text-lg max-w-2xl mx-auto">
@@ -238,7 +238,7 @@ export default function HomePage() {
       <section className="bg-accent-950 py-16 md:py-24">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-display uppercase tracking-wide">
               Choose Your Dumpster Size
             </h2>
             <p className="text-accent-300 text-lg max-w-2xl mx-auto">
@@ -325,7 +325,7 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 font-display uppercase tracking-wide">
                 What Can You Put In?
               </h2>
               <p className="text-accent-300 text-lg mb-8 leading-relaxed">
@@ -380,7 +380,7 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-display uppercase tracking-wide">
                 Honest, Transparent Pricing
               </h2>
               <p className="text-accent-300 text-lg">
@@ -446,7 +446,7 @@ export default function HomePage() {
       <section className="bg-accent-900 py-16 md:py-24">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">What Our Customers Say</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-display uppercase tracking-wide">What Our Customers Say</h2>
             <div className="flex items-center justify-center gap-2 mb-4">
               <div className="flex gap-1">
                 {[...Array(5)].map((_, i) => (
@@ -492,7 +492,7 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="max-w-4xl mx-auto text-center">
             <MapPin className="w-12 h-12 text-primary-400 mx-auto mb-4" />
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-display uppercase tracking-wide">
               Proudly Serving Southern Illinois
             </h2>
             <p className="text-accent-300 text-lg mb-8">
@@ -533,7 +533,7 @@ export default function HomePage() {
       {/* Final CTA */}
       <section className="bg-gradient-to-r from-primary-700 to-primary-600 py-16 md:py-24">
         <div className="container-custom text-center">
-          <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
+          <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4 font-display uppercase tracking-wide">
             Ready to Get Started?
           </h2>
           <p className="text-white/90 text-xl mb-8 max-w-2xl mx-auto">

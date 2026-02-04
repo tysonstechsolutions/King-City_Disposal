@@ -49,17 +49,18 @@ function CreateInvoiceContent() {
     booking_id: null,
     service_address: '',
     service_description: '',
-    dumpster_size: '20yd',
+    dumpster_size: '30yd',
     rental_duration: '10-day',
     delivery_date: '',
     pickup_date: '',
+    date_set: '', // Date dumpster was delivered/set
     weight_tons: '',
     weight_included_tons: 3, // 3 tons default (matches config)
     line_items: [
-      { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: 47500 }
+      { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 }
     ],
     notes: '',
-    payment_terms: 15,
+    payment_terms: 0, // Due on receipt by default
     send_immediately: false,
   })
 
@@ -168,9 +169,16 @@ function CreateInvoiceContent() {
   const updateLineItem = (index, field, value) => {
     setInvoice(prev => ({
       ...prev,
-      line_items: prev.line_items.map((item, i) => 
-        i === index ? { ...item, [field]: field === 'amount_cents' ? Math.round(parseFloat(value || 0) * 100) : value } : item
-      )
+      line_items: prev.line_items.map((item, i) => {
+        if (i !== index) return item
+        if (field === 'amount_cents') {
+          // Store the raw input value for display, convert to cents for storage
+          const cleanValue = String(value).replace(/[^0-9.]/g, '')
+          const dollars = parseFloat(cleanValue) || 0
+          return { ...item, amount_cents: Math.round(dollars * 100), _displayValue: cleanValue }
+        }
+        return { ...item, [field]: value }
+      })
     }))
   }
 
@@ -222,8 +230,21 @@ function CreateInvoiceContent() {
     setSaving(true)
 
     try {
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + invoice.payment_terms)
+      // Calculate due date: on receipt or date_set, whichever is earlier
+      const today = new Date()
+      let dueDate = new Date(today)
+
+      if (invoice.payment_terms > 0) {
+        dueDate.setDate(dueDate.getDate() + invoice.payment_terms)
+      }
+
+      // If date_set is provided and earlier than calculated due date, use that
+      if (invoice.date_set) {
+        const dateSetDate = new Date(invoice.date_set)
+        if (dateSetDate < dueDate) {
+          dueDate = dateSetDate
+        }
+      }
 
       const payload = {
         invoice_number: invoice.invoice_number.trim() || null, // null = auto-generate
@@ -239,9 +260,13 @@ function CreateInvoiceContent() {
         rental_duration: invoice.rental_duration,
         delivery_date: invoice.delivery_date || null,
         pickup_date: invoice.pickup_date || null,
+        date_set: invoice.date_set || null,
         weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
         weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
-        line_items: invoice.line_items.filter(item => item.description && item.amount_cents > 0),
+        line_items: invoice.line_items.filter(item => item.description && item.amount_cents > 0).map(item => ({
+          description: item.description,
+          amount_cents: item.amount_cents
+        })),
         notes: invoice.notes,
         due_date: dueDate.toISOString().split('T')[0],
         subtotal_cents: subtotal,
@@ -454,7 +479,7 @@ function CreateInvoiceContent() {
                   type="text"
                   value={invoice.dumpster_size}
                   onChange={(e) => setInvoice({ ...invoice, dumpster_size: e.target.value })}
-                  placeholder="e.g., 20 Yard"
+                  placeholder="e.g., 30 Yard"
                   className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
@@ -467,6 +492,20 @@ function CreateInvoiceContent() {
                   placeholder="e.g., 10-day"
                   className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-dark-200 mb-1">
+                  Date Set <span className="text-dark-400 font-normal">(When dumpster was delivered)</span>
+                </label>
+                <input
+                  type="date"
+                  value={invoice.date_set}
+                  onChange={(e) => setInvoice({ ...invoice, date_set: e.target.value })}
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+                <p className="text-sm text-dark-500 mt-1">
+                  Late fees apply 30 days after this date. Invoice is due on receipt or this date, whichever is earlier.
+                </p>
               </div>
             </div>
 
@@ -534,6 +573,7 @@ function CreateInvoiceContent() {
                           '20yd': { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: 47500 },
                           '30yd': { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 },
                           'haul': { description: 'Haul Fee', amount_cents: 0 },
+                          'overage': { description: 'Weight Overage', amount_cents: 0 },
                           'custom': { description: item.description, amount_cents: item.amount_cents },
                         }
                         const selected = presets[preset] || presets.custom
@@ -547,10 +587,11 @@ function CreateInvoiceContent() {
                       className="w-48 px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     >
                       <option value="custom">Custom...</option>
-                      <option value="extended">Extended Use Charge - $50</option>
-                      <option value="20yd">20yd Dumpster - $475</option>
-                      <option value="30yd">30yd Dumpster - $575</option>
+                      <option value="30yd">30yd Dumpster</option>
+                      <option value="20yd">20yd Dumpster</option>
+                      <option value="extended">Extended Use Charge</option>
                       <option value="haul">Haul Fee</option>
+                      <option value="overage">Weight Overage</option>
                     </select>
                     <input
                       type="text"
@@ -570,10 +611,20 @@ function CreateInvoiceContent() {
                   <div className="relative w-32">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
+                      type="text"
+                      inputMode="decimal"
+                      value={item._displayValue !== undefined ? item._displayValue : (item.amount_cents ? (item.amount_cents / 100).toFixed(2) : '')}
                       onChange={(e) => updateLineItem(index, 'amount_cents', e.target.value)}
+                      onBlur={(e) => {
+                        // Format to 2 decimal places on blur
+                        const cents = item.amount_cents || 0
+                        setInvoice(prev => ({
+                          ...prev,
+                          line_items: prev.line_items.map((li, i) =>
+                            i === index ? { ...li, _displayValue: undefined } : li
+                          )
+                        }))
+                      }}
                       placeholder="0.00"
                       className="w-full pl-7 pr-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
@@ -662,9 +713,74 @@ function CreateInvoiceContent() {
           subtotal={subtotal}
           config={config}
           onClose={() => setShowPreview(false)}
-          onSendNow={() => {
+          onSendNow={async () => {
             setShowPreview(false)
-            handleSubmit(true)
+            await handleSubmit(true)
+          }}
+          onAddPayment={async () => {
+            // Save as draft first, then redirect to invoice page with payment modal open
+            setSaving(true)
+            try {
+              // Calculate due date
+              const today = new Date()
+              let dueDate = new Date(today)
+              if (invoice.payment_terms > 0) {
+                dueDate.setDate(dueDate.getDate() + invoice.payment_terms)
+              }
+              if (invoice.date_set) {
+                const dateSetDate = new Date(invoice.date_set)
+                if (dateSetDate < dueDate) {
+                  dueDate = dateSetDate
+                }
+              }
+
+              const payload = {
+                invoice_number: invoice.invoice_number.trim() || null,
+                customer_id: invoice.customer_id,
+                booking_id: invoice.booking_id,
+                customer_name: invoice.customer_name,
+                customer_phone: invoice.customer_phone,
+                customer_email: invoice.customer_email,
+                customer_address: invoice.customer_address,
+                service_address: invoice.service_address,
+                service_description: invoice.service_description,
+                dumpster_size: invoice.dumpster_size,
+                rental_duration: invoice.rental_duration,
+                delivery_date: invoice.delivery_date || null,
+                pickup_date: invoice.pickup_date || null,
+                date_set: invoice.date_set || null,
+                weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
+                weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
+                line_items: invoice.line_items.filter(item => item.description && item.amount_cents > 0).map(item => ({
+                  description: item.description,
+                  amount_cents: item.amount_cents
+                })),
+                notes: invoice.notes,
+                due_date: dueDate.toISOString().split('T')[0],
+                subtotal_cents: subtotal,
+                total_cents: subtotal,
+                status: 'draft',
+              }
+
+              const response = await fetch('/api/invoices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              })
+
+              if (response.ok) {
+                const data = await response.json()
+                // Redirect to invoice page with payment action
+                router.push(`/admin/invoices/${data.invoice?.id}?action=payment`)
+              } else {
+                const err = await response.json()
+                alert(err.error || 'Failed to save invoice')
+              }
+            } catch (err) {
+              console.error('Error saving invoice:', err)
+              alert('Error saving invoice')
+            }
+            setSaving(false)
           }}
         />
       )}
@@ -673,7 +789,7 @@ function CreateInvoiceContent() {
 }
 
 // Invoice Preview Modal Component
-function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow }) {
+function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, onAddPayment, onSaveDraft }) {
   const formatCurrency = (cents) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -980,8 +1096,23 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow }) 
                 </div>
               )}
 
+              {/* Contact Information */}
+              <div className="mt-8 pt-6 border-t border-neutral-200">
+                <div className="text-center space-y-3">
+                  <h3 className="text-lg font-semibold text-neutral-800 mb-2">Contact Information</h3>
+                  <div>
+                    <p className="text-neutral-600">King City Disposal Operations</p>
+                    <p className="text-primary font-bold text-xl">(618) 231-8481</p>
+                  </div>
+                  <div>
+                    <p className="text-neutral-600">King City Disposal Billing</p>
+                    <p className="text-primary font-bold text-xl">(618) 231-8380</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Footer */}
-              <div className="mt-8 pt-6 border-t border-neutral-200 text-center text-sm text-neutral-400">
+              <div className="mt-6 pt-4 border-t border-neutral-200 text-center text-sm text-neutral-400">
                 <p>Thank you for your business!</p>
                 <p className="mt-1">{config.businessName} • {config.phone}</p>
               </div>
@@ -989,21 +1120,30 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow }) 
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="flex gap-3 justify-end p-4 border-t border-dark-700 bg-dark-800">
+        {/* Modal Footer - Send and Add Payment buttons */}
+        <div className="flex gap-3 justify-between p-4 border-t border-dark-700 bg-dark-800">
           <button
             onClick={onClose}
             className="px-6 py-2.5 bg-dark-700 text-dark-200 rounded-lg font-medium hover:bg-dark-600"
           >
-            Close
+            Back to Edit
           </button>
-          <button
-            onClick={onSendNow}
-            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90"
-          >
-            <Send className="w-4 h-4" />
-            Save & Send Invoice
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onAddPayment}
+              className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700"
+            >
+              <DollarSign className="w-4 h-4" />
+              Add Payment
+            </button>
+            <button
+              onClick={onSendNow}
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90"
+            >
+              <Send className="w-4 h-4" />
+              Send Invoice
+            </button>
+          </div>
         </div>
       </div>
     </div>

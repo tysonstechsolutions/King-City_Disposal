@@ -106,18 +106,23 @@ export default function InvoiceDetailPage() {
     })
   }
 
-  // Calculate late fee (5% per month after 30 days from invoice date)
+  // Calculate late fee (5% per month after 30 days from date_set or invoice date)
   const calculateLateFee = (inv) => {
     if (!inv || inv.status === 'paid') return { monthsLate: 0, lateFee: 0 }
 
-    const invoiceDate = new Date(inv.invoice_date || inv.created_at)
-    const dueDate = inv.due_date ? new Date(inv.due_date) : new Date(invoiceDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+    // Use date_set if available (when dumpster was delivered), otherwise use invoice_date
+    const referenceDate = inv.date_set
+      ? new Date(inv.date_set)
+      : new Date(inv.invoice_date || inv.created_at)
+
+    // Late fees apply 30 days after the reference date
+    const lateFeeStartDate = new Date(referenceDate.getTime() + 30 * 24 * 60 * 60 * 1000)
     const now = new Date()
 
-    if (now <= dueDate) return { monthsLate: 0, lateFee: 0 }
+    if (now <= lateFeeStartDate) return { monthsLate: 0, lateFee: 0 }
 
-    // Calculate months overdue (30-day periods after due date)
-    const msOverdue = now.getTime() - dueDate.getTime()
+    // Calculate months overdue (30-day periods after late fee start date)
+    const msOverdue = now.getTime() - lateFeeStartDate.getTime()
     const daysOverdue = Math.floor(msOverdue / (24 * 60 * 60 * 1000))
     const monthsLate = Math.ceil(daysOverdue / 30)
 

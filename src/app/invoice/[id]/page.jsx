@@ -408,8 +408,27 @@ export default function CustomerInvoicePage() {
               </div>
             )}
 
+            {/* Contact Information */}
+            <div className="mt-8 pt-6 border-t border-dark-700">
+              <div className="text-center space-y-4">
+                <h3 className="text-lg font-semibold text-white mb-2">Contact Information</h3>
+                <div>
+                  <p className="text-dark-300">King City Disposal Operations</p>
+                  <a href="tel:6182318481" className="text-primary font-bold text-xl hover:text-primary/80 transition-colors">
+                    (618) 231-8481
+                  </a>
+                </div>
+                <div>
+                  <p className="text-dark-300">King City Disposal Billing</p>
+                  <a href="tel:6182318380" className="text-primary font-bold text-xl hover:text-primary/80 transition-colors">
+                    (618) 231-8380
+                  </a>
+                </div>
+              </div>
+            </div>
+
             {/* Footer */}
-            <div className="mt-8 pt-6 border-t border-dark-700 text-center text-sm text-dark-400">
+            <div className="mt-6 pt-4 border-t border-dark-700 text-center text-sm text-dark-400">
               <p>Thank you for your business!</p>
               <p className="mt-1">{config.businessName} • {config.phone}</p>
             </div>
