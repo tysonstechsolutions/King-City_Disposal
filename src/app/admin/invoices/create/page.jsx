@@ -53,9 +53,11 @@ function CreateInvoiceContent() {
     rental_duration: '10-day',
     delivery_date: '',
     pickup_date: '',
-    date_set: '', // Date dumpster was delivered/set
+    invoice_date: new Date().toISOString().split('T')[0], // Invoice date (can be future dated)
+    date_set: '', // Date dumpster was serviced
     weight_tons: '',
     weight_included_tons: 3, // 3 tons default (matches config)
+    overage_rate: 75, // Default overage rate per ton
     line_items: [
       { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 }
     ],
@@ -193,7 +195,7 @@ function CreateInvoiceContent() {
   const calculateOverage = () => {
     if (!invoice.weight_tons || !invoice.weight_included_tons) return 0
     const overageTons = Math.max(0, parseFloat(invoice.weight_tons) - parseFloat(invoice.weight_included_tons))
-    const overageRate = config.pricing?.overagePerTon || 75
+    const overageRate = parseFloat(invoice.overage_rate) || config.pricing?.overagePerTon || 75
     return Math.round(overageTons * overageRate * 100)
   }
 
@@ -260,6 +262,7 @@ function CreateInvoiceContent() {
         rental_duration: invoice.rental_duration,
         delivery_date: invoice.delivery_date || null,
         pickup_date: invoice.pickup_date || null,
+        invoice_date: invoice.invoice_date || null,
         date_set: invoice.date_set || null,
         weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
         weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
@@ -337,23 +340,38 @@ function CreateInvoiceContent() {
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="space-y-6">
-          {/* Invoice Number */}
+          {/* Invoice Number & Date */}
           <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              Invoice Number
+              Invoice Details
             </h2>
-            <div>
-              <input
-                type="text"
-                value={invoice.invoice_number}
-                onChange={(e) => setInvoice({ ...invoice, invoice_number: e.target.value })}
-                placeholder="Leave blank to auto-generate (e.g., INV-2025-0001)"
-                className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none placeholder:text-dark-500"
-              />
-              <p className="text-sm text-dark-500 mt-2">
-                Enter a custom invoice number or leave blank to auto-generate the next number in sequence.
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Invoice Number</label>
+                <input
+                  type="text"
+                  value={invoice.invoice_number}
+                  onChange={(e) => setInvoice({ ...invoice, invoice_number: e.target.value })}
+                  placeholder="Auto-generate"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none placeholder:text-dark-500"
+                />
+                <p className="text-sm text-dark-500 mt-1">
+                  Leave blank to auto-generate
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Invoice Date</label>
+                <input
+                  type="date"
+                  value={invoice.invoice_date}
+                  onChange={(e) => setInvoice({ ...invoice, invoice_date: e.target.value })}
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+                <p className="text-sm text-dark-500 mt-1">
+                  Date shown on invoice (can be future dated)
+                </p>
+              </div>
             </div>
           </div>
 
@@ -495,7 +513,7 @@ function CreateInvoiceContent() {
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-dark-200 mb-1">
-                  Date Set <span className="text-dark-400 font-normal">(When dumpster was delivered)</span>
+                  Date Set <span className="text-dark-400 font-normal">(When dumpster was serviced)</span>
                 </label>
                 <input
                   type="date"
@@ -515,7 +533,7 @@ function CreateInvoiceContent() {
                 <Scale className="w-4 h-4 text-primary" />
                 Weight & Overage
               </h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm text-dark-300 mb-1">Actual Weight (tons)</label>
                   <input
@@ -535,6 +553,17 @@ function CreateInvoiceContent() {
                     value={invoice.weight_included_tons}
                     onChange={(e) => setInvoice({ ...invoice, weight_included_tons: e.target.value })}
                     placeholder="3.00"
+                    className="w-full px-3 py-2 bg-dark-800 text-white border border-dark-600 rounded-lg placeholder:text-dark-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1">Rate ($/ton)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoice.overage_rate}
+                    onChange={(e) => setInvoice({ ...invoice, overage_rate: e.target.value })}
+                    placeholder="75.00"
                     className="w-full px-3 py-2 bg-dark-800 text-white border border-dark-600 rounded-lg placeholder:text-dark-500"
                   />
                 </div>
@@ -572,8 +601,11 @@ function CreateInvoiceContent() {
                           'extended': { description: 'Extended Use Charge', amount_cents: 5000 },
                           '20yd': { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: 47500 },
                           '30yd': { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 },
+                          'compactor': { description: 'Self-Contained Compactor', amount_cents: 0 },
+                          'monthly': { description: 'Monthly Fee', amount_cents: 0 },
                           'haul': { description: 'Haul Fee', amount_cents: 0 },
                           'overage': { description: 'Weight Overage', amount_cents: 0 },
+                          'tonnage': { description: 'Actual Tonnage', amount_cents: 0 },
                           'custom': { description: item.description, amount_cents: item.amount_cents },
                         }
                         const selected = presets[preset] || presets.custom
@@ -589,9 +621,12 @@ function CreateInvoiceContent() {
                       <option value="custom">Custom...</option>
                       <option value="30yd">30yd Dumpster</option>
                       <option value="20yd">20yd Dumpster</option>
+                      <option value="compactor">Self-Contained Compactor</option>
                       <option value="extended">Extended Use Charge</option>
+                      <option value="monthly">Monthly Fee</option>
                       <option value="haul">Haul Fee</option>
                       <option value="overage">Weight Overage</option>
+                      <option value="tonnage">Actual Tonnage</option>
                     </select>
                     <input
                       type="text"
@@ -713,6 +748,10 @@ function CreateInvoiceContent() {
           subtotal={subtotal}
           config={config}
           onClose={() => setShowPreview(false)}
+          onSaveDraft={async () => {
+            setShowPreview(false)
+            await handleSubmit(false)
+          }}
           onSendNow={async () => {
             setShowPreview(false)
             await handleSubmit(true)
@@ -748,6 +787,7 @@ function CreateInvoiceContent() {
                 rental_duration: invoice.rental_duration,
                 delivery_date: invoice.delivery_date || null,
                 pickup_date: invoice.pickup_date || null,
+                invoice_date: invoice.invoice_date || null,
                 date_set: invoice.date_set || null,
                 weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
                 weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
@@ -871,7 +911,7 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
               ${invoice.customer_email ? `<p>✉️ ${invoice.customer_email}</p>` : ''}
             </div>
             <div style="text-align: right;">
-              <p><span style="color: #666;">Invoice Date:</span> ${formatDate(new Date())}</p>
+              <p><span style="color: #666;">Invoice Date:</span> ${formatDate(invoice.invoice_date ? new Date(invoice.invoice_date + 'T00:00:00') : new Date())}</p>
               <p><span style="color: #666;">Due Date:</span> ${invoice.payment_terms === 0 ? 'Due Upon Receipt' : formatDate(dueDate)}</p>
             </div>
           </div>
@@ -1012,7 +1052,7 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
                   <div className="space-y-1">
                     <div className="flex md:justify-end gap-2">
                       <span className="text-neutral-400">Invoice Date:</span>
-                      <span className="font-medium">{formatDate(new Date())}</span>
+                      <span className="font-medium">{formatDate(invoice.invoice_date ? new Date(invoice.invoice_date + 'T00:00:00') : new Date())}</span>
                     </div>
                     <div className="flex md:justify-end gap-2">
                       <span className="text-neutral-400">Due Date:</span>
@@ -1120,7 +1160,7 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
           </div>
         </div>
 
-        {/* Modal Footer - Send and Add Payment buttons */}
+        {/* Modal Footer - Save, Add Payment, and Send buttons */}
         <div className="flex gap-3 justify-between p-4 border-t border-dark-700 bg-dark-800">
           <button
             onClick={onClose}
@@ -1129,6 +1169,15 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
             Back to Edit
           </button>
           <div className="flex gap-3">
+            {onSaveDraft && (
+              <button
+                onClick={onSaveDraft}
+                className="flex items-center gap-2 px-6 py-2.5 bg-dark-600 text-dark-100 rounded-lg font-medium hover:bg-dark-500"
+              >
+                <Save className="w-4 h-4" />
+                Save Draft
+              </button>
+            )}
             <button
               onClick={onAddPayment}
               className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700"

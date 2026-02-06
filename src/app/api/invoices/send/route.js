@@ -1,10 +1,11 @@
 // ============================================
 // SEND INVOICE API
 // ============================================
-// Sends invoice link via SMS (and optionally email)
+// Sends invoice link via SMS and Email
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { sendEmail, invoiceEmail } from '../../../../lib/notifications';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -139,6 +140,28 @@ Questions? Reply to this text or call ${config.phone}
       smsSent = await sendSMS(invoice.customer_phone, message);
     }
 
+    // Send Email
+    let emailSent = false;
+    if (invoice.customer_email) {
+      try {
+        const { html, text } = invoiceEmail(invoice);
+        const emailResult = await sendEmail({
+          to: invoice.customer_email,
+          subject: reminder
+            ? `Payment ${invoice.due_date && new Date(invoice.due_date) < new Date() ? 'Overdue' : 'Reminder'}: Invoice ${invoice.invoice_number}`
+            : `Invoice ${invoice.invoice_number} from ${config.businessName}`,
+          html,
+          text,
+        });
+        emailSent = emailResult.success;
+        if (!emailResult.success) {
+          console.error('Email send failed:', emailResult.error);
+        }
+      } catch (e) {
+        console.error('Email error:', e);
+      }
+    }
+
     // Update invoice status
     const updateData = {
       status: invoice.status === 'draft' ? 'sent' : invoice.status,
@@ -168,11 +191,12 @@ Questions? Reply to this text or call ${config.phone}
       }
     );
 
-    console.log(`✅ Invoice ${invoice.invoice_number} ${reminder ? 'reminder' : ''} sent via SMS: ${smsSent}`);
+    console.log(`✅ Invoice ${invoice.invoice_number} ${reminder ? 'reminder' : ''} sent - SMS: ${smsSent}, Email: ${emailSent}`);
 
     return NextResponse.json({
       success: true,
       sms_sent: smsSent,
+      email_sent: emailSent,
       invoice_number: invoice.invoice_number,
       invoice_url: invoiceUrl,
     });
