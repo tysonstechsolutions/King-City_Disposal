@@ -22,7 +22,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
-    const limit = searchParams.get('limit') || '100'
+    const limit = searchParams.get('limit') || '500'
 
     let query = `order=name.asc&limit=${limit}`
 

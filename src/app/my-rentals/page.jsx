@@ -109,7 +109,7 @@ export default function MyRentalsPage() {
       case 'cancelled':
         return { color: 'bg-red-500/20 text-red-400', icon: AlertCircle, label: 'Cancelled' }
       default:
-        return { color: 'bg-dark-8000/20 text-gray-400', icon: Clock, label: status }
+        return { color: 'bg-dark-800/20 text-gray-400', icon: Clock, label: status }
     }
   }
 
@@ -293,7 +293,7 @@ export default function MyRentalsPage() {
                     {booking.priceCents > 0 && (
                       <div className="flex items-center gap-2 text-dark-300">
                         <DollarSign className="w-4 h-4 text-dark-500" />
-                        <span className="text-sm">${(booking.priceCents / 100).toFixed(0)}</span>
+                        <span className="text-sm">${(booking.priceCents / 100).toFixed(2)}</span>
                       </div>
                     )}
                   </div>
@@ -341,7 +341,7 @@ export default function MyRentalsPage() {
                     <FileText className="w-5 h-5 text-dark-400" />
                     <div>
                       <p className="text-white font-medium">
-                        ${((invoice.totalCents || 0) / 100).toFixed(0)}
+                        ${((invoice.totalCents || 0) / 100).toFixed(2)}
                       </p>
                       <p className="text-dark-400 text-sm">
                         {invoice.status === 'paid' ? 'Paid' : `Due: ${formatDate(invoice.dueDate)}`}

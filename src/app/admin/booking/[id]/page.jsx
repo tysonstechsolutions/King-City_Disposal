@@ -545,7 +545,7 @@ export default function BookingDetailPage() {
                   <p className="text-dark-400 text-sm">Price</p>
                   <p className="text-primary-400 font-bold text-xl flex items-center gap-1">
                     <DollarSign className="w-5 h-5" />
-                    {booking.price_cents ? (booking.price_cents / 100).toFixed(0) : 'TBD'}
+                    {booking.price_cents ? (booking.price_cents / 100).toFixed(2) : 'TBD'}
                   </p>
                 </div>
 

@@ -485,7 +485,7 @@ export default function AdminPage() {
                         <div className="text-center">
                           <p className="text-dark-500 text-xs uppercase">Price</p>
                           <p className="text-primary-400 font-bold">
-                            ${booking.price_cents ? (booking.price_cents / 100).toFixed(0) : 'TBD'}
+                            ${booking.price_cents ? (booking.price_cents / 100).toFixed(2) : 'TBD'}
                           </p>
                         </div>
                         

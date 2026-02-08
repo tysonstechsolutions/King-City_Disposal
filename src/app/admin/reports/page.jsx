@@ -396,7 +396,7 @@ export default function ReportsPage() {
                       </p>
                     </div>
                     <p className="text-red-400 font-bold">
-                      ${((invoice.total_cents || 0) / 100).toFixed(0)}
+                      ${((invoice.total_cents || 0) / 100).toFixed(2)}
                     </p>
                   </div>
                 ))}

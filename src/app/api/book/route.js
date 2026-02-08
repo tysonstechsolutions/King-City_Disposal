@@ -315,7 +315,7 @@ export async function POST(request) {
 
     // Get dumpster info for notification
     const dumpster = config.dumpsters.find(d => d.id === dumpsterSize);
-    const priceDisplay = priceCents ? `$${(priceCents / 100).toFixed(0)}` : 'TBD';
+    const priceDisplay = priceCents ? `$${(priceCents / 100).toFixed(2)}` : 'TBD';
 
     // Notify owner via SMS
     try {

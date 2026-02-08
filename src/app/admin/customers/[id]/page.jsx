@@ -694,7 +694,7 @@ export default function CustomerDetailPage() {
                   Invoices
                 </h3>
                 <button
-                  onClick={() => setShowNewInvoice(true)}
+                  onClick={() => router.push(`/admin/invoices/create?customer=${customer.id}`)}
                   className="px-4 py-2 bg-primary text-white rounded-lg text-sm flex items-center gap-2 hover:bg-primary/90"
                 >
                   <Plus className="w-4 h-4" />

@@ -22,10 +22,16 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { config } from '../../../../config';
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
-});
+// Initialize Stripe lazily to avoid build-time crash when env var is missing
+let _stripe;
+function getStripe() {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16',
+    });
+  }
+  return _stripe;
+}
 
 // ============================================
 // HELPER FUNCTIONS
@@ -151,7 +157,7 @@ export async function POST(request) {
         );
       }
 
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = getStripe().webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err) {
       console.error('Webhook signature verification failed:', err.message);
       return NextResponse.json(

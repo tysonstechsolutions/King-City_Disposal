@@ -8,7 +8,14 @@ import { config } from '../../../../config'
 
 export const dynamic = 'force-dynamic'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+// Initialize Stripe lazily to avoid build-time crash when env var is missing
+let _stripe;
+function getStripe() {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return _stripe;
+}
 
 // POST - Create a PaymentIntent for manual card entry
 export async function POST(request) {
@@ -23,7 +30,7 @@ export async function POST(request) {
     }
 
     // Create a PaymentIntent
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntent = await getStripe().paymentIntents.create({
       amount: amount_cents,
       currency: 'usd',
       description: description || `Invoice payment - ${config.businessName}`,
@@ -64,7 +71,7 @@ export async function GET(request) {
       )
     }
 
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    const paymentIntent = await getStripe().paymentIntents.retrieve(paymentIntentId)
 
     return NextResponse.json({
       status: paymentIntent.status,

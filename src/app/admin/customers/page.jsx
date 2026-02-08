@@ -78,7 +78,9 @@ export default function CustomersPage() {
       c.company_name?.toLowerCase().includes(search) ||
       c.phone?.includes(search) ||
       c.email?.toLowerCase().includes(search) ||
-      c.address?.toLowerCase().includes(search)
+      c.address?.toLowerCase().includes(search) ||
+      c.city?.toLowerCase().includes(search) ||
+      c.zip?.includes(search)
     )
   })
 

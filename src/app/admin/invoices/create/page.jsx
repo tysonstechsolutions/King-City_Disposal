@@ -30,6 +30,7 @@ function CreateInvoiceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const bookingId = searchParams.get('booking')
+  const customerId = searchParams.get('customer')
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -62,6 +63,7 @@ function CreateInvoiceContent() {
       { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 }
     ],
     notes: '',
+    purchase_order: '', // PO number (some customers require this)
     payment_terms: 0, // Due on receipt by default
     send_immediately: false,
   })
@@ -74,8 +76,10 @@ function CreateInvoiceContent() {
     fetchCustomers()
     if (bookingId) {
       fetchBooking(bookingId)
+    } else if (customerId) {
+      fetchCustomerById(customerId)
     }
-  }, [bookingId])
+  }, [bookingId, customerId])
 
   const fetchCustomers = async () => {
     try {
@@ -93,6 +97,28 @@ function CreateInvoiceContent() {
       }
     } catch (err) {
       console.error('Error fetching customers:', err)
+    }
+  }
+
+  const fetchCustomerById = async (id) => {
+    try {
+      const response = await fetch(
+        `${config.supabase.url}/rest/v1/customers?id=eq.${id}`,
+        {
+          headers: {
+            'apikey': config.supabase.anonKey,
+            'Authorization': `Bearer ${config.supabase.anonKey}`,
+          },
+        }
+      )
+      if (response.ok) {
+        const [customer] = await response.json()
+        if (customer) {
+          selectCustomer(customer)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching customer:', err)
     }
   }
 
@@ -210,7 +236,8 @@ function CreateInvoiceContent() {
         ...prev.line_items,
         {
           description: `Weight Overage (${overageTons} tons over limit)`,
-          amount_cents: overageCents
+          amount_cents: overageCents,
+          preset: 'overage'
         }
       ]
     }))
@@ -250,6 +277,7 @@ function CreateInvoiceContent() {
 
       const payload = {
         invoice_number: invoice.invoice_number.trim() || null, // null = auto-generate
+        purchase_order: invoice.purchase_order.trim() || null,
         customer_id: invoice.customer_id,
         booking_id: invoice.booking_id,
         customer_name: invoice.customer_name,
@@ -286,7 +314,7 @@ function CreateInvoiceContent() {
 
       if (response.ok) {
         const data = await response.json()
-        
+
         if (sendNow && data.invoice?.id) {
           // Send the invoice
           await fetch('/api/invoices/send', {
@@ -346,7 +374,7 @@ function CreateInvoiceContent() {
               <FileText className="w-5 h-5 text-primary" />
               Invoice Details
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-dark-200 mb-1">Invoice Number</label>
                 <input
@@ -370,6 +398,19 @@ function CreateInvoiceContent() {
                 />
                 <p className="text-sm text-dark-500 mt-1">
                   Date shown on invoice (can be future dated)
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">Purchase Order #</label>
+                <input
+                  type="text"
+                  value={invoice.purchase_order}
+                  onChange={(e) => setInvoice({ ...invoice, purchase_order: e.target.value })}
+                  placeholder="PO number"
+                  className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none placeholder:text-dark-500"
+                />
+                <p className="text-sm text-dark-500 mt-1">
+                  Optional - if customer requires PO
                 </p>
               </div>
             </div>
@@ -775,6 +816,7 @@ function CreateInvoiceContent() {
 
               const payload = {
                 invoice_number: invoice.invoice_number.trim() || null,
+                purchase_order: invoice.purchase_order.trim() || null,
                 customer_id: invoice.customer_id,
                 booking_id: invoice.booking_id,
                 customer_name: invoice.customer_name,
@@ -895,6 +937,7 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
           <div class="header-right">
             <div class="label">INVOICE</div>
             <div class="value">PREVIEW</div>
+            ${invoice.purchase_order ? `<div style="margin-top: 4px; font-size: 12px; opacity: 0.8;">PO# ${invoice.purchase_order}</div>` : ''}
           </div>
           <h1>${config.businessName}</h1>
           <p>${config.phone}</p>
@@ -1026,6 +1069,9 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
                 <div className="text-right">
                   <p className="text-white/60 text-sm">INVOICE</p>
                   <p className="text-xl font-bold font-mono">PREVIEW</p>
+                  {invoice.purchase_order && (
+                    <p className="text-white/80 text-sm mt-1">PO# {invoice.purchase_order}</p>
+                  )}
                 </div>
               </div>
             </div>
