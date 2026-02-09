@@ -295,8 +295,9 @@ export async function POST(request) {
     if (!dbResponse.ok) {
       const errorText = await dbResponse.text();
       logger.error('Supabase booking save error', null, { error: errorText });
+      console.error('Supabase booking error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to save booking' },
+        { error: `Failed to save booking: ${errorText}` },
         { status: 500 }
       );
     }
