@@ -137,15 +137,30 @@ export async function notifyCustomer({ phone, email, subject, smsMessage, emailH
 }
 
 // ============================================
-// Notify Owner
+// Notify Owner + Billing + Operations
 // ============================================
 export async function notifyOwner(message, emailSubject = null, emailHtml = null) {
-  const results = { sms: null, email: null };
+  const results = { sms: [], email: null };
 
-  // SMS to owner
-  const ownerPhone = process.env.OWNER_PHONE;
-  if (ownerPhone && message) {
-    results.sms = await sendSMS(ownerPhone, message);
+  // SMS to all configured team numbers
+  if (message) {
+    const phones = [
+      process.env.OWNER_PHONE,
+      process.env.BILLING_PHONE,
+      process.env.OPERATIONS_PHONE,
+    ].filter(Boolean);
+
+    // Remove duplicates (in case same number is set for multiple roles)
+    const uniquePhones = [...new Set(phones.map(p => p.replace(/\D/g, '')))];
+
+    const smsResults = await Promise.allSettled(
+      uniquePhones.map(phone => sendSMS(phone, message))
+    );
+
+    results.sms = smsResults.map((r, i) => ({
+      phone: uniquePhones[i],
+      ...(r.status === 'fulfilled' ? r.value : { success: false, error: r.reason?.message }),
+    }));
   }
 
   // Email to owner (optional)

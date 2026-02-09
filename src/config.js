@@ -65,19 +65,27 @@ export const config = {
   notifications: {
     // Email to receive booking notifications
     bookingAlertEmail: "Kingcitydisposal@gmail.com",
-    
+
     // ┌─────────────────────────────────────────┐
-    // │  🔌 PLUG IN LATER: Twilio SMS           │
-    // │  When ready, set enabled: true and      │
-    // │  add credentials in VERCEL ENV VARS     │
+    // │  📱 SMS NOTIFICATION NUMBERS             │
+    // │  These numbers get texted on new bookings│
+    // │  Set in VERCEL → Environment Variables   │
     // └─────────────────────────────────────────┘
+    // OWNER_PHONE       → Primary owner (format: +16185551234)
+    // BILLING_PHONE     → Billing contact (format: +16185551234)
+    // OPERATIONS_PHONE  → Operations/dispatch (format: +16185551234)
+    //
+    // All three get the new booking SMS. Set any or all of them.
+
     twilio: {
       enabled: true, // SMS notifications active
       // ADD THESE IN VERCEL → Settings → Environment Variables:
       // TWILIO_ACCOUNT_SID
-      // TWILIO_AUTH_TOKEN  
+      // TWILIO_AUTH_TOKEN
       // TWILIO_PHONE_NUMBER (format: +16185551234)
       // OWNER_PHONE (format: +16185551234)
+      // BILLING_PHONE (format: +16185551234)
+      // OPERATIONS_PHONE (format: +16185551234)
     },
   },
   
