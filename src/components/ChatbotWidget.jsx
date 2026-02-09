@@ -498,11 +498,11 @@ export default function ChatbotWidget() {
       const result = await response.json()
       setIsTyping(false)
 
-      if (result.success) {
+      if (response.ok && result.success) {
         await addBotMessage(`Booking confirmed!\n\n${config.businessName} will call or text you at ${currentBookingData.phone} to confirm your ${dumpster?.name || currentBookingData.size} delivery on ${currentBookingData.deliveryDate}.\n\nTotal: $${totalPrice}\n\nQuestions? Call ${config.phone}`)
       } else {
-        console.error('Booking API error:', result)
-        const errorMsg = result.error || 'Unknown error'
+        console.error('Booking API error:', response.status, result)
+        const errorMsg = result.error || result.message || `Server error (${response.status})`
         await addBotMessage(`Something went wrong: ${errorMsg}\n\nCall us at ${config.phone} and we'll get you set up.`)
       }
     } catch (error) {

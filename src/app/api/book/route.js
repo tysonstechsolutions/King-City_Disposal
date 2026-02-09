@@ -368,8 +368,9 @@ export async function POST(request) {
 
   } catch (error) {
     logger.error('Booking API error', error);
+    console.error('Booking API catch:', error?.message, error?.stack);
     return NextResponse.json(
-      { error: 'Something went wrong. Please call us directly.' },
+      { error: error?.message || 'Something went wrong. Please call us directly.' },
       { status: 500 }
     );
   }
