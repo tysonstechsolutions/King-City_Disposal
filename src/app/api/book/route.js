@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { config, isInServiceArea } from '../../../config';
-import { notifyCustomer, notifyOwner, bookingConfirmationEmail } from '../../../lib/notifications';
+import { notifyOwner } from '../../../lib/notifications';
 import { bookingSchema, validateInput } from '../../../lib/validations';
 import { logger } from '../../../lib/logger';
 import { bookingRateLimit } from '../../../lib/rateLimit';
@@ -311,60 +311,88 @@ export async function POST(request) {
     });
 
     // ============================================
-    // 3. SEND NOTIFICATIONS
+    // 3. NOTIFY TEAM (PENDING PAYMENT)
     // ============================================
+    // Customer confirmation is sent AFTER payment via webhook
 
-    // Get dumpster info for notification
     const dumpster = config.dumpsters.find(d => d.id === dumpsterSize);
     const priceDisplay = priceCents ? `$${(priceCents / 100).toFixed(2)}` : 'TBD';
 
-    // Notify owner via SMS
     try {
       await notifyOwner(
-        `🚛 NEW BOOKING!\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n📌 Placement: ${placementNotes || 'Not specified'}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}`
+        `🚛 NEW BOOKING (PENDING PAYMENT)\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n📌 Placement: ${placementNotes || 'Not specified'}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}\n\n⏳ Awaiting online payment...`
       );
-      logger.notification('sms', 'owner', true, { booking_id: savedBooking[0]?.id });
+      logger.notification('sms', 'team', true, { booking_id: savedBooking[0]?.id });
     } catch (notifyError) {
-      logger.error('Owner notification failed', notifyError, { booking_id: savedBooking[0]?.id });
-    }
-
-    // Notify customer via SMS and Email
-    try {
-      const bookingForEmail = {
-        ...bookingData,
-        customer_name: customerName,
-        dumpster_size: dumpsterSize,
-        delivery_date: deliveryDate,
-        rental_duration: rentalDuration,
-        address: address,
-        placement_notes: placementNotes,
-        price_cents: priceCents,
-      };
-
-      const { html, text } = bookingConfirmationEmail(bookingForEmail);
-
-      await notifyCustomer({
-        phone: customerPhone,
-        email: customerEmail,
-        subject: `Booking Confirmed - ${config.businessName}`,
-        smsMessage: `Thanks for booking with ${config.businessName}!\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n📍 ${address}\n\nWe'll deliver between 8am-12pm. Questions? Call ${config.phone}`,
-        emailHtml: html,
-        emailText: text,
-      });
-      logger.notification('sms+email', customerPhone, true, { booking_id: savedBooking[0]?.id });
-    } catch (notifyError) {
-      logger.error('Customer notification failed', notifyError, { booking_id: savedBooking[0]?.id });
+      logger.error('Team notification failed', notifyError, { booking_id: savedBooking[0]?.id });
     }
 
     // ============================================
-    // 4. RETURN SUCCESS
+    // 4. CREATE STRIPE CHECKOUT SESSION
+    // ============================================
+    let checkoutUrl = null;
+
+    if (priceCents > 0 && process.env.STRIPE_SECRET_KEY) {
+      try {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kingcitydisposal.com';
+        const bookingId = savedBooking[0]?.id;
+        const durationMatch = rentalDuration.match(/(\d+)-day/);
+        const durationLabel = durationMatch ? `${durationMatch[1]}-Day` : '10-Day';
+
+        const requestBody = new URLSearchParams({
+          'line_items[0][price_data][currency]': 'usd',
+          'line_items[0][price_data][product_data][name]': `${dumpster?.name || dumpsterSize} - ${durationLabel} Rental`,
+          'line_items[0][price_data][product_data][description]': `Dumpster rental at ${address}. Includes ${dumpster?.weightIncluded || '2 tons'}.`,
+          'line_items[0][price_data][unit_amount]': priceCents.toString(),
+          'line_items[0][quantity]': '1',
+          'mode': 'payment',
+          'success_url': `${siteUrl}/payment-success?booking=${bookingId || ''}&session_id={CHECKOUT_SESSION_ID}`,
+          'cancel_url': `${siteUrl}/book?canceled=true`,
+          'metadata[type]': 'booking',
+          'metadata[booking_id]': bookingId?.toString() || '',
+          'metadata[source]': 'king-city-disposal',
+          'metadata[customer_name]': customerName,
+          'metadata[customer_phone]': customerPhone,
+          'metadata[dumpster_size]': dumpsterSize,
+          'metadata[address]': address,
+        });
+
+        if (customerEmail) {
+          requestBody.append('customer_email', customerEmail);
+        }
+
+        const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: requestBody,
+        });
+
+        const stripeData = await stripeResponse.json();
+
+        if (stripeData.url) {
+          checkoutUrl = stripeData.url;
+          logger.info('Stripe checkout created', { booking_id: bookingId, url: stripeData.url });
+        } else {
+          logger.error('Stripe checkout failed', null, { error: stripeData.error });
+        }
+      } catch (stripeError) {
+        logger.error('Stripe checkout error', stripeError);
+        // Don't fail the booking if Stripe fails - they can pay later
+      }
+    }
+
+    // ============================================
+    // 5. RETURN SUCCESS
     // ============================================
     return NextResponse.json({
       success: true,
       bookingId: savedBooking[0]?.id,
       customerId: customer?.id || null,
-      customerCreated: customer ? !customer.created_at || (Date.now() - new Date(customer.created_at).getTime()) < 5000 : false,
-      message: 'Booking received! We\'ll be in touch soon.',
+      checkoutUrl,
+      message: checkoutUrl ? 'Booking saved! Complete payment to confirm.' : 'Booking received!',
     });
 
   } catch (error) {

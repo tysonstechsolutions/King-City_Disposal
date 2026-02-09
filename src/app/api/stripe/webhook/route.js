@@ -21,6 +21,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { config } from '../../../../config';
+import { notifyOwner, notifyCustomer, bookingConfirmationEmail } from '../../../../lib/notifications';
 
 // Initialize Stripe lazily to avoid build-time crash when env var is missing
 let _stripe;
@@ -80,32 +81,6 @@ async function getBooking(id) {
     return data[0];
   }
   return null;
-}
-
-async function sendSMS(to, message) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !from) return false;
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-        },
-        body: new URLSearchParams({ To: to, From: from, Body: message }),
-      }
-    );
-    return response.ok;
-  } catch (e) {
-    console.error('SMS error:', e);
-    return false;
-  }
 }
 
 async function createTransaction(data) {
@@ -219,11 +194,43 @@ export async function POST(request) {
 
           console.log(`Booking ${bookingId} paid, receipt: ${txResult?.receipt_number}`);
 
-          // Notify owner with receipt link
-          if (process.env.OWNER_PHONE) {
-            await sendSMS(process.env.OWNER_PHONE,
-              `PAYMENT RECEIVED!\n\n${booking.customer_name}\n${booking.address}\n\n${dumpsterName}\n${booking.delivery_date}\n$${(session.amount_total / 100).toFixed(2)}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
+          const priceDisplay = `$${(session.amount_total / 100).toFixed(2)}`;
+
+          // Notify team (owner + billing + operations)
+          try {
+            await notifyOwner(
+              `PAYMENT RECEIVED!\n\n${booking.customer_name}\n📞 ${booking.customer_phone}\n📍 ${booking.address}\n\n📦 ${dumpsterName}\n📅 ${booking.delivery_date}\n⏱️ ${booking.rental_duration}\n💰 ${priceDisplay}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
             );
+          } catch (e) {
+            console.error('Team notification failed:', e);
+          }
+
+          // Send customer confirmation SMS + Email (now that payment is confirmed)
+          try {
+            const customerEmail = booking.customer_email || session.customer_details?.email;
+            const bookingForEmail = {
+              customer_name: booking.customer_name,
+              dumpster_size: booking.dumpster_size,
+              delivery_date: booking.delivery_date,
+              rental_duration: booking.rental_duration,
+              address: booking.address,
+              placement_notes: booking.placement_notes,
+              price_cents: session.amount_total,
+            };
+
+            const { html, text } = bookingConfirmationEmail(bookingForEmail);
+
+            await notifyCustomer({
+              phone: booking.customer_phone,
+              email: customerEmail,
+              subject: `Booking Confirmed - ${config.businessName}`,
+              smsMessage: `Thanks for booking with ${config.businessName}!\n\n📦 ${dumpsterName}\n📅 ${booking.delivery_date}\n📍 ${booking.address}\n💰 ${priceDisplay}\n\nWe'll deliver between 8am-12pm. Questions? Call ${config.phone}`,
+              emailHtml: html,
+              emailText: text,
+            });
+            console.log(`Customer confirmation sent to ${booking.customer_phone}`);
+          } catch (e) {
+            console.error('Customer confirmation failed:', e);
           }
         }
       }
@@ -267,11 +274,13 @@ export async function POST(request) {
 
           console.log(`Extension for ${bookingId} paid, receipt: ${txResult?.receipt_number}`);
 
-          // Notify owner
-          if (process.env.OWNER_PHONE) {
-            await sendSMS(process.env.OWNER_PHONE,
+          // Notify team
+          try {
+            await notifyOwner(
               `EXTENSION PAID!\n\n${booking.customer_name}\n${booking.address}\n\n+${extensionDays} days\nNew total: ${totalDays} days\n$${(session.amount_total / 100).toFixed(2)}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
             );
+          } catch (e) {
+            console.error('Team notification failed:', e);
           }
         }
       }
@@ -309,11 +318,13 @@ export async function POST(request) {
 
           console.log(`Overage for ${bookingId} paid, receipt: ${txResult?.receipt_number}`);
 
-          // Notify owner
-          if (process.env.OWNER_PHONE) {
-            await sendSMS(process.env.OWNER_PHONE,
+          // Notify team
+          try {
+            await notifyOwner(
               `OVERAGE PAID!\n\n${booking.customer_name}\n${booking.address}\n\n$${(session.amount_total / 100).toFixed(2)}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
             );
+          } catch (e) {
+            console.error('Team notification failed:', e);
           }
         }
       }
@@ -350,11 +361,13 @@ export async function POST(request) {
 
           console.log(`Late fee for ${bookingId} paid, receipt: ${txResult?.receipt_number}`);
 
-          // Notify owner
-          if (process.env.OWNER_PHONE) {
-            await sendSMS(process.env.OWNER_PHONE,
+          // Notify team
+          try {
+            await notifyOwner(
               `LATE FEE PAID!\n\n${booking.customer_name}\n${booking.address}\n\n$${(session.amount_total / 100).toFixed(2)}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
             );
+          } catch (e) {
+            console.error('Team notification failed:', e);
           }
         }
       }
@@ -379,11 +392,13 @@ export async function POST(request) {
 
         console.log(`Custom payment received, receipt: ${txResult?.receipt_number}`);
 
-        // Notify owner
-        if (process.env.OWNER_PHONE) {
-          await sendSMS(process.env.OWNER_PHONE,
+        // Notify team
+        try {
+          await notifyOwner(
             `CUSTOM PAYMENT!\n\n${session.customer_details?.name || 'Customer'}\n$${(session.amount_total / 100).toFixed(2)}\n\n${metadata.description || ''}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
           );
+        } catch (e) {
+          console.error('Team notification failed:', e);
         }
       }
     }

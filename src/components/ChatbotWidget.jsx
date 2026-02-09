@@ -499,7 +499,15 @@ export default function ChatbotWidget() {
       setIsTyping(false)
 
       if (response.ok && result.success) {
-        await addBotMessage(`Booking confirmed!\n\n${config.businessName} will call or text you at ${currentBookingData.phone} to confirm your ${dumpster?.name || currentBookingData.size} delivery on ${currentBookingData.deliveryDate}.\n\nTotal: $${totalPrice}\n\nQuestions? Call ${config.phone}`)
+        if (result.checkoutUrl) {
+          await addBotMessage(`Booking saved! Redirecting you to payment...\n\nTotal: $${totalPrice}`)
+          // Short delay so user can see the message
+          setTimeout(() => {
+            window.location.href = result.checkoutUrl
+          }, 1500)
+        } else {
+          await addBotMessage(`Booking confirmed!\n\n${config.businessName} will call or text you at ${currentBookingData.phone} to confirm your ${dumpster?.name || currentBookingData.size} delivery on ${currentBookingData.deliveryDate}.\n\nTotal: $${totalPrice}\n\nQuestions? Call ${config.phone}`)
+        }
       } else {
         console.error('Booking API error:', response.status, result)
         const errorMsg = result.error || result.message || `Server error (${response.status})`
