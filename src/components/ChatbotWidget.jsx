@@ -962,29 +962,37 @@ export default function ChatbotWidget() {
             {!isTyping && step === STEPS.DATE_DURATION && (
               <div className="space-y-4">
                 <div>
-                  <p className="text-dark-400 text-sm mb-2">Pick a delivery date:</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {getAvailableDates().map((date) => (
-                      <button
-                        key={date.value}
-                        onClick={() => {
-                          setBookingData(prev => ({
-                            ...prev,
-                            deliveryDate: date.label,
-                            deliveryDateRaw: date.value
-                          }))
-                          fetchAvailability(date.value)
-                        }}
-                        className={`rounded-xl p-3 text-center transition-colors ${
-                          bookingData.deliveryDateRaw === date.value
-                            ? 'bg-primary/20 border-2 border-primary-500'
-                            : 'bg-dark-700 hover:bg-dark-600 border-2 border-transparent'
-                        }`}
-                      >
-                        <Calendar className={`w-4 h-4 mx-auto mb-1 ${bookingData.deliveryDateRaw === date.value ? 'text-primary-400' : 'text-dark-400'}`} />
-                        <p className="text-xs text-white font-medium">{date.label}</p>
-                      </button>
-                    ))}
+                  <p className="text-dark-400 text-sm mb-2">Pick a delivery date (10-day rental):</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {getAvailableDates().map((date) => {
+                      const isSelected = bookingData.deliveryDateRaw === date.value
+                      const delivery = new Date(date.value + 'T12:00:00')
+                      const pickup = new Date(delivery)
+                      pickup.setDate(pickup.getDate() + 10)
+                      const deliveryStr = delivery.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                      const pickupStr = pickup.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                      return (
+                        <button
+                          key={date.value}
+                          onClick={() => {
+                            setBookingData(prev => ({
+                              ...prev,
+                              deliveryDate: date.label,
+                              deliveryDateRaw: date.value
+                            }))
+                            fetchAvailability(date.value)
+                          }}
+                          className={`rounded-xl p-3 text-left transition-colors ${
+                            isSelected
+                              ? 'bg-primary/20 border-2 border-primary-500'
+                              : 'bg-dark-700 hover:bg-dark-600 border-2 border-transparent'
+                          }`}
+                        >
+                          <p className={`text-xs font-medium ${isSelected ? 'text-primary-400' : 'text-dark-400'}`}>{deliveryStr}</p>
+                          <p className="text-dark-500 text-xs mt-0.5">to {pickupStr}</p>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
@@ -1014,15 +1022,6 @@ export default function ChatbotWidget() {
                     </p>
                   </div>
                 )}
-
-                <div>
-                  <p className="text-dark-400 text-sm mb-2">Rental period</p>
-                  <div className="bg-primary/20 border-2 border-primary-500 rounded-xl p-4 text-center">
-                    <p className="font-bold text-white text-lg">10 Days</p>
-                    <p className="text-primary-400 font-semibold">${selectedDumpster?.pricing['10-day']}</p>
-                    <p className="text-dark-400 text-xs mt-1">Standard rental • Extensions available</p>
-                  </div>
-                </div>
 
                 {bookingData.deliveryDateRaw && (
                   <button
