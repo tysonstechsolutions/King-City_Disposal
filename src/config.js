@@ -169,6 +169,7 @@ export const config = {
   // How many dumpsters of each size you own
   // This is used to prevent overbooking
   fleet: {
+    'test': 99,  // Test dumpster (remove after testing)
     '20yd': 10,  // Number of 20-yard dumpsters
     '30yd': 15,  // Number of 30-yard dumpsters
   },
@@ -178,6 +179,39 @@ export const config = {
   // ============================================
   // Change prices anytime — whole site updates automatically
   dumpsters: [
+    // ⚠️ TEST DUMPSTER - Remove after testing the full flow!
+    {
+      id: "test",
+      name: "🧪 Test Dumpster ($1)",
+      shortName: "Test",
+      description: "FOR TESTING ONLY - $1 dumpster to test the full booking flow",
+      dimensions: {
+        length: 8,
+        width: 4,
+        height: 3,
+        display: "8ft × 4ft × 3ft"
+      },
+      capacity: "1 cubic yard",
+      wheelbarrowLoads: "~5 wheelbarrow loads",
+      bestFor: [
+        "Testing the booking flow",
+        "Testing payment processing",
+        "Testing SMS and email notifications",
+        "Testing delivery and pickup workflow"
+      ],
+      recommendedFor: [],
+      pricing: {
+        "10-day": 1,
+      },
+      weightIncluded: "1 ton",
+      weightLimit: 2000,
+      overage: 1,
+      overageRate: 1,
+      weightOverage: 1,
+      extensionRate: 1,
+      extensionNotDumped: 1,
+      image: "/images/20-yard.svg"
+    },
     {
       id: "20yd",
       name: "20 Yard Dumpster",
