@@ -32,7 +32,7 @@ import {
 export default function BookingDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const toast = useToast()
+  const { toast } = useToast()
 
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -191,7 +191,10 @@ export default function BookingDetailPage() {
 
       const response = await fetch('/api/invoices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
         body: JSON.stringify(invoiceData),
       })
 
@@ -223,11 +226,11 @@ export default function BookingDetailPage() {
       })
 
       if (response.ok) {
-        alert('Invoice sent!')
+        toast.success('Invoice sent!')
         fetchBooking()
       } else {
         const err = await response.json()
-        alert(err.error || 'Failed to send invoice')
+        toast.error(err.error || 'Failed to send invoice')
       }
     } catch (err) {
       console.error('Error sending invoice:', err)
@@ -469,14 +472,16 @@ export default function BookingDetailPage() {
                       Send to Customer
                     </button>
 
-                    <a
-                      href={`/invoice/${invoiceCreated?.invoice_number || ''}`}
-                      target="_blank"
-                      className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Customer View
-                    </a>
+                    {invoiceCreated?.invoice_number && (
+                      <a
+                        href={`/invoice/${invoiceCreated.invoice_number}`}
+                        target="_blank"
+                        className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Customer View
+                      </a>
+                    )}
                   </div>
                 </div>
               ) : (

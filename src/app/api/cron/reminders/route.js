@@ -24,14 +24,13 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
 // Verify cron secret (optional security)
 function verifyCronSecret(request) {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  
-  // If no secret configured, allow (for easier testing)
-  if (!cronSecret) return true;
-  
+  if (!cronSecret) return false;
   return authHeader === `Bearer ${cronSecret}`;
 }
 
@@ -74,14 +73,13 @@ async function sendSMS(to, message) {
 // Query Supabase
 async function queryBookings(filter) {
   const supabaseUrl = config.supabase.url;
-  const supabaseKey = config.supabase.anonKey;
 
   const response = await fetch(
     `${supabaseUrl}/rest/v1/bookings?${filter}`,
     {
       headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
       },
     }
   );
@@ -95,14 +93,13 @@ async function queryBookings(filter) {
 // Update booking
 async function updateBooking(id, updates) {
   const supabaseUrl = config.supabase.url;
-  const supabaseKey = config.supabase.anonKey;
 
   await fetch(`${supabaseUrl}/rest/v1/bookings?id=eq.${id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
+      'apikey': getSupabaseKey(),
+      'Authorization': `Bearer ${getSupabaseKey()}`,
     },
     body: JSON.stringify(updates),
   });

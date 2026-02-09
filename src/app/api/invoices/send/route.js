@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import { sendEmail, invoiceEmail } from '../../../../lib/notifications';
+import { requireAdminAuth } from '../../../../lib/adminAuth';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -48,6 +49,11 @@ async function sendSMS(to, message) {
 // SEND INVOICE
 // ============================================
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const body = await request.json();
     const { invoice_id, reminder = false } = body;

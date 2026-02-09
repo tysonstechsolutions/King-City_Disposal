@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
@@ -20,7 +20,10 @@ import {
   Receipt,
   CreditCard,
   Banknote,
-  AlertCircle
+  AlertCircle,
+  Users,
+  ChevronDown,
+  X
 } from 'lucide-react'
 
 export default function AdminPaymentsPage() {
@@ -39,6 +42,7 @@ export default function AdminPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [dateRange, setDateRange] = useState('all')
+  const [customerFilter, setCustomerFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const perPage = 25
 
@@ -61,17 +65,20 @@ export default function AdminPaymentsPage() {
       }
 
       if (dateRange !== 'all') {
-        const now = new Date()
         let startDate
 
         if (dateRange === 'today') {
-          startDate = new Date(now.setHours(0, 0, 0, 0))
+          startDate = new Date()
+          startDate.setHours(0, 0, 0, 0)
         } else if (dateRange === 'week') {
-          startDate = new Date(now.setDate(now.getDate() - 7))
+          startDate = new Date()
+          startDate.setDate(startDate.getDate() - 7)
         } else if (dateRange === 'month') {
-          startDate = new Date(now.setMonth(now.getMonth() - 1))
+          startDate = new Date()
+          startDate.setMonth(startDate.getMonth() - 1)
         } else if (dateRange === 'year') {
-          startDate = new Date(now.setFullYear(now.getFullYear() - 1))
+          startDate = new Date()
+          startDate.setFullYear(startDate.getFullYear() - 1)
         }
 
         if (startDate) {
@@ -244,12 +251,43 @@ export default function AdminPaymentsPage() {
     a.click()
   }
 
+  // Get unique customers for filter dropdown
+  const uniqueCustomers = useMemo(() => {
+    const customers = new Map()
+    transactions.forEach(t => {
+      if (t.customer_name) {
+        const existing = customers.get(t.customer_name)
+        if (existing) {
+          existing.count++
+        } else {
+          customers.set(t.customer_name, { name: t.customer_name, count: 1 })
+        }
+      }
+    })
+    return Array.from(customers.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [transactions])
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setTypeFilter('all')
+    setDateRange('all')
+    setCustomerFilter('all')
+    setCurrentPage(1)
+  }
+
+  const hasActiveFilters = searchTerm || typeFilter !== 'all' || dateRange !== 'all' || customerFilter !== 'all'
+
   const filteredTransactions = transactions.filter(t => {
+    // Customer filter
+    if (customerFilter !== 'all' && t.customer_name !== customerFilter) return false
+
+    // Search filter
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
     return (
       t.receipt_number?.toLowerCase().includes(search) ||
-      t.customer_name?.toLowerCase().includes(search) ||
+      t.customer_name?.toLowerCase().startsWith(search) ||
+      t.customer_name?.toLowerCase().split(' ').some(part => part.startsWith(search)) ||
       t.customer_phone?.includes(search) ||
       t.service_address?.toLowerCase().includes(search)
     )
@@ -335,7 +373,7 @@ export default function AdminPaymentsPage() {
 
         {/* Filters */}
         <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-3">
             {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
@@ -344,36 +382,71 @@ export default function AdminPaymentsPage() {
                 placeholder="Search by receipt #, customer, phone, address..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none placeholder:text-dark-500"
               />
             </div>
 
+            {/* Customer Filter */}
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+              <select
+                value={customerFilter}
+                onChange={(e) => { setCustomerFilter(e.target.value); setCurrentPage(1); }}
+                className="pl-10 pr-8 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer min-w-[180px]"
+              >
+                <option value="all">All Customers</option>
+                {uniqueCustomers.map(c => (
+                  <option key={c.name} value={c.name}>
+                    {c.name} ({c.count})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+            </div>
+
             {/* Type Filter */}
-            <select
-              value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="px-4 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
-            >
-              <option value="all">All Types</option>
-              <option value="booking">Bookings</option>
-              <option value="extension">Extensions</option>
-              <option value="overage">Overages</option>
-              <option value="late_fee">Late Fees</option>
-              <option value="custom">Custom</option>
-            </select>
+            <div className="relative">
+              <select
+                value={typeFilter}
+                onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+                className="px-4 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
+              >
+                <option value="all">All Types</option>
+                <option value="booking">Bookings</option>
+                <option value="extension">Extensions</option>
+                <option value="overage">Overages</option>
+                <option value="late_fee">Late Fees</option>
+                <option value="custom">Custom</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+            </div>
 
             {/* Date Filter */}
-            <select
-              value={dateRange}
-              onChange={(e) => { setDateRange(e.target.value); setCurrentPage(1); }}
-              className="px-4 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">Last 7 Days</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-            </select>
+            <div className="relative">
+              <select
+                value={dateRange}
+                onChange={(e) => { setDateRange(e.target.value); setCurrentPage(1); }}
+                className="px-4 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+            </div>
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-2 px-4 py-2.5 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
@@ -391,8 +464,16 @@ export default function AdminPaymentsPage() {
           ) : filteredTransactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-dark-400">
               <Receipt className="w-12 h-12 mb-3 text-dark-600" />
-              <p className="font-medium">No transactions found</p>
-              <p className="text-sm">Payments will appear here after customers pay</p>
+              <p className="font-medium">
+                {hasActiveFilters ? 'No transactions match your filters' : 'No transactions found'}
+              </p>
+              {hasActiveFilters ? (
+                <button onClick={clearFilters} className="mt-2 text-primary hover:underline text-sm">
+                  Clear filters
+                </button>
+              ) : (
+                <p className="text-sm">Payments will appear here after customers pay</p>
+              )}
             </div>
           ) : (
             <>

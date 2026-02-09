@@ -397,7 +397,7 @@ async function notifyOwnerOfOverdue(overdueInvoices) {
   const ownerPhone = process.env.OWNER_PHONE;
   if (!ownerPhone || overdueInvoices.length === 0) return;
 
-  const seriouslyOverdue = overdueInvoices.filter(i => Math.abs(i.days_until_due) >= 7);
+  const seriouslyOverdue = overdueInvoices.filter(i => i.days_since_reference >= 37);
   if (seriouslyOverdue.length === 0) return;
 
   const formatCurrency = (cents) => `$${((cents || 0) / 100).toFixed(2)}`;
@@ -408,8 +408,8 @@ async function notifyOwnerOfOverdue(overdueInvoices) {
 ${seriouslyOverdue.length} invoice${seriouslyOverdue.length > 1 ? 's' : ''} 7+ days overdue
 Total: ${formatCurrency(totalOverdue)}
 
-${seriouslyOverdue.slice(0, 5).map(i => 
-  `• ${i.customer_name}: ${formatCurrency(i.balance_due_cents || i.total_cents)} (${Math.abs(i.days_until_due)}d)`
+${seriouslyOverdue.slice(0, 5).map(i =>
+  `• ${i.customer_name}: ${formatCurrency(i.balance_due_cents || i.total_cents)} (${i.days_since_reference - 30}d overdue)`
 ).join('\n')}${seriouslyOverdue.length > 5 ? `\n...and ${seriouslyOverdue.length - 5} more` : ''}
 
 View all: /admin/invoices`;
@@ -423,7 +423,7 @@ View all: /admin/invoices`;
 export async function GET(request) {
   // Verify cron secret if configured
   const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

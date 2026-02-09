@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
+import { requireAdminAuth } from '../../../lib/adminAuth';
 
 // ============================================
 // GENERATE RECEIPT NUMBER
@@ -91,6 +92,16 @@ Thank you!
 // CREATE TRANSACTION
 // ============================================
 export async function POST(request) {
+  // Allow internal calls from webhook via internal secret, otherwise require admin auth
+  const internalSecret = request.headers.get('x-internal-secret');
+  const isInternalCall = internalSecret && internalSecret === process.env.CRON_SECRET;
+  if (!isInternalCall) {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+  }
+
   try {
     const body = await request.json();
     const {
@@ -223,7 +234,7 @@ export async function GET(request) {
 
   try {
     const supabaseUrl = config.supabase.url;
-    const supabaseKey = config.supabase.anonKey;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
     let query = '';
     if (receiptNumber) {

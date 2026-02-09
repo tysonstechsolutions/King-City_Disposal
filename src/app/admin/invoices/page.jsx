@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
+import { useToast } from '../../../components/Toast'
 import {
   FileText,
   Plus,
@@ -17,8 +18,6 @@ import {
   Loader2,
   RefreshCw,
   Calendar,
-  MoreVertical,
-  MessageSquare,
   FileSpreadsheet,
   Users,
   ChevronDown,
@@ -29,6 +28,7 @@ import {
 
 export default function InvoicesPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -72,7 +72,7 @@ export default function InvoicesPage() {
   const sendInvoice = async (e, invoice) => {
     e.stopPropagation()
     if (!invoice.customer_phone && !invoice.customer_email) {
-      alert('No phone or email on this invoice')
+      toast.error('No phone or email on this invoice')
       return
     }
 
@@ -80,14 +80,24 @@ export default function InvoicesPage() {
     try {
       const response = await fetch('/api/invoices/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
         body: JSON.stringify({ invoice_id: invoice.id }),
       })
 
       if (response.ok) {
+        const result = await response.json()
+        if (result.sms_sent || result.email_sent) {
+          toast.success(`Invoice sent${result.sms_sent ? ' via SMS' : ''}${result.email_sent ? ' via Email' : ''}`)
+        } else {
+          toast.warning('Invoice updated but delivery failed - check Twilio/Resend config')
+        }
         fetchInvoices()
       } else {
-        alert('Failed to send invoice')
+        const err = await response.json().catch(() => ({}))
+        toast.error(err.error || 'Failed to send invoice')
       }
     } catch (err) {
       console.error('Error sending invoice:', err)
@@ -159,11 +169,13 @@ export default function InvoicesPage() {
   const uniqueCustomers = useMemo(() => {
     const customers = new Map()
     invoices.forEach(i => {
-      if (i.customer_name && !customers.has(i.customer_name)) {
-        customers.set(i.customer_name, {
-          name: i.customer_name,
-          count: invoices.filter(inv => inv.customer_name === i.customer_name).length
-        })
+      if (i.customer_name) {
+        const existing = customers.get(i.customer_name)
+        if (existing) {
+          existing.count++
+        } else {
+          customers.set(i.customer_name, { name: i.customer_name, count: 1 })
+        }
       }
     })
     return Array.from(customers.values()).sort((a, b) => a.name.localeCompare(b.name))
@@ -194,12 +206,13 @@ export default function InvoicesPage() {
       // Customer filter
       if (customerFilter !== 'all' && i.customer_name !== customerFilter) return false
 
-      // Search filter
+      // Search filter - match from beginning of name, substring for other fields
       if (!searchTerm) return true
       const search = searchTerm.toLowerCase()
       return (
         i.invoice_number?.toLowerCase().includes(search) ||
-        i.customer_name?.toLowerCase().includes(search) ||
+        i.customer_name?.toLowerCase().startsWith(search) ||
+        i.customer_name?.toLowerCase().split(' ').some(part => part.startsWith(search)) ||
         i.customer_phone?.includes(search) ||
         i.service_address?.toLowerCase().includes(search)
       )

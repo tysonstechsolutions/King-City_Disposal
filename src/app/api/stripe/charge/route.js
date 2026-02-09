@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { config } from '../../../../config'
+import { requireAdminAuth } from '../../../../lib/adminAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,11 @@ function getStripe() {
 
 // POST - Create a PaymentIntent for manual card entry
 export async function POST(request) {
+  const auth = await requireAdminAuth(request)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status })
+  }
+
   try {
     const { amount_cents, customer_name, customer_email, invoice_id, description } = await request.json()
 

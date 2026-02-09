@@ -149,15 +149,16 @@ export default function InvoiceDetailPage() {
     }
 
     if (isOverdue || status === 'overdue') {
-      return <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-700">Overdue</span>
+      return <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Overdue</span>
     }
 
     const badges = {
       draft: <span className="px-3 py-1 text-sm font-medium rounded-full bg-dark-700 text-dark-200">Draft</span>,
-      sent: <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-700">Sent</span>,
-      viewed: <span className="px-3 py-1 text-sm font-medium rounded-full bg-purple-100 text-purple-700">Viewed</span>,
-      partial: <span className="px-3 py-1 text-sm font-medium rounded-full bg-amber-100 text-amber-700">Partial</span>,
-      paid: <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700">Paid</span>,
+      sent: <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Sent</span>,
+      viewed: <span className="px-3 py-1 text-sm font-medium rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">Viewed</span>,
+      partial: <span className="px-3 py-1 text-sm font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Partial</span>,
+      paid: <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">Paid</span>,
+      overdue: <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Overdue</span>,
       void: <span className="px-3 py-1 text-sm font-medium rounded-full bg-dark-700 text-dark-400">Void</span>,
     }
     return badges[status] || badges.draft
@@ -202,7 +203,8 @@ export default function InvoiceDetailPage() {
       const subtotal = calculateSubtotal(editedInvoice.line_items)
       const lateFee = editedInvoice.late_fee_cents || 0
       const ccFee = editedInvoice.cc_fee_cents || 0
-      const total = subtotal + lateFee + ccFee
+      const discount = editedInvoice.discount_cents || 0
+      const total = subtotal + lateFee + ccFee - discount
 
       const response = await fetch(
         `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
@@ -227,6 +229,7 @@ export default function InvoiceDetailPage() {
             subtotal_cents: subtotal,
             late_fee_cents: lateFee,
             cc_fee_cents: ccFee,
+            discount_cents: discount,
             total_cents: total,
             notes: editedInvoice.notes,
             due_date: editedInvoice.due_date,
@@ -266,15 +269,24 @@ export default function InvoiceDetailPage() {
     try {
       const response = await fetch('/api/invoices/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
         body: JSON.stringify({ invoice_id: invoice.id }),
       })
 
       if (response.ok) {
-        toast.success('Invoice sent!')
+        const result = await response.json()
+        if (result.sms_sent || result.email_sent) {
+          toast.success(`Invoice sent${result.sms_sent ? ' via SMS' : ''}${result.email_sent ? ' via Email' : ''}`)
+        } else {
+          toast.warning('Invoice saved but delivery failed - check Twilio/Resend config')
+        }
         fetchInvoice()
       } else {
-        toast.error('Failed to send invoice')
+        const err = await response.json().catch(() => ({}))
+        toast.error(err.error || 'Failed to send invoice')
       }
     } catch (err) {
       console.error('Error sending:', err)
@@ -744,6 +756,20 @@ export default function InvoiceDetailPage() {
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
+                      <label className="text-sm text-dark-400">Credit / Discount</label>
+                      <div className="relative w-32">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500">-$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editedInvoice.discount_cents ? (editedInvoice.discount_cents / 100).toFixed(2) : ''}
+                          onChange={(e) => setEditedInvoice({ ...editedInvoice, discount_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
+                          placeholder="0.00"
+                          className="w-full pl-8 pr-3 py-2 bg-dark-700 border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-green-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <label className="text-sm text-dark-400">CC Processing Fee</label>
                       <div className="relative w-32">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
@@ -763,7 +789,8 @@ export default function InvoiceDetailPage() {
                         {formatCurrency(
                           calculateSubtotal(editedInvoice.line_items) +
                           (editedInvoice.late_fee_cents || 0) +
-                          (editedInvoice.cc_fee_cents || 0)
+                          (editedInvoice.cc_fee_cents || 0) -
+                          (editedInvoice.discount_cents || 0)
                         )}
                       </span>
                     </div>
@@ -772,21 +799,28 @@ export default function InvoiceDetailPage() {
               ) : (
                 <div className="space-y-3">
                   {invoice.line_items?.map((item, index) => (
-                    <div key={index} className="flex justify-between py-2 border-b border-neutral-100 last:border-0">
+                    <div key={index} className="flex justify-between py-2 border-b border-dark-700 last:border-0">
                       <span className="text-dark-200">{item.description}</span>
                       <span className="font-medium">{formatCurrency(item.amount_cents)}</span>
                     </div>
                   ))}
 
                   {invoice.late_fee_cents > 0 && (
-                    <div className="flex justify-between py-2 border-b border-neutral-100 text-red-600">
+                    <div className="flex justify-between py-2 border-b border-dark-700 text-red-400">
                       <span>Late Fee</span>
                       <span className="font-medium">{formatCurrency(invoice.late_fee_cents)}</span>
                     </div>
                   )}
 
+                  {invoice.discount_cents > 0 && (
+                    <div className="flex justify-between py-2 border-b border-dark-700 text-green-400">
+                      <span>Credit / Discount</span>
+                      <span className="font-medium">-{formatCurrency(invoice.discount_cents)}</span>
+                    </div>
+                  )}
+
                   {invoice.cc_fee_cents > 0 && (
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
+                    <div className="flex justify-between py-2 border-b border-dark-700">
                       <span className="text-dark-200">Processing Fee</span>
                       <span className="font-medium">{formatCurrency(invoice.cc_fee_cents)}</span>
                     </div>
@@ -887,7 +921,7 @@ export default function InvoiceDetailPage() {
             </div>
 
             {/* Danger Zone */}
-            <div className="bg-dark-800 border border-dark-700 rounded-xl border border-red-200 p-6">
+            <div className="bg-dark-800 border border-red-500/30 rounded-xl p-6">
               <h2 className="text-lg font-semibold text-red-600 mb-2">Danger Zone</h2>
               <p className="text-sm text-dark-400 mb-4">Permanently delete this invoice. This cannot be undone.</p>
 

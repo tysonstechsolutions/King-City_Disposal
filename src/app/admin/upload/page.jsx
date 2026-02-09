@@ -113,7 +113,7 @@ export default function UploadPage() {
 
       if (response.ok) {
         const data = await response.json()
-        toast.success('Uploaded! AI is analyzing...')
+        toast.success('Uploaded! AI is analyzing in the background...')
 
         // Reset form
         setSelectedFile(null)
@@ -122,20 +122,22 @@ export default function UploadPage() {
         setShowUploadForm(false)
         if (fileInputRef.current) fileInputRef.current.value = ''
 
-        // Auto-trigger AI parsing
+        // Fire-and-forget AI parsing (don't block UI)
         if (data.document?.id) {
-          try {
-            const parseResponse = await fetch('/api/documents/parse', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ document_id: data.document.id }),
+          fetch('/api/documents/parse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ document_id: data.document.id }),
+          })
+            .then(parseResponse => {
+              if (parseResponse.ok) {
+                toast.success('Document analyzed successfully!')
+              }
+              fetchRecentUploads()
             })
-            if (parseResponse.ok) {
-              toast.success('Document analyzed successfully!')
-            }
-          } catch (parseErr) {
-            console.error('Auto-parse error:', parseErr)
-          }
+            .catch(parseErr => {
+              console.error('Auto-parse error:', parseErr)
+            })
         }
 
         fetchRecentUploads()

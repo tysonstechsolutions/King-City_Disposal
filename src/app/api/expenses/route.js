@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
+import { requireAdminAuth } from '../../../lib/adminAuth';
 
 // Force dynamic rendering (not static)
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,11 @@ const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.sup
 // GET - Fetch expenses with filters
 // ============================================
 export async function GET(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('start_date');
   const endDate = searchParams.get('end_date');
@@ -105,6 +111,11 @@ export async function GET(request) {
 // POST - Export expenses as CSV
 // ============================================
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const { start_date, end_date, tax_year, format } = await request.json();
 

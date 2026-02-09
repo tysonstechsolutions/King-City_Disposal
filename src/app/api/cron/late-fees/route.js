@@ -15,6 +15,8 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
 async function sendSMS(to, message) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -46,8 +48,8 @@ async function queryBookings(filter) {
     `${config.supabase.url}/rest/v1/bookings?${filter}`,
     {
       headers: {
-        'apikey': config.supabase.anonKey,
-        'Authorization': `Bearer ${config.supabase.anonKey}`,
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
       },
     }
   );
@@ -59,8 +61,8 @@ async function updateBooking(id, updates) {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': config.supabase.anonKey,
-      'Authorization': `Bearer ${config.supabase.anonKey}`,
+      'apikey': getSupabaseKey(),
+      'Authorization': `Bearer ${getSupabaseKey()}`,
     },
     body: JSON.stringify(updates),
   });
@@ -101,7 +103,7 @@ function formatPhone(phone) {
 export async function GET(request) {
   // Verify cron secret
   const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

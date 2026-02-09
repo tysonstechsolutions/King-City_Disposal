@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Upload, FileSpreadsheet, Check, X, ChevronLeft, ChevronRight, Save, AlertCircle } from 'lucide-react';
 
 export default function ImportInvoicesPage() {
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
+      window.location.href = '/admin';
+      return;
+    }
+  }, []);
   // Step: 'upload' | 'review' | 'complete'
   const [step, setStep] = useState('upload');
   const [file, setFile] = useState(null);

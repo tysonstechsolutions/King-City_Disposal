@@ -35,7 +35,7 @@ import {
 export default function CustomerDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const toast = useToast()
+  const { toast } = useToast()
 
   const [customer, setCustomer] = useState(null)
   const [bookings, setBookings] = useState([])
@@ -129,7 +129,14 @@ export default function CustomerDetailPage() {
             'apikey': config.supabase.anonKey,
             'Authorization': `Bearer ${config.supabase.anonKey}`,
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            name: formData.name,
+            phone: formData.phone,
+            email: formData.email,
+            address: formData.address,
+            company_name: formData.company_name,
+            notes: formData.notes,
+          }),
         }
       )
       if (response.ok) {
@@ -180,7 +187,10 @@ export default function CustomerDetailPage() {
     try {
       const response = await fetch('/api/invoices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
         body: JSON.stringify({
           customer_id: customer.id,
           customer_name: customer.name,

@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
 import { invoiceCreateSchema, validateInput } from '../../../lib/validations';
+import { requireAdminAuth } from '../../../lib/adminAuth';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -45,6 +46,11 @@ async function generateInvoiceNumber() {
 // CREATE INVOICE
 // ============================================
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const body = await request.json();
     
@@ -192,6 +198,15 @@ export async function GET(request) {
   const invoiceNumber = searchParams.get('invoice_number');
   const customerId = searchParams.get('customer_id');
   const status = searchParams.get('status');
+
+  // Public access allowed for single invoice lookup by invoice_number (customer view)
+  // All other queries require admin auth
+  if (!invoiceNumber) {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+  }
 
   try {
     let query = 'order=created_at.desc';

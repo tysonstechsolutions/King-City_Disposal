@@ -30,15 +30,26 @@ export async function POST(request) {
   const formData = await request.formData();
   const callStatus = formData.get('CallStatus');
   const from = formData.get('From');
-  
+
   console.log(`📞 Incoming call from ${from}, status: ${callStatus}`);
+
+  const ownerPhone = process.env.OWNER_PHONE;
+  const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+
+  // If owner phone not configured, go straight to voicemail message
+  if (!ownerPhone) {
+    return twiml(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Thanks for calling. We're unable to take your call right now. We'll text you right back to help with your dumpster rental. Goodbye.</Say>
+</Response>`);
+  }
 
   // Ring for 20 seconds, then go to voicemail
   // The status callback will handle the missed call text
   const response = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="20" callerId="${process.env.TWILIO_PHONE_NUMBER}" action="/api/twilio/voice/status">
-    <Number>${process.env.OWNER_PHONE}</Number>
+  <Dial timeout="20" callerId="${twilioNumber}" action="/api/twilio/voice/status">
+    <Number>${ownerPhone}</Number>
   </Dial>
   <Say voice="alice">Sorry we missed you. We'll text you right back to help with your dumpster rental. Goodbye.</Say>
 </Response>`;

@@ -139,10 +139,10 @@ export default function CapacityCalendarPage() {
 
   const getCapacityColor = (out, total) => {
     const pct = out / total
-    if (pct >= 0.9) return 'bg-red-100 border-red-300'
-    if (pct >= 0.7) return 'bg-orange-100 border-orange-300'
-    if (pct >= 0.5) return 'bg-yellow-100 border-yellow-300'
-    return 'bg-green-100 border-green-300'
+    if (pct >= 0.9) return 'bg-red-500/20 border-red-500/50 text-red-400'
+    if (pct >= 0.7) return 'bg-orange-500/20 border-orange-500/50 text-orange-400'
+    if (pct >= 0.5) return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+    return 'bg-green-500/20 border-green-500/50 text-green-400'
   }
 
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -199,9 +199,9 @@ export default function CapacityCalendarPage() {
               </div>
             )
           })}
-          <div className="bg-primary-50 rounded-xl p-4 text-center border border-primary-200">
-            <Package className="w-8 h-8 text-primary-600 mx-auto mb-2" />
-            <p className="text-primary-700 font-bold">{totalDumpsters} Total</p>
+          <div className="bg-primary-500/20 rounded-xl p-4 text-center border border-primary-500/30">
+            <Package className="w-8 h-8 text-primary-400 mx-auto mb-2" />
+            <p className="text-primary-400 font-bold">{totalDumpsters} Total</p>
           </div>
         </div>
 
@@ -281,7 +281,7 @@ export default function CapacityCalendarPage() {
                           <div
                             key={size}
                             className={`text-xs px-2 py-1 rounded flex items-center justify-between ${
-                              isMaxed ? 'bg-red-100 text-red-700' : 'bg-dark-700 text-dark-300'
+                              isMaxed ? 'bg-red-500/20 text-red-400' : 'bg-dark-700 text-dark-300'
                             }`}
                           >
                             <span>{size.replace('yd', '')}</span>
@@ -306,27 +306,27 @@ export default function CapacityCalendarPage() {
         {/* Legend */}
         <div className="mt-6 flex flex-wrap gap-4 justify-center text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-100 border border-green-300"></div>
+            <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/50"></div>
             <span className="text-dark-300">&lt;50% booked</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-yellow-100 border border-yellow-300"></div>
+            <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/50"></div>
             <span className="text-dark-300">50-70% booked</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-orange-100 border border-orange-300"></div>
+            <div className="w-4 h-4 rounded bg-orange-500/20 border border-orange-500/50"></div>
             <span className="text-dark-300">70-90% booked</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-100 border border-red-300"></div>
+            <div className="w-4 h-4 rounded bg-red-500/20 border border-red-500/50"></div>
             <span className="text-dark-300">&gt;90% booked</span>
           </div>
         </div>
 
         {/* Capacity Note */}
-        <div className="mt-6 bg-primary-50 border border-primary-200 rounded-xl p-4 text-center">
-          <p className="text-neutral-700 text-sm">
-            Fleet sizes are configured in <code className="text-primary-600 bg-white px-2 py-0.5 rounded">src/config.js</code> under the <code className="text-primary-600 bg-white px-2 py-0.5 rounded">fleet</code> property.
+        <div className="mt-6 bg-dark-800 border border-dark-700 rounded-xl p-4 text-center">
+          <p className="text-dark-400 text-sm">
+            Fleet sizes are configured in <code className="text-primary-400 bg-dark-700 px-2 py-0.5 rounded">src/config.js</code> under the <code className="text-primary-400 bg-dark-700 px-2 py-0.5 rounded">fleet</code> property.
           </p>
         </div>
       </div>

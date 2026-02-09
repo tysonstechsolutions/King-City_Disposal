@@ -63,7 +63,7 @@ async function updateBooking(id, updates) {
 
 async function getBooking(id) {
   const supabaseUrl = config.supabase.url;
-  const supabaseKey = config.supabase.anonKey;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
   const response = await fetch(
     `${supabaseUrl}/rest/v1/bookings?id=eq.${id}`,
@@ -114,7 +114,10 @@ async function createTransaction(data) {
   try {
     const response = await fetch(`${siteUrl}/api/transactions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.CRON_SECRET || '',
+      },
       body: JSON.stringify(data),
     });
 

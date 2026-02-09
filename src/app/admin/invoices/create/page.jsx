@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { config } from '../../../../config'
+import { useToast } from '../../../../components/Toast'
 import {
   ArrowLeft,
   Plus,
@@ -28,6 +29,7 @@ import {
 
 function CreateInvoiceContent() {
   const router = useRouter()
+  const toast = useToast()
   const searchParams = useSearchParams()
   const bookingId = searchParams.get('booking')
   const customerId = searchParams.get('customer')
@@ -247,12 +249,12 @@ function CreateInvoiceContent() {
 
   const handleSubmit = async (sendNow = false) => {
     if (!invoice.customer_name) {
-      alert('Customer name is required')
+      toast.error('Customer name is required')
       return
     }
 
     if (invoice.line_items.every(item => !item.description || item.amount_cents <= 0)) {
-      alert('Add at least one line item')
+      toast.error('Add at least one line item')
       return
     }
 
@@ -308,7 +310,10 @@ function CreateInvoiceContent() {
 
       const response = await fetch('/api/invoices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
         body: JSON.stringify(payload),
       })
 
@@ -319,19 +324,25 @@ function CreateInvoiceContent() {
           // Send the invoice
           await fetch('/api/invoices/send', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+            },
             body: JSON.stringify({ invoice_id: data.invoice.id }),
           })
+          toast.success('Invoice created and sent successfully')
+        } else {
+          toast.success('Invoice created successfully')
         }
 
         router.push('/admin/invoices')
       } else {
         const err = await response.json()
-        alert(err.error || 'Failed to create invoice')
+        toast.error(err.error || 'Failed to create invoice')
       }
     } catch (err) {
       console.error('Error creating invoice:', err)
-      alert('Error creating invoice')
+      toast.error('Error creating invoice')
     }
     setSaving(false)
   }
@@ -846,21 +857,25 @@ function CreateInvoiceContent() {
 
               const response = await fetch('/api/invoices', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+                },
                 body: JSON.stringify(payload),
               })
 
               if (response.ok) {
                 const data = await response.json()
+                toast.success('Invoice saved successfully')
                 // Redirect to invoice page with payment action
                 router.push(`/admin/invoices/${data.invoice?.id}?action=payment`)
               } else {
                 const err = await response.json()
-                alert(err.error || 'Failed to save invoice')
+                toast.error(err.error || 'Failed to save invoice')
               }
             } catch (err) {
               console.error('Error saving invoice:', err)
-              alert('Error saving invoice')
+              toast.error('Error saving invoice')
             }
             setSaving(false)
           }}

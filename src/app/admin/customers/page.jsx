@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
+import { useToast } from '../../../components/Toast'
 import {
   Users,
-  Plus,
   Search,
   Phone,
   Mail,
@@ -16,16 +16,21 @@ import {
   Star,
   Building2,
   DollarSign,
-  Filter,
   Loader2,
-  UserPlus
+  UserPlus,
+  ChevronDown,
+  Filter,
+  X,
+  MapPin as MapPinIcon
 } from 'lucide-react'
 
 export default function CustomersPage() {
+  const { toast } = useToast()
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filter, setFilter] = useState('all') // 'all', 'vip', 'flagged', 'business'
+  const [cityFilter, setCityFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
@@ -64,23 +69,52 @@ export default function CustomersPage() {
     }).format((cents || 0) / 100)
   }
 
+  // Get unique cities for filter dropdown
+  const uniqueCities = useMemo(() => {
+    const cities = new Map()
+    customers.forEach(c => {
+      if (c.city) {
+        const city = c.city.trim()
+        const existing = cities.get(city)
+        if (existing) {
+          existing.count++
+        } else {
+          cities.set(city, { name: city, count: 1 })
+        }
+      }
+    })
+    return Array.from(cities.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [customers])
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setFilter('all')
+    setCityFilter('all')
+  }
+
+  const hasActiveFilters = searchTerm || filter !== 'all' || cityFilter !== 'all'
+
   const filteredCustomers = customers.filter(c => {
-    // Apply filter
+    // Apply type filter
     if (filter === 'vip' && !c.is_vip) return false
     if (filter === 'flagged' && !c.is_flagged) return false
     if (filter === 'business' && !c.is_business) return false
-    
-    // Apply search
+
+    // Apply city filter
+    if (cityFilter !== 'all' && c.city?.trim() !== cityFilter) return false
+
+    // Apply search - match from beginning of name/company, substring for other fields
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
     return (
-      c.name?.toLowerCase().includes(search) ||
-      c.company_name?.toLowerCase().includes(search) ||
+      c.name?.toLowerCase().startsWith(search) ||
+      c.name?.toLowerCase().split(' ').some(part => part.startsWith(search)) ||
+      c.company_name?.toLowerCase().startsWith(search) ||
       c.phone?.includes(search) ||
       c.email?.toLowerCase().includes(search) ||
       c.address?.toLowerCase().includes(search) ||
-      c.city?.toLowerCase().includes(search) ||
-      c.zip?.includes(search)
+      c.city?.toLowerCase().startsWith(search) ||
+      c.zip?.startsWith(search)
     )
   })
 
@@ -137,7 +171,8 @@ export default function CustomersPage() {
 
         {/* Search & Filters */}
         <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-3">
+            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
               <input
@@ -145,29 +180,54 @@ export default function CustomersPage() {
                 placeholder="Search by name, phone, email, address..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
             </div>
-            <div className="flex gap-2">
-              {[
-                { value: 'all', label: 'All' },
-                { value: 'vip', label: '⭐ VIP' },
-                { value: 'flagged', label: '⚠️ Flagged' },
-                { value: 'business', label: '🏢 Business' },
-              ].map(f => (
-                <button
-                  key={f.value}
-                  onClick={() => setFilter(f.value)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    filter === f.value
-                      ? 'bg-primary text-white'
-                      : 'bg-dark-700 text-dark-200 hover:bg-dark-600'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+
+            {/* Type Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="pl-10 pr-8 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer min-w-[150px]"
+              >
+                <option value="all">All Types</option>
+                <option value="vip">VIP</option>
+                <option value="flagged">Flagged</option>
+                <option value="business">Business</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
             </div>
+
+            {/* City Filter */}
+            <div className="relative">
+              <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="pl-10 pr-8 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer min-w-[160px]"
+              >
+                <option value="all">All Cities</option>
+                {uniqueCities.map(c => (
+                  <option key={c.name} value={c.name}>
+                    {c.name} ({c.count})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+            </div>
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-2 px-4 py-2.5 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
@@ -181,14 +241,20 @@ export default function CustomersPage() {
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-dark-600 mx-auto mb-3" />
               <p className="text-dark-400">
-                {searchTerm ? 'No customers match your search' : 'No customers yet'}
+                {hasActiveFilters ? 'No customers match your filters' : 'No customers yet'}
               </p>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="mt-4 text-primary hover:underline"
-              >
-                Add your first customer
-              </button>
+              {hasActiveFilters ? (
+                <button onClick={clearFilters} className="mt-4 text-primary hover:underline">
+                  Clear filters
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="mt-4 text-primary hover:underline"
+                >
+                  Add your first customer
+                </button>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-dark-700">
@@ -272,6 +338,7 @@ export default function CustomersPage() {
             setShowAddModal(false)
             fetchCustomers()
           }}
+          toast={toast}
         />
       )}
     </div>
@@ -279,7 +346,7 @@ export default function CustomersPage() {
 }
 
 // Add Customer Modal Component
-function AddCustomerModal({ onClose, onSuccess }) {
+function AddCustomerModal({ onClose, onSuccess, toast }) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -314,11 +381,11 @@ function AddCustomerModal({ onClose, onSuccess }) {
         onSuccess()
       } else {
         const err = await response.json()
-        alert(err.error || 'Failed to create customer')
+        toast.error(err.error || 'Failed to create customer')
       }
     } catch (err) {
       console.error('Error creating customer:', err)
-      alert('Error creating customer')
+      toast.error('Error creating customer')
     }
     setLoading(false)
   }

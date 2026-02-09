@@ -24,11 +24,10 @@ export const config = {
   tagline: "Fast, Reliable Dumpster Rentals in Southern Illinois",
   phone: "(618) 231-8481",           // Scheduling line
   phoneRaw: "6182318481",
-  billingPhone: "(618) 231-8430",    // Billing line
-  billingPhoneRaw: "6182318430",
+  billingPhone: "(618) 231-8380",    // Billing line
+  billingPhoneRaw: "6182318380",
   email: "Kingcitydisposal@gmail.com",
   websiteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.kingcitydisposal.com",
-  ein: "46-2094412",
 
   // ============================================
   // 🔍 GOOGLE SEARCH CONSOLE (CRITICAL FOR SEO!)

@@ -23,6 +23,14 @@ import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import Anthropic from '@anthropic-ai/sdk';
 
+const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+// Escape user content for TwiML XML to prevent injection
+function escapeXml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
 // ============================================
 // AI VISION - Extract data from weight tickets
 // ============================================
@@ -153,8 +161,8 @@ async function saveDocument(data) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': config.supabase.anonKey,
-      'Authorization': `Bearer ${config.supabase.anonKey}`,
+      'apikey': getSupabaseKey(),
+      'Authorization': `Bearer ${getSupabaseKey()}`,
       'Prefer': 'return=representation',
     },
     body: JSON.stringify(data),
@@ -194,8 +202,8 @@ async function queryBookings(filter) {
     `${config.supabase.url}/rest/v1/bookings?${filter}`,
     {
       headers: {
-        'apikey': config.supabase.anonKey,
-        'Authorization': `Bearer ${config.supabase.anonKey}`,
+        'apikey': getSupabaseKey(),
+        'Authorization': `Bearer ${getSupabaseKey()}`,
       },
     }
   );
@@ -207,8 +215,8 @@ async function insertBooking(data) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': config.supabase.anonKey,
-      'Authorization': `Bearer ${config.supabase.anonKey}`,
+      'apikey': getSupabaseKey(),
+      'Authorization': `Bearer ${getSupabaseKey()}`,
       'Prefer': 'return=representation',
     },
     body: JSON.stringify(data),
@@ -225,8 +233,8 @@ async function updateBooking(id, updates) {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': config.supabase.anonKey,
-      'Authorization': `Bearer ${config.supabase.anonKey}`,
+      'apikey': getSupabaseKey(),
+      'Authorization': `Bearer ${getSupabaseKey()}`,
     },
     body: JSON.stringify(updates),
   });
@@ -286,7 +294,7 @@ function isOwner(from) {
 
 function twiml(message) {
   return new NextResponse(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`,
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}</Message></Response>`,
     { headers: { 'Content-Type': 'text/xml' } }
   );
 }

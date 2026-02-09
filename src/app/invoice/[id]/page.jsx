@@ -162,7 +162,9 @@ export default function CustomerInvoicePage() {
     )
   }
 
-  const lineItems = invoice.line_items || []
+  const lineItems = typeof invoice.line_items === 'string'
+    ? JSON.parse(invoice.line_items)
+    : (invoice.line_items || [])
 
   return (
     <div className="min-h-screen bg-dark-800 py-8 print:bg-dark-900 print:py-0">

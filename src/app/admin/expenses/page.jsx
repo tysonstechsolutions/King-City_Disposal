@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
 import { EXPENSE_CATEGORIES, formatCurrency, formatDate, getExpenseCategory } from '../../../lib/constants'
@@ -28,6 +28,31 @@ import {
   AlertCircle
 } from 'lucide-react'
 
+// Tailwind can't process dynamic class names like `bg-${color}-100`
+// Use a pre-built lookup map so all classes are statically analyzable
+const COLOR_CLASSES = {
+  blue:    { bg: 'bg-blue-500/20',    text: 'text-blue-400',    bar: 'bg-blue-500',    badge: 'bg-blue-500/20 text-blue-400' },
+  amber:   { bg: 'bg-amber-500/20',   text: 'text-amber-400',   bar: 'bg-amber-500',   badge: 'bg-amber-500/20 text-amber-400' },
+  orange:  { bg: 'bg-orange-500/20',  text: 'text-orange-400',  bar: 'bg-orange-500',  badge: 'bg-orange-500/20 text-orange-400' },
+  cyan:    { bg: 'bg-cyan-500/20',    text: 'text-cyan-400',    bar: 'bg-cyan-500',    badge: 'bg-cyan-500/20 text-cyan-400' },
+  red:     { bg: 'bg-red-500/20',     text: 'text-red-400',     bar: 'bg-red-500',     badge: 'bg-red-500/20 text-red-400' },
+  green:   { bg: 'bg-green-500/20',   text: 'text-green-400',   bar: 'bg-green-500',   badge: 'bg-green-500/20 text-green-400' },
+  pink:    { bg: 'bg-pink-500/20',    text: 'text-pink-400',    bar: 'bg-pink-500',    badge: 'bg-pink-500/20 text-pink-400' },
+  indigo:  { bg: 'bg-indigo-500/20',  text: 'text-indigo-400',  bar: 'bg-indigo-500',  badge: 'bg-indigo-500/20 text-indigo-400' },
+  violet:  { bg: 'bg-violet-500/20',  text: 'text-violet-400',  bar: 'bg-violet-500',  badge: 'bg-violet-500/20 text-violet-400' },
+  yellow:  { bg: 'bg-yellow-500/20',  text: 'text-yellow-400',  bar: 'bg-yellow-500',  badge: 'bg-yellow-500/20 text-yellow-400' },
+  slate:   { bg: 'bg-slate-500/20',   text: 'text-slate-400',   bar: 'bg-slate-500',   badge: 'bg-slate-500/20 text-slate-400' },
+  gray:    { bg: 'bg-gray-500/20',    text: 'text-gray-400',    bar: 'bg-gray-500',    badge: 'bg-gray-500/20 text-gray-400' },
+  purple:  { bg: 'bg-purple-500/20',  text: 'text-purple-400',  bar: 'bg-purple-500',  badge: 'bg-purple-500/20 text-purple-400' },
+  emerald: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', bar: 'bg-emerald-500', badge: 'bg-emerald-500/20 text-emerald-400' },
+  teal:    { bg: 'bg-teal-500/20',    text: 'text-teal-400',    bar: 'bg-teal-500',    badge: 'bg-teal-500/20 text-teal-400' },
+  neutral: { bg: 'bg-neutral-500/20', text: 'text-neutral-400', bar: 'bg-neutral-500', badge: 'bg-neutral-500/20 text-neutral-400' },
+}
+
+function getColorClasses(color) {
+  return COLOR_CLASSES[color] || COLOR_CLASSES.neutral
+}
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([])
   const [summary, setSummary] = useState(null)
@@ -42,9 +67,10 @@ export default function ExpensesPage() {
   // Filters
   const [taxYear, setTaxYear] = useState(new Date().getFullYear())
   const [category, setCategory] = useState('all')
+  const [vendorFilter, setVendorFilter] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
@@ -68,7 +94,11 @@ export default function ExpensesPage() {
         query += `&end_date=${endDate}`
       }
 
-      const response = await fetch(`/api/expenses?${query}`)
+      const response = await fetch(`/api/expenses?${query}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setExpenses(data.expenses || [])
@@ -85,7 +115,10 @@ export default function ExpensesPage() {
     try {
       const response = await fetch('/api/expenses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
         body: JSON.stringify({
           tax_year: taxYear,
           format: 'csv',
@@ -123,6 +156,9 @@ export default function ExpensesPage() {
 
       const response = await fetch('/api/expenses/import', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
         body: formData,
       })
 
@@ -153,6 +189,51 @@ export default function ExpensesPage() {
     // Reset file input
     e.target.value = ''
   }
+
+  // Get unique vendors for filter dropdown
+  const uniqueVendors = useMemo(() => {
+    const vendors = new Map()
+    expenses.forEach(e => {
+      if (e.from_name) {
+        const name = e.from_name.trim()
+        const existing = vendors.get(name)
+        if (existing) {
+          existing.count++
+        } else {
+          vendors.set(name, { name, count: 1 })
+        }
+      }
+    })
+    return Array.from(vendors.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [expenses])
+
+  // Client-side filtering for search and vendor
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(e => {
+      // Vendor filter
+      if (vendorFilter !== 'all' && e.from_name?.trim() !== vendorFilter) return false
+
+      // Search filter
+      if (!searchTerm) return true
+      const search = searchTerm.toLowerCase()
+      return (
+        e.from_name?.toLowerCase().startsWith(search) ||
+        e.from_name?.toLowerCase().split(' ').some(part => part.startsWith(search)) ||
+        e.invoice_number?.toLowerCase().includes(search) ||
+        e.from_address?.toLowerCase().includes(search)
+      )
+    })
+  }, [expenses, vendorFilter, searchTerm])
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setCategory('all')
+    setVendorFilter('all')
+    setStartDate('')
+    setEndDate('')
+  }
+
+  const hasActiveFilters = searchTerm || category !== 'all' || vendorFilter !== 'all' || startDate || endDate
 
   // Generate year options (current year and past 5 years)
   const yearOptions = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i)
@@ -265,8 +346,8 @@ export default function ExpensesPage() {
 
                 return (
                   <div key={catId} className="flex items-center gap-4">
-                    <div className={`p-2 rounded-lg bg-${catInfo.color}-100`}>
-                      <Icon className={`w-4 h-4 text-${catInfo.color}-600`} />
+                    <div className={`p-2 rounded-lg ${getColorClasses(catInfo.color).bg}`}>
+                      <Icon className={`w-4 h-4 ${getColorClasses(catInfo.color).text}`} />
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between mb-1">
@@ -276,7 +357,7 @@ export default function ExpensesPage() {
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 bg-dark-700 rounded-full overflow-hidden">
                           <div
-                            className={`h-full bg-${catInfo.color}-500 rounded-full`}
+                            className={`h-full ${getColorClasses(catInfo.color).bar} rounded-full`}
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
@@ -293,78 +374,83 @@ export default function ExpensesPage() {
         )}
 
         {/* Filters */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-dark-800 border border-dark-700 rounded-lg hover:bg-dark-700"
-          >
-            <Filter className="w-4 h-4" />
-            Filters
-            <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-          </button>
-          {EXPENSE_CATEGORIES.slice(0, 5).map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setCategory(cat.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                category === cat.id
-                  ? 'bg-primary text-white'
-                  : 'bg-dark-800 border border-dark-700 text-dark-200 hover:bg-dark-700'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+        <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-3">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
+              <input
+                type="text"
+                placeholder="Search by vendor, invoice #, address..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none placeholder:text-dark-500"
+              />
+            </div>
 
-        {showFilters && (
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">Category</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
-                >
-                  {EXPENSE_CATEGORIES.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => {
-                  setCategory('all')
-                  setStartDate('')
-                  setEndDate('')
-                }}
-                className="px-4 py-2 text-dark-300 hover:bg-dark-700 rounded-lg"
+            {/* Vendor Filter */}
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+              <select
+                value={vendorFilter}
+                onChange={(e) => setVendorFilter(e.target.value)}
+                className="pl-10 pr-8 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer min-w-[180px]"
               >
-                Clear Filters
-              </button>
+                <option value="all">All Vendors</option>
+                {uniqueVendors.map(v => (
+                  <option key={v.name} value={v.name}>
+                    {v.name} ({v.count})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
             </div>
+
+            {/* Category Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="pl-10 pr-8 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer min-w-[150px]"
+              >
+                {EXPENSE_CATEGORIES.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+            </div>
+
+            {/* Date Range */}
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-3 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                placeholder="Start"
+              />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-3 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                placeholder="End"
+              />
+            </div>
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-2 px-4 py-2.5 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Expenses List */}
         <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
@@ -372,13 +458,21 @@ export default function ExpensesPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : expenses.length === 0 ? (
+          ) : filteredExpenses.length === 0 ? (
             <div className="text-center py-12">
               <Receipt className="w-12 h-12 text-dark-600 mx-auto mb-3" />
-              <p className="text-dark-400">No confirmed expenses for {taxYear}</p>
-              <p className="text-sm text-dark-500 mt-1">
-                Upload invoices in Documents and confirm them to track expenses
+              <p className="text-dark-400">
+                {hasActiveFilters ? 'No expenses match your filters' : `No confirmed expenses for ${taxYear}`}
               </p>
+              {hasActiveFilters ? (
+                <button onClick={clearFilters} className="mt-4 text-primary hover:underline">
+                  Clear filters
+                </button>
+              ) : (
+                <p className="text-sm text-dark-500 mt-1">
+                  Upload invoices in Documents and confirm them to track expenses
+                </p>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -395,7 +489,7 @@ export default function ExpensesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-700">
-                  {expenses.map((expense) => {
+                  {filteredExpenses.map((expense) => {
                     const catInfo = getExpenseCategory(expense.expense_category)
                     const Icon = catInfo.icon
                     return (
@@ -413,7 +507,7 @@ export default function ExpensesPage() {
                           {expense.invoice_number || '-'}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-${catInfo.color}-100 text-${catInfo.color}-700`}>
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${getColorClasses(catInfo.color).badge}`}>
                             <Icon className="w-3 h-3" />
                             {catInfo.label}
                           </span>
@@ -458,7 +552,7 @@ export default function ExpensesPage() {
                 <tfoot className="bg-dark-700 border-t border-dark-700">
                   <tr>
                     <td colSpan="4" className="px-4 py-3 text-sm font-semibold text-white">
-                      Total ({expenses.length} expenses)
+                      Total ({filteredExpenses.length} expenses)
                     </td>
                     <td className="px-4 py-3 text-right text-lg font-bold text-white">
                       {formatCurrency(summary?.grand_total_cents || 0)}
@@ -614,7 +708,7 @@ export default function ExpensesPage() {
                       setShowImportModal(false)
                       setImportResult(null)
                     }}
-                    className="w-full py-3 bg-neutral-900 text-white rounded-xl font-medium hover:bg-neutral-800"
+                    className="w-full py-3 bg-dark-700 text-white rounded-xl font-medium hover:bg-dark-600"
                   >
                     Done
                   </button>
