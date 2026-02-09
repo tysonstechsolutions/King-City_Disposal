@@ -69,6 +69,7 @@ export default function ChatbotWidget() {
   const [showProhibited, setShowProhibited] = useState(false)
   const [contactName, setContactName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
   const [contactCity, setContactCity] = useState('')
   const [contactZip, setContactZip] = useState('')
   const [bookingData, setBookingData] = useState({
@@ -86,6 +87,7 @@ export default function ChatbotWidget() {
     deliveryDateRaw: '', // YYYY-MM-DD format for API
     name: '',
     phone: '',
+    email: '',
     surcharges: {},
   })
 
@@ -417,14 +419,14 @@ export default function ChatbotWidget() {
 
     addUserMessage(`${date}, 10 days`)
 
-    await addBotMessage(`That'll be $${price} for the 10-day rental.\n\nLast step - what's your name and phone number?`, 600)
+    await addBotMessage(`That'll be $${price} for the 10-day rental.\n\nLast step - your contact info:`, 600)
     setStep(STEPS.CONTACT)
   }
 
   // Step 5: Handle contact info
-  const handleContactSubmit = async (name, phone, city, zip) => {
-    setBookingData(prev => ({ ...prev, name, phone, city, zip }))
-    addUserMessage(`${name}, ${phone}${city ? `, ${city}` : ''}${zip ? ` ${zip}` : ''}`)
+  const handleContactSubmit = async (name, phone, email, city, zip) => {
+    setBookingData(prev => ({ ...prev, name, phone, email, city, zip }))
+    addUserMessage(`${name}, ${phone}${email ? `, ${email}` : ''}${city ? `, ${city}` : ''}${zip ? ` ${zip}` : ''}`)
 
     await addBotMessage(`Thanks ${name}! Let me show you a summary...`, 500)
     setStep(STEPS.SUMMARY)
@@ -435,6 +437,7 @@ export default function ChatbotWidget() {
     if (e) e.preventDefault()
     const name = contactName.trim()
     const phone = contactPhone.trim().replace(/\D/g, '')
+    const email = contactEmail.trim()
     const city = contactCity.trim()
     const zip = contactZip.trim()
 
@@ -445,9 +448,10 @@ export default function ChatbotWidget() {
 
     setContactName('')
     setContactPhone('')
+    setContactEmail('')
     setContactCity('')
     setContactZip('')
-    await handleContactSubmit(name, phone, city, zip)
+    await handleContactSubmit(name, phone, email, city, zip)
   }
 
   // Final: Confirm booking
@@ -475,7 +479,7 @@ export default function ChatbotWidget() {
         body: JSON.stringify({
           customerName: currentBookingData.name,
           customerPhone: currentBookingData.phone,
-          customerEmail: null,
+          customerEmail: currentBookingData.email || null,
           address: currentBookingData.address,
           city: currentBookingData.city,
           zip: currentBookingData.zip,
@@ -604,15 +608,23 @@ export default function ChatbotWidget() {
     } else if (step === STEPS.CONTACT) {
       let name = value
       let phone = ''
+      let email = ''
 
-      const phoneMatch = value.match(/[\d\-\(\)\s]{10,}/)
+      // Extract email if present
+      const emailMatch = value.match(/[\w.+-]+@[\w-]+\.[\w.]+/)
+      if (emailMatch) {
+        email = emailMatch[0]
+        name = name.replace(emailMatch[0], '').trim()
+      }
+
+      const phoneMatch = name.match(/[\d\-\(\)\s]{10,}/)
       if (phoneMatch) {
         phone = phoneMatch[0].replace(/\D/g, '')
-        name = value.replace(phoneMatch[0], '').replace(/[,\n]/g, '').trim()
+        name = name.replace(phoneMatch[0], '').replace(/[,\n]/g, '').trim()
       }
 
       if (name && phone) {
-        await handleContactSubmit(name, phone)
+        await handleContactSubmit(name, phone, email)
       } else {
         addUserMessage(value)
         await addBotMessage("Please include both your name and phone number.\n\nExample: John Smith, 618-555-1234", 400)
@@ -1075,6 +1087,13 @@ export default function ChatbotWidget() {
                     placeholder="Phone number"
                     className="input-field w-full"
                   />
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Email (for invoices & updates)"
+                    className="input-field w-full"
+                  />
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -1127,7 +1146,7 @@ export default function ChatbotWidget() {
                     </div>
                     <div className="flex justify-between py-2 border-b border-dark-600">
                       <span className="text-dark-400">Contact</span>
-                      <span className="text-white text-right">{bookingData.name}<br /><span className="text-dark-300">{bookingData.phone}</span></span>
+                      <span className="text-white text-right">{bookingData.name}<br /><span className="text-dark-300">{bookingData.phone}</span>{bookingData.email && <><br /><span className="text-dark-300">{bookingData.email}</span></>}</span>
                     </div>
                   </div>
                 </div>
