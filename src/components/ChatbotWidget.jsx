@@ -597,7 +597,7 @@ export default function ChatbotWidget() {
     if (step === STEPS.ADDRESS) {
       setBookingData(prev => ({ ...prev, address: value }))
       addUserMessage(value)
-      await addBotMessage(`Got it: ${value}\n\nNow let's mark exactly where to place the dumpster. Tap "Place Dumpster" and drag it to the right spot.`, 600)
+      await addBotMessage(`Got it: ${value}\n\nNow let's mark exactly where to place the dumpster. Tap the button to drop it on the map, then drag the map to position it.`, 600)
       setStep(STEPS.MAP_PLACEMENT)
     } else if (step === STEPS.CONTACT) {
       let name = value
@@ -815,10 +815,13 @@ export default function ChatbotWidget() {
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                             <button
                               onClick={placeDumpster}
-                              className="bg-primary hover:bg-primary text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
+                              className="bg-primary hover:bg-primary/90 text-white px-5 py-3 rounded-xl font-bold flex flex-col items-center gap-1 shadow-lg"
                             >
-                              <Plus className="w-5 h-5" />
-                              Place Dumpster Here
+                              <div className="flex items-center gap-2">
+                                <Plus className="w-5 h-5" />
+                                Drop Dumpster on Map
+                              </div>
+                              <span className="text-xs font-normal text-white/70">Then drag to reposition</span>
                             </button>
                           </div>
                         )}

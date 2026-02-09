@@ -704,16 +704,6 @@ function BookingPageContent() {
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-medium text-white mb-3">Rental period</h3>
-                <div className="bg-primary/10 border-2 border-primary rounded-xl p-4 text-center">
-                  <p className="font-bold text-white text-lg">10 Days</p>
-                  {selectedDumpster && (
-                    <p className="text-primary font-semibold">${selectedDumpster.pricing['10-day']}</p>
-                  )}
-                  <p className="text-xs text-dark-400 mt-1">Standard rental period • Extensions available</p>
-                </div>
-              </div>
             </div>
           )}
 
@@ -787,7 +777,7 @@ function BookingPageContent() {
                   <div>
                     <h3 className="text-lg font-medium text-white mb-2">Where should we place the dumpster?</h3>
                     <p className="text-sm text-dark-400 mb-3">
-                      Tap "Place Dumpster" then drag the green rectangle to the exact spot
+                      Tap the button below to drop the dumpster on the map, then drag the map to position it exactly where you want it.
                     </p>
                   </div>
 
@@ -812,10 +802,13 @@ function BookingPageContent() {
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                           <button
                             onClick={placeDumpster}
-                            className="bg-primary hover:bg-primary/90 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"
+                            className="bg-primary hover:bg-primary/90 text-white px-5 py-3 rounded-xl font-bold flex flex-col items-center gap-1 shadow-lg"
                           >
-                            <Plus className="w-5 h-5" />
-                            Place Dumpster Here
+                            <div className="flex items-center gap-2">
+                              <Plus className="w-5 h-5" />
+                              Drop Dumpster on Map
+                            </div>
+                            <span className="text-xs font-normal text-white/70">Then drag the map to reposition</span>
                           </button>
                         </div>
                       )}
@@ -868,25 +861,30 @@ function BookingPageContent() {
               <div>
                 <h2 className="text-xl font-semibold text-white mb-2">When do you need it?</h2>
                 <p className="text-dark-400 text-sm mb-4">
-                  Select your delivery date. We deliver between 8am-12pm.
+                  Pick a delivery date below. We deliver between 8am-12pm. Your 10-day rental starts on delivery day.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {getAvailableDates().map((date) => {
                   const isSelected = formData.deliveryDate === date.value
+                  const d = new Date(date.value + 'T12:00:00')
+                  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' })
+                  const month = d.toLocaleDateString('en-US', { month: 'short' })
+                  const day = d.getDate()
                   return (
                     <button
                       key={date.value}
                       onClick={() => setFormData(prev => ({ ...prev, deliveryDate: date.value }))}
-                      className={`p-4 rounded-xl border-2 transition-all text-center ${
+                      className={`p-3 rounded-xl border-2 transition-all text-center ${
                         isSelected
-                          ? 'border-primary bg-primary/10'
+                          ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
                           : 'border-dark-600 bg-dark-700 hover:border-dark-500'
                       }`}
                     >
-                      <Calendar className={`w-5 h-5 mx-auto mb-1 ${isSelected ? 'text-primary' : 'text-dark-400'}`} />
-                      <p className="text-sm font-medium text-white">{date.label}</p>
+                      <p className={`text-xs font-medium uppercase ${isSelected ? 'text-primary' : 'text-dark-400'}`}>{weekday}</p>
+                      <p className={`text-2xl font-bold ${isSelected ? 'text-white' : 'text-dark-200'}`}>{day}</p>
+                      <p className={`text-xs ${isSelected ? 'text-primary' : 'text-dark-400'}`}>{month}</p>
                     </button>
                   )
                 })}
@@ -894,25 +892,27 @@ function BookingPageContent() {
 
               {formData.deliveryDate && (
                 <div className="space-y-4">
-                  <div className="bg-dark-700 rounded-xl p-4 border border-dark-600">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-dark-400 text-sm">Delivery</p>
-                        <p className="text-white font-medium">
+                  <div className="bg-primary/10 border border-primary/30 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-center flex-1">
+                        <p className="text-xs text-dark-400 uppercase font-medium mb-1">Delivery</p>
+                        <p className="text-white font-semibold text-lg">
                           {new Date(formData.deliveryDate + 'T12:00:00').toLocaleDateString('en-US', {
-                            weekday: 'long', month: 'short', day: 'numeric'
+                            weekday: 'short', month: 'short', day: 'numeric'
                           })}
                         </p>
+                        <p className="text-xs text-dark-400 mt-0.5">8am - 12pm</p>
                       </div>
-                      <ArrowRight className="w-5 h-5 text-dark-500" />
-                      <div className="text-right">
-                        <p className="text-dark-400 text-sm">Pickup</p>
-                        <p className="text-white font-medium">{getPickupDate()}</p>
+                      <div className="flex flex-col items-center px-4">
+                        <ArrowRight className="w-5 h-5 text-primary" />
+                        <p className="text-xs text-primary font-medium mt-1">10 days</p>
+                      </div>
+                      <div className="text-center flex-1">
+                        <p className="text-xs text-dark-400 uppercase font-medium mb-1">Pickup</p>
+                        <p className="text-white font-semibold text-lg">{getPickupDate()}</p>
+                        <p className="text-xs text-dark-400 mt-0.5">Extensions available</p>
                       </div>
                     </div>
-                    <p className="text-xs text-dark-400 mt-2 text-center">
-                      10-day rental period
-                    </p>
                   </div>
 
                   {/* Availability warning */}

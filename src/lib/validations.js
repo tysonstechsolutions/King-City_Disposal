@@ -5,6 +5,7 @@
 // ============================================
 
 import { z } from 'zod';
+import { config } from '../config';
 
 // ============================================
 // SANITIZATION HELPERS
@@ -93,9 +94,10 @@ export const bookingSchema = z.object({
   placementLng: z.number().min(-180).max(180).optional().nullable(),
   placementNotes: z.string().max(500).transform(sanitizeString).optional().nullable(),
 
-  dumpsterSize: z.enum(['20yd', '30yd'], {
-    errorMap: () => ({ message: 'Invalid dumpster size' }),
-  }),
+  dumpsterSize: z.enum(
+    config.dumpsters.map(d => d.id),
+    { errorMap: () => ({ message: 'Invalid dumpster size' }) }
+  ),
 
   rentalDuration: z.string().regex(/^\d+-day$/, 'Invalid rental duration'),
 
