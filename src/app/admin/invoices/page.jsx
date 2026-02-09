@@ -28,7 +28,7 @@ import {
 
 export default function InvoicesPage() {
   const router = useRouter()
-  const { toast } = useToast()
+  const toast = useToast()
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')

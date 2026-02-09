@@ -35,7 +35,7 @@ import {
 export default function CustomerDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { toast } = useToast()
+  const toast = useToast()
 
   const [customer, setCustomer] = useState(null)
   const [bookings, setBookings] = useState([])

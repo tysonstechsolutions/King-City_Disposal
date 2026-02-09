@@ -32,7 +32,7 @@ import {
 export default function BookingDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { toast } = useToast()
+  const toast = useToast()
 
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -125,7 +125,8 @@ export default function BookingDetailPage() {
 
       if (response.ok) {
         toast.success('Booking deleted')
-        router.push('/admin')
+        router.replace('/admin')
+        router.refresh()
       } else {
         toast.error('Failed to delete booking')
       }

@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 
 export default function CustomersPage() {
-  const { toast } = useToast()
+  const toast = useToast()
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
