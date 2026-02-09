@@ -105,7 +105,7 @@ export const bookingSchema = z.object({
 
   priceCents: priceCentsSchema,
 
-  projectType: z.enum(['cleanout', 'renovation', 'roofing', 'construction', 'other']).optional().nullable(),
+  projectType: z.string().optional().nullable().transform(val => val || null),
 
   surcharges: z.record(z.string(), z.number().int().min(0).max(100)).optional(),
 });

@@ -107,7 +107,7 @@ export default function ChatbotWidget() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, step, bookingData])
 
   // Auto-open chatbot after 2 seconds on homepage
   useEffect(() => {
@@ -495,9 +495,11 @@ export default function ChatbotWidget() {
       setIsTyping(false)
 
       if (result.success) {
-        await addBotMessage(`Booking confirmed!\n\n${config.businessName} will call or text you at ${currentBookingData.phone} to confirm your ${dumpster.name} delivery on ${currentBookingData.deliveryDate}.\n\nTotal: $${totalPrice}\n\nQuestions? Call ${config.phone}`)
+        await addBotMessage(`Booking confirmed!\n\n${config.businessName} will call or text you at ${currentBookingData.phone} to confirm your ${dumpster?.name || currentBookingData.size} delivery on ${currentBookingData.deliveryDate}.\n\nTotal: $${totalPrice}\n\nQuestions? Call ${config.phone}`)
       } else {
-        await addBotMessage(`Something went wrong, but don't worry!\n\nCall us at ${config.phone} and we'll get you set up.`)
+        console.error('Booking API error:', result)
+        const errorMsg = result.error || 'Unknown error'
+        await addBotMessage(`Something went wrong: ${errorMsg}\n\nCall us at ${config.phone} and we'll get you set up.`)
       }
     } catch (error) {
       console.error('Booking error:', error)
