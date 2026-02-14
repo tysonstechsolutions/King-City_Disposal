@@ -33,24 +33,31 @@ export async function GET(request) {
       query += `&or=(name.ilike.*${search}*,phone.ilike.*${search}*,email.ilike.*${search}*,company_name.ilike.*${search}*)`
     }
 
+    const serviceKey = getServiceKey()
+    const usingServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY
+
     // Fetch customers
     const customersResponse = await fetch(
       `${supabaseUrl}/rest/v1/customers?${query}`,
       {
         headers: {
-          'apikey': getServiceKey(),
-          'Authorization': `Bearer ${getServiceKey()}`,
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
         },
       }
     )
 
     if (!customersResponse.ok) {
       const errorText = await customersResponse.text()
-      logger.error('Supabase customer fetch error', null, { error: errorText })
+      logger.error('Supabase customer fetch error', null, { error: errorText, usingServiceRole, query })
       return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 })
     }
 
     const customers = await customersResponse.json()
+
+    if (id && customers.length === 0) {
+      logger.error('Customer not found by id', null, { id, usingServiceRole, query })
+    }
 
     // Fetch all invoices to calculate stats per customer
     const invoicesResponse = await fetch(

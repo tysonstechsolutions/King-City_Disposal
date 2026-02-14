@@ -64,11 +64,15 @@ export default function CustomerDetailPage() {
       const customerRes = await fetch(`/api/admin/customers?id=${params.id}`, { headers })
       if (customerRes.ok) {
         const data = await customerRes.json()
-        const list = data.customers || data
-        if (Array.isArray(list) && list.length > 0) {
+        const list = Array.isArray(data) ? data : (data.customers || [])
+        if (list.length > 0) {
           setCustomer(list[0])
           setFormData(list[0])
+        } else {
+          console.error('Customer API returned empty list for id:', params.id, data)
         }
+      } else {
+        console.error('Customer API error:', customerRes.status, await customerRes.text())
       }
 
       // Fetch customer's bookings & invoices via Supabase REST with service role key
