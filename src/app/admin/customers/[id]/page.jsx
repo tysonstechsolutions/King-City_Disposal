@@ -125,10 +125,15 @@ export default function CustomerDetailPage() {
         }),
       })
       if (response.ok) {
-        setCustomer(formData)
+        const data = await response.json()
+        const updated = Array.isArray(data) && data.length > 0 ? data[0] : formData
+        setCustomer(updated)
+        setFormData(updated)
         setEditing(false)
         toast.success('Customer updated')
       } else {
+        const errData = await response.text()
+        console.error('Customer update failed:', errData)
         toast.error('Failed to save changes')
       }
     } catch (err) {
