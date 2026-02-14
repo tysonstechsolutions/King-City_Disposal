@@ -78,7 +78,7 @@ export async function sendSMS(to, message) {
 // ============================================
 // Email via Resend
 // ============================================
-export async function sendEmail({ to, subject, html, text, replyTo }) {
+export async function sendEmail({ to, subject, html, text, replyTo, bcc }) {
   if (!resend) {
     console.warn('Resend not configured - skipping email');
     return { success: false, error: 'Resend not configured' };
@@ -90,15 +90,24 @@ export async function sendEmail({ to, subject, html, text, replyTo }) {
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || `${config.businessName} <noreply@${process.env.RESEND_DOMAIN || 'resend.dev'}>`;
 
+  // BCC owner on all emails if configured
+  const bccList = bcc || process.env.OWNER_EMAIL || config.notifications?.bookingAlertEmail || null;
+
   try {
-    const { data, error } = await resend.emails.send({
+    const emailPayload = {
       from: fromEmail,
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
       text,
       reply_to: replyTo || config.email,
-    });
+    };
+
+    if (bccList) {
+      emailPayload.bcc = Array.isArray(bccList) ? bccList : [bccList];
+    }
+
+    const { data, error } = await resend.emails.send(emailPayload);
 
     if (error) {
       console.error('Resend error:', error);
