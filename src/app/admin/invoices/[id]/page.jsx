@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { config } from '../../../../config'
 import AdminNav from '../../../../components/AdminNav'
 import { formatWeight } from '../../../../lib/constants'
 import { useToast } from '../../../../components/Toast'
@@ -59,7 +58,10 @@ export default function InvoiceDetailPage() {
   // Fetch invoice
   const fetchInvoice = useCallback(async () => {
     try {
-      const response = await fetch(`/api/invoices?id=${params.id}`)
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch(`/api/invoices?id=${params.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
 
       if (response.ok) {
         const data = await response.json()
@@ -206,37 +208,32 @@ export default function InvoiceDetailPage() {
       const discount = editedInvoice.discount_cents || 0
       const total = subtotal + lateFee + ccFee - discount
 
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify({
-            customer_name: editedInvoice.customer_name,
-            customer_phone: editedInvoice.customer_phone,
-            customer_email: editedInvoice.customer_email,
-            service_address: editedInvoice.service_address,
-            dumpster_size: editedInvoice.dumpster_size,
-            rental_duration: editedInvoice.rental_duration,
-            weight_lbs: editedInvoice.weight_lbs,
-            weight_included_lbs: editedInvoice.weight_included_lbs,
-            line_items: JSON.stringify(editedInvoice.line_items),
-            subtotal_cents: subtotal,
-            late_fee_cents: lateFee,
-            cc_fee_cents: ccFee,
-            discount_cents: discount,
-            total_cents: total,
-            notes: editedInvoice.notes,
-            due_date: editedInvoice.due_date,
-            updated_at: new Date().toISOString(),
-          }),
-        }
-      )
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch(`/api/invoices/update?id=${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          customer_name: editedInvoice.customer_name,
+          customer_phone: editedInvoice.customer_phone,
+          customer_email: editedInvoice.customer_email,
+          service_address: editedInvoice.service_address,
+          dumpster_size: editedInvoice.dumpster_size,
+          rental_duration: editedInvoice.rental_duration,
+          weight_lbs: editedInvoice.weight_lbs,
+          weight_included_lbs: editedInvoice.weight_included_lbs,
+          line_items: editedInvoice.line_items,
+          subtotal_cents: subtotal,
+          late_fee_cents: lateFee,
+          cc_fee_cents: ccFee,
+          discount_cents: discount,
+          total_cents: total,
+          notes: editedInvoice.notes,
+          due_date: editedInvoice.due_date,
+        }),
+      })
 
       if (response.ok) {
         const [updated] = await response.json()
@@ -349,18 +346,15 @@ export default function InvoiceDetailPage() {
           : `Payment: Check #${paymentCheckNumber} - ${formatCurrency(totalAmountCents)} on ${new Date(paidAtDate).toLocaleDateString()}`
       }
 
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify(updateData),
-        }
-      )
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch(`/api/invoices/update?id=${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
+      })
 
       if (response.ok) {
         setShowPaymentModal(false)
@@ -385,16 +379,13 @@ export default function InvoiceDetailPage() {
   // Delete invoice
   const handleDelete = async () => {
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch(`/api/invoices/update?id=${params.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
 
       if (response.ok) {
         toast.success('Invoice deleted')
@@ -866,23 +857,19 @@ export default function InvoiceDetailPage() {
                                 onClick={async () => {
                                   const newLateFee = existingLateFee + additionalLateFee
                                   const newTotal = (invoice.subtotal_cents || 0) + newLateFee + (invoice.cc_fee_cents || 0)
-                                  await fetch(
-                                    `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
-                                    {
-                                      method: 'PATCH',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                        'apikey': config.supabase.anonKey,
-                                        'Authorization': `Bearer ${config.supabase.anonKey}`,
-                                      },
-                                      body: JSON.stringify({
-                                        late_fee_cents: newLateFee,
-                                        total_cents: newTotal,
-                                        balance_due_cents: newTotal - (invoice.amount_paid_cents || 0),
-                                        updated_at: new Date().toISOString(),
-                                      }),
-                                    }
-                                  )
+                                  const token = sessionStorage.getItem('adminToken')
+                                  await fetch(`/api/invoices/update?id=${params.id}`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${token}`,
+                                    },
+                                    body: JSON.stringify({
+                                      late_fee_cents: newLateFee,
+                                      total_cents: newTotal,
+                                      balance_due_cents: newTotal - (invoice.amount_paid_cents || 0),
+                                    }),
+                                  })
                                   fetchInvoice()
                                 }}
                                 className="mt-1 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
@@ -1097,18 +1084,15 @@ export default function InvoiceDetailPage() {
                       cardUpdateData.paid_at = new Date().toISOString()
                     }
 
-                    await fetch(
-                      `${config.supabase.url}/rest/v1/invoices?id=eq.${params.id}`,
-                      {
-                        method: 'PATCH',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'apikey': config.supabase.anonKey,
-                          'Authorization': `Bearer ${config.supabase.anonKey}`,
-                        },
-                        body: JSON.stringify(cardUpdateData),
-                      }
-                    )
+                    const token = sessionStorage.getItem('adminToken')
+                    await fetch(`/api/invoices/update?id=${params.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                      },
+                      body: JSON.stringify(cardUpdateData),
+                    })
 
                     setShowPaymentModal(false)
                     setShowCardForm(false)

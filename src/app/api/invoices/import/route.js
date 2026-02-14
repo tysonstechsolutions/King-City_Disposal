@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
+import { requireAdminAuth } from '../../../../lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -418,6 +419,11 @@ async function invoiceExists(invoiceNumber) {
 // ============================================
 export async function POST(request) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file');
     const markAsPaidParam = formData.get('mark_as_paid');

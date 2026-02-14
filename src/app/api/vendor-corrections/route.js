@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
+import { requireAdminAuth } from '../../../lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +15,13 @@ const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.sup
 // ============================================
 // GET - Fetch all vendor corrections
 // ============================================
-export async function GET() {
+export async function GET(request) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const response = await fetch(
       `${supabaseUrl}/rest/v1/vendor_corrections?order=vendor_name.asc`,
       {
@@ -47,6 +53,11 @@ export async function GET() {
 // ============================================
 export async function POST(request) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const {
       vendor_name,
       corrected_name,
@@ -147,6 +158,11 @@ export async function POST(request) {
 // ============================================
 export async function DELETE(request) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
