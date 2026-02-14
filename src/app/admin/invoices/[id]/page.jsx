@@ -135,20 +135,19 @@ export default function InvoiceDetailPage() {
     return { monthsLate, lateFee, daysOverdue }
   }
 
-  // Get status badge - account for 30-day grace period when no due date
-  const getStatusBadge = (status, dueDate, invoiceDate) => {
-    let isOverdue = false
+  // Check if invoice is overdue: 30 days past date_set (dumpster delivery date)
+  const isInvoiceOverdue = (inv) => {
+    if (!inv || inv.status === 'paid') return false
+    const refDate = inv.date_set || inv.invoice_date || inv.created_at
+    if (!refDate) return false
+    const overdueDate = new Date(refDate)
+    overdueDate.setDate(overdueDate.getDate() + 30)
+    return new Date() > overdueDate
+  }
 
-    if (status !== 'paid') {
-      if (dueDate) {
-        isOverdue = new Date(dueDate) < new Date()
-      } else if (invoiceDate) {
-        // No due date = Due Upon Receipt, with 30 day grace period before overdue
-        const gracePeriodEnd = new Date(invoiceDate)
-        gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30)
-        isOverdue = new Date() > gracePeriodEnd
-      }
-    }
+  // Get status badge
+  const getStatusBadge = (status, inv) => {
+    const isOverdue = inv ? isInvoiceOverdue(inv) : status === 'overdue'
 
     if (isOverdue || status === 'overdue') {
       return <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Overdue</span>
@@ -454,7 +453,7 @@ export default function InvoiceDetailPage() {
                   <h1 className="text-xl font-bold text-white font-mono">
                     {invoice.invoice_number}
                   </h1>
-                  {getStatusBadge(invoice.status, invoice.due_date, invoice.invoice_date || invoice.created_at)}
+                  {getStatusBadge(invoice.status, invoice)}
                 </div>
                 <p className="text-sm text-dark-400">{invoice.customer_name}</p>
               </div>
@@ -954,7 +953,7 @@ export default function InvoiceDetailPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-dark-400">Status</span>
-                  {getStatusBadge(invoice.status, invoice.due_date, invoice.invoice_date || invoice.created_at)}
+                  {getStatusBadge(invoice.status, invoice)}
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-400">Due Date</span>

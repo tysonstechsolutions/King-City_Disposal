@@ -57,51 +57,34 @@ export default function CustomerDetailPage() {
 
   const fetchCustomer = useCallback(async () => {
     try {
+      const token = sessionStorage.getItem('adminToken')
+      const headers = { 'Authorization': `Bearer ${token}` }
+
       // Fetch customer
-      const customerRes = await fetch(
-        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const customerRes = await fetch(`/api/admin/customers?id=${params.id}`, { headers })
       if (customerRes.ok) {
         const data = await customerRes.json()
-        if (data.length > 0) {
-          setCustomer(data[0])
-          setFormData(data[0])
+        const list = data.customers || data
+        if (Array.isArray(list) && list.length > 0) {
+          setCustomer(list[0])
+          setFormData(list[0])
         }
       }
 
-      // Fetch customer's bookings
-      const bookingsRes = await fetch(
-        `${config.supabase.url}/rest/v1/bookings?customer_id=eq.${params.id}&order=created_at.desc`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
-      if (bookingsRes.ok) {
-        setBookings(await bookingsRes.json())
+      // Fetch customer's bookings & invoices via Supabase REST with service role key
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || config.supabase.anonKey
+      const supabaseHeaders = {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
       }
 
-      // Fetch customer's invoices
-      const invoicesRes = await fetch(
-        `${config.supabase.url}/rest/v1/invoices?customer_id=eq.${params.id}&order=created_at.desc`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
-      if (invoicesRes.ok) {
-        setInvoices(await invoicesRes.json())
-      }
+      const [bookingsRes, invoicesRes] = await Promise.all([
+        fetch(`${config.supabase.url}/rest/v1/bookings?customer_id=eq.${params.id}&order=created_at.desc`, { headers: supabaseHeaders }),
+        fetch(`${config.supabase.url}/rest/v1/invoices?customer_id=eq.${params.id}&order=created_at.desc`, { headers: supabaseHeaders }),
+      ])
+
+      if (bookingsRes.ok) setBookings(await bookingsRes.json())
+      if (invoicesRes.ok) setInvoices(await invoicesRes.json())
 
     } catch (err) {
       console.error('Error fetching customer:', err)
@@ -117,28 +100,26 @@ export default function CustomerDetailPage() {
     fetchCustomer()
   }, [fetchCustomer])
 
+  const getAuthHeaders = () => {
+    const token = sessionStorage.getItem('adminToken')
+    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify({
-            name: formData.name,
-            phone: formData.phone,
-            email: formData.email,
-            address: formData.address,
-            company_name: formData.company_name,
-            notes: formData.notes,
-          }),
-        }
-      )
+      const response = await fetch(`/api/admin/customers/update?id=${params.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          company_name: formData.company_name,
+          notes: formData.notes,
+        }),
+      })
       if (response.ok) {
         setCustomer(formData)
         setEditing(false)
@@ -159,16 +140,10 @@ export default function CustomerDetailPage() {
     }
     setDeleting(true)
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const response = await fetch(`/api/admin/customers/update?id=${params.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      })
       if (response.ok) {
         toast.success('Customer deleted')
         router.push('/admin/customers')
@@ -304,35 +279,21 @@ export default function CustomerDetailPage() {
           updateData.paid_at = paidAtDate
         }
 
-        await fetch(
-          `${config.supabase.url}/rest/v1/invoices?id=eq.${inv.id}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': config.supabase.anonKey,
-              'Authorization': `Bearer ${config.supabase.anonKey}`,
-            },
-            body: JSON.stringify(updateData),
-          }
-        )
+        await fetch(`/api/invoices/update?id=${inv.id}`, {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(updateData),
+        })
       }
 
       // If there's remaining payment after all invoices are paid, add to customer credit
       if (remainingPayment > 0) {
         const newCreditBalance = (customer.credit_balance_cents || 0) + remainingPayment
-        await fetch(
-          `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': config.supabase.anonKey,
-              'Authorization': `Bearer ${config.supabase.anonKey}`,
-            },
-            body: JSON.stringify({ credit_balance_cents: newCreditBalance }),
-          }
-        )
+        await fetch(`/api/admin/customers/update?id=${params.id}`, {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ credit_balance_cents: newCreditBalance }),
+        })
         toast.success(`Payment recorded. ${formatCurrency(remainingPayment)} added to account credit.`)
       } else {
         toast.success('Payment recorded successfully')
@@ -355,18 +316,11 @@ export default function CustomerDetailPage() {
   const toggleFlag = async () => {
     try {
       const newFlaggedStatus = !customer.is_flagged
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify({ is_flagged: newFlaggedStatus }),
-        }
-      )
+      const response = await fetch(`/api/admin/customers/update?id=${params.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ is_flagged: newFlaggedStatus }),
+      })
       if (response.ok) {
         setCustomer({ ...customer, is_flagged: newFlaggedStatus })
         setFormData({ ...formData, is_flagged: newFlaggedStatus })
@@ -384,18 +338,11 @@ export default function CustomerDetailPage() {
   const toggleVIP = async () => {
     try {
       const newVIPStatus = !customer.is_vip
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers?id=eq.${params.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify({ is_vip: newVIPStatus }),
-        }
-      )
+      const response = await fetch(`/api/admin/customers/update?id=${params.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ is_vip: newVIPStatus }),
+      })
       if (response.ok) {
         setCustomer({ ...customer, is_vip: newVIPStatus })
         setFormData({ ...formData, is_vip: newVIPStatus })

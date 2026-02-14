@@ -31,6 +31,7 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filter, setFilter] = useState('all') // 'all', 'vip', 'flagged', 'business'
   const [cityFilter, setCityFilter] = useState('all')
+  const [customerFilter, setCustomerFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
@@ -86,19 +87,37 @@ export default function CustomersPage() {
     return Array.from(cities.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [customers])
 
+  // Build unique customer names for the dropdown
+  const uniqueCustomerNames = useMemo(() => {
+    const names = new Map()
+    customers.forEach(c => {
+      if (c.name) {
+        const name = c.name.trim()
+        if (!names.has(name)) {
+          names.set(name, { name, id: c.id })
+        }
+      }
+    })
+    return Array.from(names.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [customers])
+
   const clearFilters = () => {
     setSearchTerm('')
     setFilter('all')
     setCityFilter('all')
+    setCustomerFilter('all')
   }
 
-  const hasActiveFilters = searchTerm || filter !== 'all' || cityFilter !== 'all'
+  const hasActiveFilters = searchTerm || filter !== 'all' || cityFilter !== 'all' || customerFilter !== 'all'
 
   const filteredCustomers = customers.filter(c => {
     // Apply type filter
     if (filter === 'vip' && !c.is_vip) return false
     if (filter === 'flagged' && !c.is_flagged) return false
     if (filter === 'business' && !c.is_business) return false
+
+    // Apply customer name filter
+    if (customerFilter !== 'all' && c.name?.trim() !== customerFilter) return false
 
     // Apply city filter
     if (cityFilter !== 'all' && c.city?.trim() !== cityFilter) return false
@@ -182,6 +201,24 @@ export default function CustomersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-dark-700 border border-dark-600 text-white placeholder-dark-500 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
+            </div>
+
+            {/* Customer Filter */}
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+              <select
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+                className="pl-10 pr-8 py-2.5 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer min-w-[180px]"
+              >
+                <option value="all">All Customers</option>
+                {uniqueCustomerNames.map(c => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
             </div>
 
             {/* Type Filter */}

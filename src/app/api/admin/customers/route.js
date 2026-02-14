@@ -22,11 +22,14 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
+    const id = searchParams.get('id')
     const limit = searchParams.get('limit') || '500'
 
     let query = `order=name.asc&limit=${limit}`
 
-    if (search) {
+    if (id) {
+      query = `id=eq.${id}`
+    } else if (search) {
       query += `&or=(name.ilike.*${search}*,phone.ilike.*${search}*,email.ilike.*${search}*,company_name.ilike.*${search}*)`
     }
 

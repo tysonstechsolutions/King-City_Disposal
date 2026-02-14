@@ -122,19 +122,20 @@ export default function InvoicesPage() {
     })
   }
 
-  // Get status badge with improved styling
-  const getStatusBadge = (status, dueDate, invoiceDate) => {
-    let isOverdue = false
+  // Check if invoice is overdue: 30 days past date_set (dumpster delivery date)
+  const isInvoiceOverdue = (inv) => {
+    if (!inv || inv.status === 'paid') return false
+    if (inv.status === 'overdue') return true
+    const refDate = inv.date_set || inv.invoice_date || inv.created_at
+    if (!refDate) return false
+    const overdueDate = new Date(refDate)
+    overdueDate.setDate(overdueDate.getDate() + 30)
+    return new Date() > overdueDate
+  }
 
-    if (status !== 'paid') {
-      if (dueDate) {
-        isOverdue = new Date(dueDate) < new Date()
-      } else if (invoiceDate) {
-        const gracePeriodEnd = new Date(invoiceDate)
-        gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30)
-        isOverdue = new Date() > gracePeriodEnd
-      }
-    }
+  // Get status badge with improved styling
+  const getStatusBadge = (status, inv) => {
+    const isOverdue = inv ? isInvoiceOverdue(inv) : status === 'overdue'
 
     if (isOverdue || status === 'overdue') {
       return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Overdue</span>
@@ -149,20 +150,6 @@ export default function InvoicesPage() {
       void: <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-dark-600 text-dark-400 border border-dark-500">Void</span>,
     }
     return badges[status] || badges.draft
-  }
-
-  // Helper to check if an invoice is overdue with 30-day grace period
-  const isInvoiceOverdue = (invoice) => {
-    if (invoice.status === 'paid' || invoice.status === 'overdue') return invoice.status === 'overdue'
-
-    if (invoice.due_date) {
-      return new Date(invoice.due_date) < new Date()
-    }
-
-    const invoiceDate = new Date(invoice.invoice_date || invoice.created_at)
-    const gracePeriodEnd = new Date(invoiceDate)
-    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30)
-    return new Date() > gracePeriodEnd
   }
 
   // Get unique customers for filter
@@ -466,7 +453,7 @@ export default function InvoicesPage() {
                         <span className="font-mono font-semibold text-primary group-hover:text-primary/80">
                           {invoice.invoice_number}
                         </span>
-                        {getStatusBadge(invoice.status, invoice.due_date, invoice.invoice_date || invoice.created_at)}
+                        {getStatusBadge(invoice.status, invoice)}
                       </div>
                       <p className="font-medium text-white mb-1">{invoice.customer_name}</p>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dark-400">

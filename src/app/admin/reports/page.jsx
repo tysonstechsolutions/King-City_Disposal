@@ -172,12 +172,16 @@ export default function ReportsPage() {
     return statusCounts
   }
 
-  // Overdue invoices
+  // Overdue invoices: 30 days past date_set (dumpster delivery date)
   const getOverdueInvoices = () => {
-    const today = new Date()
+    const now = new Date()
     return invoices.filter(i => {
-      if (i.status === 'paid' || !i.due_date) return false
-      return new Date(i.due_date) < today
+      if (i.status === 'paid') return false
+      const refDate = i.date_set || i.invoice_date || i.created_at
+      if (!refDate) return false
+      const overdueDate = new Date(refDate)
+      overdueDate.setDate(overdueDate.getDate() + 30)
+      return now > overdueDate
     })
   }
 

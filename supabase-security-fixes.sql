@@ -4,6 +4,7 @@
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 -- Allow service_role full access (your API uses service role key)
+DROP POLICY IF EXISTS "Service role full access on payments" ON public.payments;
 CREATE POLICY "Service role full access on payments"
   ON public.payments
   FOR ALL
@@ -12,6 +13,7 @@ CREATE POLICY "Service role full access on payments"
   WITH CHECK (true);
 
 -- Block anon from payments entirely
+DROP POLICY IF EXISTS "Block anon from payments" ON public.payments;
 CREATE POLICY "Block anon from payments"
   ON public.payments
   FOR ALL
@@ -37,6 +39,9 @@ ALTER FUNCTION public.update_updated_at_column SET search_path = public;
 
 -- --- BOOKINGS ---
 DROP POLICY IF EXISTS "Allow anon inserts" ON public.bookings;
+DROP POLICY IF EXISTS "Anon can insert bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Anon can read bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Service role full access on bookings" ON public.bookings;
 
 CREATE POLICY "Anon can insert bookings"
   ON public.bookings
@@ -60,6 +65,8 @@ CREATE POLICY "Service role full access on bookings"
 
 -- --- CUSTOMERS ---
 DROP POLICY IF EXISTS "Allow all customers" ON public.customers;
+DROP POLICY IF EXISTS "Block anon from customers" ON public.customers;
+DROP POLICY IF EXISTS "Service role full access on customers" ON public.customers;
 
 CREATE POLICY "Block anon from customers"
   ON public.customers
@@ -78,6 +85,9 @@ CREATE POLICY "Service role full access on customers"
 
 -- --- DOCUMENTS ---
 DROP POLICY IF EXISTS "Allow all documents" ON public.documents;
+DROP POLICY IF EXISTS "Anon can insert documents" ON public.documents;
+DROP POLICY IF EXISTS "Anon can read documents" ON public.documents;
+DROP POLICY IF EXISTS "Service role full access on documents" ON public.documents;
 
 CREATE POLICY "Anon can insert documents"
   ON public.documents
@@ -101,6 +111,8 @@ CREATE POLICY "Service role full access on documents"
 
 -- --- INVOICES ---
 DROP POLICY IF EXISTS "Allow all invoices" ON public.invoices;
+DROP POLICY IF EXISTS "Anon can read invoices" ON public.invoices;
+DROP POLICY IF EXISTS "Service role full access on invoices" ON public.invoices;
 
 CREATE POLICY "Anon can read invoices"
   ON public.invoices
@@ -118,6 +130,8 @@ CREATE POLICY "Service role full access on invoices"
 
 -- --- TRANSACTIONS ---
 DROP POLICY IF EXISTS "Allow all transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Anon can read transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Service role full access on transactions" ON public.transactions;
 
 CREATE POLICY "Anon can read transactions"
   ON public.transactions
@@ -135,6 +149,8 @@ CREATE POLICY "Service role full access on transactions"
 
 -- --- VENDOR CORRECTIONS ---
 DROP POLICY IF EXISTS "Service role can manage vendor corrections" ON public.vendor_corrections;
+DROP POLICY IF EXISTS "Block anon from vendor corrections" ON public.vendor_corrections;
+DROP POLICY IF EXISTS "Service role full access on vendor corrections" ON public.vendor_corrections;
 
 CREATE POLICY "Block anon from vendor corrections"
   ON public.vendor_corrections
@@ -145,6 +161,46 @@ CREATE POLICY "Block anon from vendor corrections"
 
 CREATE POLICY "Service role full access on vendor corrections"
   ON public.vendor_corrections
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+
+-- --- PARSED INVOICES ---
+DROP POLICY IF EXISTS "Allow all parsed_invoices" ON public.parsed_invoices;
+DROP POLICY IF EXISTS "Block anon from parsed invoices" ON public.parsed_invoices;
+DROP POLICY IF EXISTS "Service role full access on parsed invoices" ON public.parsed_invoices;
+
+CREATE POLICY "Block anon from parsed invoices"
+  ON public.parsed_invoices
+  FOR ALL
+  TO anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY "Service role full access on parsed invoices"
+  ON public.parsed_invoices
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+
+-- --- MISSED CALLS ---
+DROP POLICY IF EXISTS "Allow all missed_calls" ON public.missed_calls;
+DROP POLICY IF EXISTS "Block anon from missed calls" ON public.missed_calls;
+DROP POLICY IF EXISTS "Service role full access on missed calls" ON public.missed_calls;
+
+CREATE POLICY "Block anon from missed calls"
+  ON public.missed_calls
+  FOR ALL
+  TO anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY "Service role full access on missed calls"
+  ON public.missed_calls
   FOR ALL
   TO service_role
   USING (true)
