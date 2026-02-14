@@ -167,41 +167,5 @@ CREATE POLICY "Service role full access on vendor corrections"
   WITH CHECK (true);
 
 
--- --- PARSED INVOICES ---
-DROP POLICY IF EXISTS "Allow all parsed_invoices" ON public.parsed_invoices;
-DROP POLICY IF EXISTS "Block anon from parsed invoices" ON public.parsed_invoices;
-DROP POLICY IF EXISTS "Service role full access on parsed invoices" ON public.parsed_invoices;
-
-CREATE POLICY "Block anon from parsed invoices"
-  ON public.parsed_invoices
-  FOR ALL
-  TO anon
-  USING (false)
-  WITH CHECK (false);
-
-CREATE POLICY "Service role full access on parsed invoices"
-  ON public.parsed_invoices
-  FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
-
-
--- --- MISSED CALLS ---
-DROP POLICY IF EXISTS "Allow all missed_calls" ON public.missed_calls;
-DROP POLICY IF EXISTS "Block anon from missed calls" ON public.missed_calls;
-DROP POLICY IF EXISTS "Service role full access on missed calls" ON public.missed_calls;
-
-CREATE POLICY "Block anon from missed calls"
-  ON public.missed_calls
-  FOR ALL
-  TO anon
-  USING (false)
-  WITH CHECK (false);
-
-CREATE POLICY "Service role full access on missed calls"
-  ON public.missed_calls
-  FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
+-- NOTE: parsed_invoices and missed_calls policies are handled
+-- in their own table creation scripts (create-parsed-invoices-table.sql)
