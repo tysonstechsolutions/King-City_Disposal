@@ -83,19 +83,17 @@ function CreateInvoiceContent() {
     }
   }, [bookingId, customerId])
 
+  const getAuthHeaders = () => {
+    const token = sessionStorage.getItem('adminToken')
+    return { 'Authorization': `Bearer ${token}` }
+  }
+
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers?order=name.asc&limit=100`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const response = await fetch('/api/admin/customers', { headers: getAuthHeaders() })
       if (response.ok) {
-        setCustomers(await response.json())
+        const data = await response.json()
+        setCustomers(Array.isArray(data) ? data : [])
       }
     } catch (err) {
       console.error('Error fetching customers:', err)
@@ -104,19 +102,12 @@ function CreateInvoiceContent() {
 
   const fetchCustomerById = async (id) => {
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/customers?id=eq.${id}`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const response = await fetch(`/api/admin/customers?id=${id}`, { headers: getAuthHeaders() })
       if (response.ok) {
-        const [customer] = await response.json()
-        if (customer) {
-          selectCustomer(customer)
+        const data = await response.json()
+        const list = Array.isArray(data) ? data : []
+        if (list.length > 0) {
+          selectCustomer(list[0])
         }
       }
     } catch (err) {
@@ -127,12 +118,13 @@ function CreateInvoiceContent() {
   const fetchBooking = async (id) => {
     setLoading(true)
     try {
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || config.supabase.anonKey
       const response = await fetch(
         `${config.supabase.url}/rest/v1/bookings?id=eq.${id}`,
         {
           headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
           },
         }
       )
