@@ -100,7 +100,9 @@ export default function InvoiceDetailPage() {
   // Format date
   const formatDate = (dateStr) => {
     if (!dateStr) return 'Not set'
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    // Append T00:00:00 to date-only strings so they parse as local time, not UTC
+    const d = dateStr.length === 10 ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
+    return d.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -113,9 +115,8 @@ export default function InvoiceDetailPage() {
     if (!inv || inv.status === 'paid') return { monthsLate: 0, lateFee: 0 }
 
     // Use date_set if available (when dumpster was delivered), otherwise use invoice_date
-    const referenceDate = inv.date_set
-      ? new Date(inv.date_set)
-      : new Date(inv.invoice_date || inv.created_at)
+    const refStr = inv.date_set || inv.invoice_date || inv.created_at
+    const referenceDate = refStr?.length === 10 ? new Date(refStr + 'T00:00:00') : new Date(refStr)
 
     // Late fees apply 30 days after the reference date
     const lateFeeStartDate = new Date(referenceDate.getTime() + 30 * 24 * 60 * 60 * 1000)
@@ -230,7 +231,9 @@ export default function InvoiceDetailPage() {
           discount_cents: discount,
           total_cents: total,
           notes: editedInvoice.notes,
+          invoice_date: editedInvoice.invoice_date,
           due_date: editedInvoice.due_date,
+          date_set: editedInvoice.date_set,
         }),
       })
 
@@ -639,6 +642,36 @@ export default function InvoiceDetailPage() {
                         className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                         placeholder="0.00"
                       />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-dark-700">
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Invoice Date</label>
+                      <input
+                        type="date"
+                        value={editedInvoice.invoice_date ? editedInvoice.invoice_date.split('T')[0] : ''}
+                        onChange={(e) => setEditedInvoice({ ...editedInvoice, invoice_date: e.target.value })}
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Due Date</label>
+                      <input
+                        type="date"
+                        value={editedInvoice.due_date ? editedInvoice.due_date.split('T')[0] : ''}
+                        onChange={(e) => setEditedInvoice({ ...editedInvoice, due_date: e.target.value })}
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Date Set</label>
+                      <input
+                        type="date"
+                        value={editedInvoice.date_set ? editedInvoice.date_set.split('T')[0] : ''}
+                        onChange={(e) => setEditedInvoice({ ...editedInvoice, date_set: e.target.value })}
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                      <p className="text-xs text-dark-500 mt-1">Late fees start 30 days after</p>
                     </div>
                   </div>
                 </div>

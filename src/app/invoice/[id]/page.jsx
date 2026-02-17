@@ -114,7 +114,9 @@ export default function CustomerInvoicePage() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    // Append T00:00:00 to date-only strings so they parse as local time, not UTC
+    const d = dateStr.length === 10 ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
+    return d.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -126,7 +128,7 @@ export default function CustomerInvoicePage() {
     if (!invoice || invoice.status === 'paid') return false
     const refDate = invoice.date_set || invoice.invoice_date || invoice.created_at
     if (!refDate) return false
-    const overdueDate = new Date(refDate)
+    const overdueDate = refDate.length === 10 ? new Date(refDate + 'T00:00:00') : new Date(refDate)
     overdueDate.setDate(overdueDate.getDate() + 30)
     return new Date() > overdueDate
   }

@@ -1095,6 +1095,7 @@ export default function ChatbotWidget() {
                     placeholder="Phone number"
                     className="input-field w-full"
                   />
+                  <p className="text-xs text-dark-500 -mt-1">By providing your number, you agree to receive booking &amp; invoice texts. Msg &amp; data rates apply. Reply STOP to opt out.</p>
                   <input
                     type="email"
                     value={contactEmail}

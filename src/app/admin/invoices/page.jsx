@@ -115,7 +115,8 @@ export default function InvoicesPage() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    const d = dateStr.length === 10 ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
+    return d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -128,7 +129,7 @@ export default function InvoicesPage() {
     if (inv.status === 'overdue') return true
     const refDate = inv.date_set || inv.invoice_date || inv.created_at
     if (!refDate) return false
-    const overdueDate = new Date(refDate)
+    const overdueDate = refDate.length === 10 ? new Date(refDate + 'T00:00:00') : new Date(refDate)
     overdueDate.setDate(overdueDate.getDate() + 30)
     return new Date() > overdueDate
   }

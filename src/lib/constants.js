@@ -115,7 +115,9 @@ export function formatCurrency(cents) {
 // Format date
 export function formatDate(dateStr) {
   if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  // Append T00:00:00 to date-only strings so they parse as local time, not UTC
+  const d = dateStr.length === 10 ? new Date(dateStr + 'T00:00:00') : new Date(dateStr);
+  return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

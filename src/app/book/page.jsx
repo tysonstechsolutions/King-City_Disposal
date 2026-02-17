@@ -977,7 +977,7 @@ function BookingPageContent() {
                     className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors text-lg"
                   />
                 </div>
-                <p className="text-xs text-dark-400 mt-2">We'll send delivery updates via text message</p>
+                <p className="text-xs text-dark-400 mt-2">By providing your phone number, you agree to receive booking confirmations and invoice notifications via text. Msg &amp; data rates may apply. Reply STOP to opt out.</p>
               </div>
 
               {/* Show who they are */}

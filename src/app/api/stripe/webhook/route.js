@@ -21,7 +21,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { config } from '../../../../config';
-import { notifyOwner, notifyCustomer, bookingConfirmationEmail } from '../../../../lib/notifications';
+import { notifyOwner, notifyCustomer, sendSMS, bookingConfirmationEmail, invoiceEmail, sendEmail } from '../../../../lib/notifications';
 
 // Initialize Stripe lazily to avoid build-time crash when env var is missing
 let _stripe;
@@ -103,6 +103,123 @@ async function createTransaction(data) {
     return null;
   } catch (e) {
     console.error('Transaction error:', e);
+    return null;
+  }
+}
+
+async function generateInvoiceNumber() {
+  const supabaseUrl = config.supabase.url;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/generate_invoice_number`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({}),
+      }
+    );
+
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (e) {
+    console.error('Error generating invoice number:', e);
+  }
+
+  // Fallback
+  const now = new Date();
+  const year = now.getFullYear();
+  const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+  return `INV-${year}-${random}`;
+}
+
+async function createInvoiceForBooking(booking, amountCents) {
+  const supabaseUrl = config.supabase.url;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+  const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
+  const dumpsterName = dumpster?.name || booking.dumpster_size;
+  const invoiceNumber = await generateInvoiceNumber();
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const invoiceData = {
+    invoice_number: invoiceNumber,
+    booking_id: booking.id,
+    customer_id: booking.customer_id || null,
+    customer_name: booking.customer_name,
+    customer_phone: booking.customer_phone,
+    customer_email: booking.customer_email,
+    customer_address: booking.customer_address || '',
+    service_address: booking.address,
+    service_description: `${dumpsterName} - ${booking.rental_duration} Rental`,
+    dumpster_size: dumpsterName,
+    rental_duration: booking.rental_duration,
+    delivery_date: booking.delivery_date,
+    invoice_date: today,
+    date_set: booking.delivery_date || today,
+    line_items: JSON.stringify([
+      { description: `${dumpsterName} - ${booking.rental_duration} Rental`, amount_cents: amountCents }
+    ]),
+    subtotal_cents: amountCents,
+    tax_cents: 0,
+    discount_cents: 0,
+    total_cents: amountCents,
+    amount_paid_cents: amountCents,
+    due_date: today,
+    status: 'paid',
+    sent_at: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/invoices`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(invoiceData),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Invoice creation failed:', await response.text());
+      return null;
+    }
+
+    const [invoice] = await response.json();
+
+    // Link invoice to booking
+    await fetch(
+      `${supabaseUrl}/rest/v1/bookings?id=eq.${booking.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          invoice_id: invoice.id,
+          invoiced_at: new Date().toISOString(),
+        }),
+      }
+    );
+
+    console.log(`Invoice ${invoiceNumber} created for booking ${booking.id}`);
+    return invoice;
+  } catch (e) {
+    console.error('Invoice creation error:', e);
     return null;
   }
 }
@@ -196,10 +313,39 @@ export async function POST(request) {
 
           const priceDisplay = `$${(session.amount_total / 100).toFixed(2)}`;
 
+          // Create invoice and text customer the link
+          let invoice = null;
+          try {
+            invoice = await createInvoiceForBooking(booking, session.amount_total);
+
+            if (invoice && booking.customer_phone) {
+              const invoiceUrl = `${siteUrl}/invoice/${invoice.invoice_number}`;
+
+              const invoiceSms = `📋 INVOICE FROM ${config.businessName.toUpperCase()}\n\nInvoice: ${invoice.invoice_number}\nAmount: ${priceDisplay}\n\n📍 ${booking.address}\n🚛 ${dumpsterName}\n📅 ${booking.delivery_date}\n\n💳 View Invoice: ${invoiceUrl}\n\nQuestions? Reply to this text or call ${config.phone}\n\n- ${config.businessName}`;
+
+              await sendSMS(booking.customer_phone, invoiceSms);
+              console.log(`Invoice SMS sent to ${booking.customer_phone} - ${invoice.invoice_number}`);
+            }
+
+            // Send invoice email if customer has email
+            const customerEmail = booking.customer_email || session.customer_details?.email;
+            if (invoice && customerEmail) {
+              const { html, text } = invoiceEmail(invoice);
+              await sendEmail({
+                to: customerEmail,
+                subject: `Invoice ${invoice.invoice_number} from ${config.businessName}`,
+                html,
+                text,
+              });
+            }
+          } catch (e) {
+            console.error('Invoice creation/send failed:', e);
+          }
+
           // Notify team (owner + billing + operations)
           try {
             await notifyOwner(
-              `PAYMENT RECEIVED!\n\n${booking.customer_name}\n📞 ${booking.customer_phone}\n📍 ${booking.address}\n\n📦 ${dumpsterName}\n📅 ${booking.delivery_date}\n⏱️ ${booking.rental_duration}\n💰 ${priceDisplay}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
+              `PAYMENT RECEIVED!\n\n${booking.customer_name}\n📞 ${booking.customer_phone}\n📍 ${booking.address}\n\n📦 ${dumpsterName}\n📅 ${booking.delivery_date}\n⏱️ ${booking.rental_duration}\n💰 ${priceDisplay}\n\nReceipt: ${txResult?.receipt_number || 'Created'}${invoice ? `\nInvoice: ${invoice.invoice_number}` : ''}`
             );
           } catch (e) {
             console.error('Team notification failed:', e);
