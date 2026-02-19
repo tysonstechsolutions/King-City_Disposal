@@ -339,12 +339,31 @@ export async function POST(request) {
         const durationMatch = rentalDuration.match(/(\d+)-day/);
         const durationLabel = durationMatch ? `${durationMatch[1]}-Day` : '10-Day';
 
+        // Calculate fees
+        const taxRate = config.payments.salesTaxRate || 0;
+        const stripeRate = config.payments.stripeProcessingRate || 0;
+        const stripeFlat = config.payments.stripeProcessingFlat || 0;
+
+        const taxCents = Math.round(priceCents * taxRate);
+        // Stripe fee is calculated on the total after tax
+        const subtotalWithTax = priceCents + taxCents;
+        // To pass Stripe fee to customer: fee = (subtotal + flat) / (1 - rate) - subtotal
+        const stripeFee = Math.round((subtotalWithTax + stripeFlat) / (1 - stripeRate) - subtotalWithTax);
+
         const requestBody = new URLSearchParams({
           'line_items[0][price_data][currency]': 'usd',
           'line_items[0][price_data][product_data][name]': `${dumpster?.name || dumpsterSize} - ${durationLabel} Rental`,
           'line_items[0][price_data][product_data][description]': `Dumpster rental at ${address}. Includes ${dumpster?.weightIncluded || '2 tons'}.`,
           'line_items[0][price_data][unit_amount]': priceCents.toString(),
           'line_items[0][quantity]': '1',
+          'line_items[1][price_data][currency]': 'usd',
+          'line_items[1][price_data][product_data][name]': 'IL Rental Tax (8%)',
+          'line_items[1][price_data][unit_amount]': taxCents.toString(),
+          'line_items[1][quantity]': '1',
+          'line_items[2][price_data][currency]': 'usd',
+          'line_items[2][price_data][product_data][name]': 'Card Processing Fee',
+          'line_items[2][price_data][unit_amount]': stripeFee.toString(),
+          'line_items[2][quantity]': '1',
           'mode': 'payment',
           'success_url': `${siteUrl}/payment-success?booking=${bookingId || ''}&session_id={CHECKOUT_SESSION_ID}`,
           'cancel_url': `${siteUrl}/book?canceled=true`,
@@ -355,6 +374,9 @@ export async function POST(request) {
           'metadata[customer_phone]': customerPhone,
           'metadata[dumpster_size]': dumpsterSize,
           'metadata[address]': address,
+          'metadata[base_price_cents]': priceCents.toString(),
+          'metadata[tax_cents]': taxCents.toString(),
+          'metadata[stripe_fee_cents]': stripeFee.toString(),
         });
 
         if (customerEmail) {
@@ -374,7 +396,7 @@ export async function POST(request) {
 
         if (stripeData.url) {
           checkoutUrl = stripeData.url;
-          logger.info('Stripe checkout created', { booking_id: bookingId, url: stripeData.url });
+          logger.info('Stripe checkout created', { booking_id: bookingId, url: stripeData.url, base: priceCents, tax: taxCents, stripeFee });
         } else {
           logger.error('Stripe checkout failed', null, { error: stripeData.error });
         }

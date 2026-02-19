@@ -98,6 +98,15 @@ export async function POST(request) {
         );
       }
 
+      // Check for JWT/auth errors (Invalid Compact JWS = bad or missing service role key)
+      if (errorText.includes('Invalid Compact JWS') || errorText.includes('invalid JWT') || errorText.includes('Invalid token')) {
+        logger.error('Supabase auth error - check SUPABASE_SERVICE_ROLE_KEY env var');
+        return NextResponse.json(
+          { error: 'Authentication error. Please check that SUPABASE_SERVICE_ROLE_KEY is set correctly in your environment variables.' },
+          { status: 500 }
+        );
+      }
+
       // Parse error for more detail
       let errorMessage = 'Failed to upload file';
       try {

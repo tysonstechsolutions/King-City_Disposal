@@ -139,7 +139,7 @@ async function generateInvoiceNumber() {
   return `INV-${year}-${random}`;
 }
 
-async function createInvoiceForBooking(booking, amountCents) {
+async function createInvoiceForBooking(booking, amountCents, metadata) {
   const supabaseUrl = config.supabase.url;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
@@ -148,6 +148,24 @@ async function createInvoiceForBooking(booking, amountCents) {
   const invoiceNumber = await generateInvoiceNumber();
 
   const today = new Date().toISOString().split('T')[0];
+
+  // Build line items from metadata fee breakdown if available
+  const basePriceCents = parseInt(metadata?.base_price_cents) || amountCents;
+  const taxCents = parseInt(metadata?.tax_cents) || 0;
+  const stripeFeeCents = parseInt(metadata?.stripe_fee_cents) || 0;
+
+  const lineItems = [
+    { description: `${dumpsterName} - ${booking.rental_duration} Rental`, amount_cents: basePriceCents },
+  ];
+  if (taxCents > 0) {
+    lineItems.push({ description: 'IL Rental Tax (8%)', amount_cents: taxCents });
+  }
+  if (stripeFeeCents > 0) {
+    lineItems.push({ description: 'Card Processing Fee', amount_cents: stripeFeeCents });
+  }
+
+  const subtotalCents = basePriceCents;
+  const totalCents = basePriceCents + taxCents + stripeFeeCents;
 
   const invoiceData = {
     invoice_number: invoiceNumber,
@@ -164,13 +182,12 @@ async function createInvoiceForBooking(booking, amountCents) {
     delivery_date: booking.delivery_date,
     invoice_date: today,
     date_set: booking.delivery_date || today,
-    line_items: JSON.stringify([
-      { description: `${dumpsterName} - ${booking.rental_duration} Rental`, amount_cents: amountCents }
-    ]),
-    subtotal_cents: amountCents,
-    tax_cents: 0,
+    line_items: JSON.stringify(lineItems),
+    subtotal_cents: subtotalCents,
+    tax_cents: taxCents,
+    cc_fee_cents: stripeFeeCents,
     discount_cents: 0,
-    total_cents: amountCents,
+    total_cents: totalCents,
     amount_paid_cents: amountCents,
     due_date: today,
     status: 'paid',
@@ -316,7 +333,7 @@ export async function POST(request) {
           // Create invoice and text customer the link
           let invoice = null;
           try {
-            invoice = await createInvoiceForBooking(booking, session.amount_total);
+            invoice = await createInvoiceForBooking(booking, session.amount_total, session.metadata);
 
             if (invoice && booking.customer_phone) {
               const invoiceUrl = `${siteUrl}/invoice/${invoice.invoice_number}`;
