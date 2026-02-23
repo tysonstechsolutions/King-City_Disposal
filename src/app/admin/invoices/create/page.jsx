@@ -496,11 +496,13 @@ function CreateInvoiceContent() {
               <div>
                 <label className="block text-sm font-medium text-dark-200 mb-1">Email</label>
                 <input
-                  type="email"
+                  type="text"
                   value={invoice.customer_email}
                   onChange={(e) => setInvoice({ ...invoice, customer_email: e.target.value })}
+                  placeholder="email@example.com, second@example.com"
                   className="w-full px-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
+                <p className="text-xs text-dark-500 mt-1">Separate multiple emails with commas</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-dark-200 mb-1">Payment Terms</label>

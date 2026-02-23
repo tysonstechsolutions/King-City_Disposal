@@ -447,9 +447,10 @@ export default function ImportInvoicesPage() {
                       <div>
                         <label className="block text-sm text-gray-400 mb-1">Email</label>
                         <input
-                          type="email"
+                          type="text"
                           value={currentInvoice.customer_email || ''}
                           onChange={(e) => updateCurrentInvoice('customer_email', e.target.value)}
+                          placeholder="Separate multiple with commas"
                           className="w-full bg-dark-700 border border-dark-600 rounded px-3 py-2 text-white"
                         />
                       </div>

@@ -93,10 +93,19 @@ export async function sendEmail({ to, subject, html, text, replyTo, bcc }) {
   // BCC owner on all emails if configured
   const bccList = bcc || process.env.OWNER_EMAIL || config.notifications?.bookingAlertEmail || null;
 
+  // Normalize recipients: handle comma/semicolon-separated strings and arrays
+  const normalizeRecipients = (input) => {
+    if (!input) return [];
+    if (Array.isArray(input)) {
+      return input.flatMap(item => item.split(/[,;]\s*/)).map(e => e.trim()).filter(Boolean);
+    }
+    return input.split(/[,;]\s*/).map(e => e.trim()).filter(Boolean);
+  };
+
   try {
     const emailPayload = {
       from: fromEmail,
-      to: Array.isArray(to) ? to : [to],
+      to: normalizeRecipients(to),
       subject,
       html,
       text,
@@ -104,7 +113,7 @@ export async function sendEmail({ to, subject, html, text, replyTo, bcc }) {
     };
 
     if (bccList) {
-      emailPayload.bcc = Array.isArray(bccList) ? bccList : [bccList];
+      emailPayload.bcc = normalizeRecipients(bccList);
     }
 
     const { data, error } = await resend.emails.send(emailPayload);
