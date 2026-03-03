@@ -33,15 +33,7 @@ export default function CustomerInvoicePage() {
 
   const fetchInvoice = async () => {
     try {
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/invoices?invoice_number=eq.${params.id}`,
-        {
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      const response = await fetch(`/api/invoices?invoice_number=${params.id}`)
       if (response.ok) {
         const data = await response.json()
         if (data.length > 0) {
@@ -61,21 +53,11 @@ export default function CustomerInvoicePage() {
 
   const markAsViewed = async () => {
     try {
-      await fetch(
-        `${config.supabase.url}/rest/v1/invoices?invoice_number=eq.${params.id}&status=eq.sent`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify({
-            status: 'viewed',
-            viewed_at: new Date().toISOString()
-          }),
-        }
-      )
+      await fetch('/api/invoices/view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_number: params.id }),
+      })
     } catch (err) {
       console.error('Error marking as viewed:', err)
     }
