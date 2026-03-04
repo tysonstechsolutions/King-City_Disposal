@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { logger } from '../../../../lib/logger';
+import { requireAdminAuth } from '../../../../lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -307,6 +308,11 @@ function parseInvoiceSheet(sheet, sheetName, paymentInfo) {
 // POST - Parse Excel file and return data for review
 // ============================================
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file');

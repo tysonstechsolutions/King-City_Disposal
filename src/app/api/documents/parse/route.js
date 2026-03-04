@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
+import { requireAdminAuth } from '../../../../lib/adminAuth';
 import * as XLSX from 'xlsx';
 
 // Force dynamic rendering (not static)
@@ -256,6 +257,11 @@ Return ONLY the JSON object, no other text.`;
 // POST - Parse an invoice document
 // ============================================
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const { document_id, category } = await request.json();
 
@@ -777,6 +783,11 @@ async function findOrCreateCustomer(customerData, isVendor = false) {
 // GET - Fetch parsed invoice by document_id
 // ============================================
 export async function GET(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const documentId = searchParams.get('document_id');
   const id = searchParams.get('id');
