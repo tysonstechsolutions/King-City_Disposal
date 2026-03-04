@@ -6,6 +6,7 @@ import { config } from '../../config'
 import AdminNav from '../../components/AdminNav'
 import { useRealtimeBookings } from '../../hooks/useRealtimeBookings'
 import { useToast } from '../../components/Toast'
+import Link from 'next/link'
 import {
   Truck,
   Phone,
@@ -31,7 +32,10 @@ import {
   ChevronDown,
   Users,
   Filter,
-  X
+  X,
+  FileText,
+  Plus,
+  AlertTriangle
 } from 'lucide-react'
 
 export default function AdminPage() {
@@ -394,7 +398,7 @@ export default function AdminPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
           {[
             { label: 'Total', value: bookings.length, color: 'text-white' },
             { label: 'Pending', value: bookings.filter(b => b.status === 'pending').length, color: 'text-yellow-400' },
@@ -407,6 +411,34 @@ export default function AdminPage() {
               <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
             </div>
           ))}
+        </div>
+
+        {/* Invoice Quick Access Banner */}
+        <div className="flex items-center gap-3 mb-6 p-3 bg-dark-800 rounded-xl border border-dark-700">
+          <FileText className="w-5 h-5 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-sm text-dark-300">
+              {bookings.filter(b => !b.invoice_id && b.status !== 'cancelled').length > 0
+                ? <><span className="text-amber-400 font-semibold">{bookings.filter(b => !b.invoice_id && b.status !== 'cancelled').length}</span> booking{bookings.filter(b => !b.invoice_id && b.status !== 'cancelled').length !== 1 ? 's' : ''} without an invoice</>
+                : <span className="text-green-400">All active bookings are invoiced</span>
+              }
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/admin/invoices"
+              className="text-sm text-dark-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-700 rounded-lg"
+            >
+              View Invoices
+            </Link>
+            <Link
+              href="/admin/invoices/create"
+              className="flex items-center gap-1.5 text-sm bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              New Invoice
+            </Link>
+          </div>
         </div>
 
         {/* Search & Filters */}
@@ -567,14 +599,41 @@ export default function AdminPage() {
 
                     {/* Quick Actions */}
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-dark-700">
-                      <p className="text-dark-500 text-sm">
-                        {timeAgo(booking.created_at)}
+                      <div className="flex items-center gap-3 text-dark-500 text-sm">
+                        <span>{timeAgo(booking.created_at)}</span>
                         {booking.placement_lat && (
-                          <span className="ml-2 text-green-400">📍 Has placement</span>
+                          <span className="text-green-400">📍 Has placement</span>
                         )}
-                      </p>
-                      
+                        {/* Invoice status badge */}
+                        {booking.invoice_id ? (
+                          <Link
+                            href={`/admin/invoices/${booking.invoice_id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1 px-2 py-0.5 bg-green-500/15 text-green-400 border border-green-500/30 rounded text-xs hover:bg-green-500/25 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" />
+                            Invoiced
+                          </Link>
+                        ) : booking.status !== 'cancelled' && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded text-xs">
+                            <AlertTriangle className="w-3 h-3" />
+                            No Invoice
+                          </span>
+                        )}
+                      </div>
+
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        {/* Create Invoice shortcut */}
+                        {!booking.invoice_id && booking.status !== 'cancelled' && (
+                          <Link
+                            href={`/admin/invoices/create?booking=${booking.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg text-sm hover:bg-primary/30 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            Invoice
+                          </Link>
+                        )}
                         {booking.status === 'pending' && (
                           <>
                             <button

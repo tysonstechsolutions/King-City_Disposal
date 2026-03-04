@@ -162,7 +162,7 @@ export default function ExpensesPage() {
         body: formData,
       })
 
-      const result = await response.json()
+      const result = await response.json().catch(() => ({}))
 
       if (response.ok) {
         setImportResult({

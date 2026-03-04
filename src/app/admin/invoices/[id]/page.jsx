@@ -306,12 +306,14 @@ export default function InvoiceDetailPage() {
       const baseAmountCents = Math.round(parseFloat(paymentAmount) * 100)
 
       // Calculate CC fee if card payment (3.75%)
+      // The CC fee is collected from the customer on top of the invoice amount,
+      // so it goes into amount_paid_cents. We do NOT inflate total_cents or
+      // accumulate cc_fee_cents here — that would double-count on repeated payments.
       const ccFeeCents = paymentMethod === 'card' ? Math.round(baseAmountCents * 0.0375) : 0
       const totalAmountCents = baseAmountCents + ccFeeCents
 
       const newAmountPaid = (invoice.amount_paid_cents || 0) + totalAmountCents
-      const newTotalWithFee = invoice.total_cents + ccFeeCents
-      const newBalanceDue = newTotalWithFee - newAmountPaid
+      const newBalanceDue = (invoice.total_cents || 0) - newAmountPaid
       const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
 
       // Use custom date if provided, otherwise use now
@@ -330,8 +332,6 @@ export default function InvoiceDetailPage() {
       const updateData = {
         amount_paid_cents: newAmountPaid,
         balance_due_cents: Math.max(0, newBalanceDue),
-        cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
-        total_cents: newTotalWithFee,
         status: newStatus,
         updated_at: new Date().toISOString(),
       }
@@ -1101,16 +1101,14 @@ export default function InvoiceDetailPage() {
                     const totalAmountCents = baseAmountCents + ccFeeCents
 
                     const newAmountPaid = (invoice.amount_paid_cents || 0) + totalAmountCents
-                    const newTotalWithFee = invoice.total_cents + ccFeeCents
-                    const newBalanceDue = newTotalWithFee - newAmountPaid
+                    const newBalanceDue = (invoice.total_cents || 0) - newAmountPaid
                     const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
 
-                    // Build update data
+                    // Build update data — do not inflate total_cents or accumulate
+                    // cc_fee_cents here; the fee is already included in amount_paid_cents.
                     const cardUpdateData = {
                       amount_paid_cents: newAmountPaid,
                       balance_due_cents: Math.max(0, newBalanceDue),
-                      cc_fee_cents: (invoice.cc_fee_cents || 0) + ccFeeCents,
-                      total_cents: newTotalWithFee,
                       status: newStatus,
                       updated_at: new Date().toISOString(),
                     }
