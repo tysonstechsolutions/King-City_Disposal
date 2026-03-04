@@ -104,7 +104,8 @@ export async function POST(request) {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const invoiceData = {
+    // Core fields that definitely exist in the schema
+    const coreData = {
       invoice_number,
       customer_id,
       booking_id,
@@ -119,10 +120,6 @@ export async function POST(request) {
       delivery_date,
       pickup_date,
       invoice_date: invoice_date || today,
-      date_set: date_set || delivery_date || today,
-      weight_lbs,
-      weight_included_lbs,
-      overage_lbs,
       line_items: JSON.stringify(line_items),
       subtotal_cents,
       tax_cents,
@@ -136,9 +133,16 @@ export async function POST(request) {
       sent_at,
     };
 
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/invoices`,
-      {
+    // Optional fields that may not exist yet depending on migration state
+    const optionalData = {
+      date_set: date_set || delivery_date || today,
+      weight_lbs,
+      weight_included_lbs,
+      overage_lbs,
+    };
+
+    const insertInvoice = async (data) => {
+      return fetch(`${supabaseUrl}/rest/v1/invoices`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,17 +150,31 @@ export async function POST(request) {
           'Authorization': `Bearer ${getSupabaseKey()}`,
           'Prefer': 'return=representation',
         },
-        body: JSON.stringify(invoiceData),
-      }
-    );
+        body: JSON.stringify(data),
+      });
+    };
+
+    // Try inserting with all fields first, fall back to core only if schema mismatch
+    let response = await insertInvoice({ ...coreData, ...optionalData });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Invoice creation error:', errorText);
-      return NextResponse.json(
-        { error: 'Failed to create invoice' },
-        { status: 500 }
-      );
+      // If the error looks like a missing-column error, retry with core fields only
+      if (response.status === 400 && (errorText.includes('column') || errorText.includes('does not exist'))) {
+        console.warn('Invoice insert failed with optional fields, retrying with core fields only:', errorText);
+        response = await insertInvoice(coreData);
+      }
+      if (!response.ok) {
+        const finalError = await response.text().catch(() => 'Unknown error');
+        console.error('Invoice creation error:', finalError);
+        // Parse Supabase error for a user-friendly message
+        let userMessage = 'Failed to create invoice';
+        try {
+          const parsed = JSON.parse(finalError);
+          if (parsed.message) userMessage = `Failed to create invoice: ${parsed.message}`;
+        } catch {}
+        return NextResponse.json({ error: userMessage }, { status: 500 });
+      }
     }
 
     const [invoice] = await response.json();
