@@ -67,11 +67,14 @@ export async function POST(request) {
       rental_duration,
       delivery_date,
       pickup_date,
+      invoice_date,
+      date_set,
       weight_lbs,
       weight_included_lbs,
       line_items,
       subtotal_cents,
       tax_cents = 0,
+      cc_fee_cents = 0,
       discount_cents = 0,
       total_cents,
       due_date,
@@ -99,6 +102,8 @@ export async function POST(request) {
       overage_lbs = Math.max(0, weight_lbs - weight_included_lbs);
     }
 
+    const today = new Date().toISOString().split('T')[0];
+
     const invoiceData = {
       invoice_number,
       customer_id,
@@ -113,12 +118,15 @@ export async function POST(request) {
       rental_duration,
       delivery_date,
       pickup_date,
+      invoice_date: invoice_date || today,
+      date_set: date_set || delivery_date || today,
       weight_lbs,
       weight_included_lbs,
       overage_lbs,
       line_items: JSON.stringify(line_items),
       subtotal_cents,
       tax_cents,
+      cc_fee_cents,
       discount_cents,
       total_cents: total_cents || subtotal_cents,
       amount_paid_cents: 0,

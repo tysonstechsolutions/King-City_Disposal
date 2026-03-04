@@ -257,10 +257,28 @@ export function bookingConfirmationEmail(booking) {
         <span class="value">${escapeHtml(booking.placement_notes)}</span>
       </div>
       ` : ''}
-      ${booking.price_cents ? `
+      ${booking.base_price_cents ? `
       <div class="details-row">
-        <span class="label">Total:</span>
-        <span class="value">$${(booking.price_cents / 100).toFixed(2)}</span>
+        <span class="label">Rental Price:</span>
+        <span class="value">$${(booking.base_price_cents / 100).toFixed(2)}</span>
+      </div>
+      ` : ''}
+      ${booking.tax_cents > 0 ? `
+      <div class="details-row">
+        <span class="label">IL Rental Tax (8%):</span>
+        <span class="value">$${(booking.tax_cents / 100).toFixed(2)}</span>
+      </div>
+      ` : ''}
+      ${booking.stripe_fee_cents > 0 ? `
+      <div class="details-row">
+        <span class="label">Card Processing Fee:</span>
+        <span class="value">$${(booking.stripe_fee_cents / 100).toFixed(2)}</span>
+      </div>
+      ` : ''}
+      ${booking.price_cents ? `
+      <div class="details-row" style="border-top: 2px solid #333; margin-top: 4px;">
+        <span class="label" style="font-weight: bold;">Total Paid:</span>
+        <span class="value" style="color: #3d8b64;">$${(booking.price_cents / 100).toFixed(2)}</span>
       </div>
       ` : ''}
     </div>
@@ -296,7 +314,10 @@ Delivery: ${booking.delivery_date}
 Duration: ${booking.rental_duration}
 Address: ${booking.address}
 ${booking.placement_notes ? `Placement: ${booking.placement_notes}` : ''}
-${booking.price_cents ? `Total: $${(booking.price_cents / 100).toFixed(2)}` : ''}
+${booking.base_price_cents ? `Rental Price: $${(booking.base_price_cents / 100).toFixed(2)}` : ''}
+${booking.tax_cents > 0 ? `IL Rental Tax (8%): $${(booking.tax_cents / 100).toFixed(2)}` : ''}
+${booking.stripe_fee_cents > 0 ? `Card Processing Fee: $${(booking.stripe_fee_cents / 100).toFixed(2)}` : ''}
+${booking.price_cents ? `Total Paid: $${(booking.price_cents / 100).toFixed(2)}` : ''}
 
 We'll deliver between 8am-12pm on your delivery date.
 Please ensure the area is clear and accessible.
@@ -315,6 +336,43 @@ export function invoiceEmail(invoice) {
   const invoiceUrl = `${siteUrl}/invoice/${invoice.invoice_number}`;
   const amount = `$${((invoice.total_cents || 0) / 100).toFixed(2)}`;
 
+  // Parse line items for breakdown display
+  let lineItems = [];
+  try {
+    lineItems = typeof invoice.line_items === 'string'
+      ? JSON.parse(invoice.line_items)
+      : (invoice.line_items || []);
+  } catch (e) {
+    lineItems = [];
+  }
+
+  const lineItemsHtml = lineItems.length > 0 ? `
+    <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+      <thead>
+        <tr style="border-bottom: 2px solid #ddd;">
+          <th style="text-align: left; padding: 8px 0; color: #666; font-weight: 600;">Description</th>
+          <th style="text-align: right; padding: 8px 0; color: #666; font-weight: 600;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lineItems.map(item => `
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 8px 0;">${escapeHtml(item.description || '')}</td>
+          <td style="padding: 8px 0; text-align: right;">$${((item.amount_cents || item.total_cents || 0) / 100).toFixed(2)}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot>
+        <tr style="border-top: 2px solid #333;">
+          <td style="padding: 10px 0; font-weight: bold; font-size: 16px;">Total</td>
+          <td style="padding: 10px 0; text-align: right; font-weight: bold; font-size: 16px; color: #3d8b64;">${escapeHtml(amount)}</td>
+        </tr>
+      </tfoot>
+    </table>` : `<div style="font-size: 32px; font-weight: bold; color: #3d8b64; text-align: center; margin: 20px 0;">${escapeHtml(amount)}</div>`;
+
+  const lineItemsText = lineItems.length > 0
+    ? lineItems.map(item => `  ${item.description}: $${((item.amount_cents || item.total_cents || 0) / 100).toFixed(2)}`).join('\n') + `\n  ─────────────────────\n  Total: ${amount}`
+    : `Amount Due: ${amount}`;
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -325,26 +383,25 @@ export function invoiceEmail(invoice) {
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
     .header { background: #3d8b64; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
     .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; }
-    .amount { font-size: 32px; font-weight: bold; color: #3d8b64; text-align: center; margin: 20px 0; }
     .btn { display: inline-block; background: #3d8b64; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; }
     .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1 style="margin: 0;">Invoice ${invoice.invoice_number}</h1>
+    <h1 style="margin: 0;">Invoice ${escapeHtml(invoice.invoice_number)}</h1>
   </div>
 
   <div class="content">
     <p>Hi ${escapeHtml(invoice.customer_name?.split(' ')[0]) || 'there'},</p>
     <p>Here's your invoice from ${escapeHtml(config.businessName)}:</p>
 
-    <div class="amount">${escapeHtml(amount)}</div>
+    ${lineItemsHtml}
 
     ${invoice.due_date ? `<p style="text-align: center;">Due: ${new Date(invoice.due_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>` : ''}
 
     <p style="text-align: center;">
-      <a href="${escapeHtml(invoiceUrl)}" class="btn">View & Pay Invoice</a>
+      <a href="${escapeHtml(invoiceUrl)}" class="btn">View Invoice</a>
     </p>
 
     <p>Questions? Call us at <a href="tel:${config.phoneRaw}">${escapeHtml(config.phone)}</a></p>
@@ -362,10 +419,10 @@ Invoice ${invoice.invoice_number}
 
 Hi ${invoice.customer_name?.split(' ')[0] || 'there'},
 
-Amount Due: ${amount}
-${invoice.due_date ? `Due Date: ${new Date(invoice.due_date).toLocaleDateString()}` : ''}
+${lineItemsText}
+${invoice.due_date ? `\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}` : ''}
 
-View & Pay: ${invoiceUrl}
+View Invoice: ${invoiceUrl}
 
 Questions? Call ${config.phone}
 

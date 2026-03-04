@@ -379,6 +379,9 @@ export async function POST(request) {
               address: booking.address,
               placement_notes: booking.placement_notes,
               price_cents: session.amount_total,
+              base_price_cents: parseInt(metadata.base_price_cents) || 0,
+              tax_cents: parseInt(metadata.tax_cents) || 0,
+              stripe_fee_cents: parseInt(metadata.stripe_fee_cents) || 0,
             };
 
             const { html, text } = bookingConfirmationEmail(bookingForEmail);
