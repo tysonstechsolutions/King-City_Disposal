@@ -64,6 +64,8 @@ All critical issues have been identified, fixed, and are ready to deploy.
 1. ✅ `src/lib/notifications.js` - Email template with line items (merge conflict resolved)
 2. ✅ `src/lib/invoiceHelpers.js` - NEW: Invoice calculation utilities
 3. ✅ `src/app/api/book/route.js` - Enhanced error logging
+4. ✅ `src/app/api/invoices/route.js` - UUID to bigint validation, enhanced logging
+5. ✅ `src/app/admin/invoices/create/page.jsx` - Auto-add taxes as line items
 
 ### Documentation
 1. ✅ `README_FIXES.md` - Master deployment guide
@@ -71,6 +73,39 @@ All critical issues have been identified, fixed, and are ready to deploy.
 3. ✅ `CUSTOMER_CREATION_FIX_INSTRUCTIONS.md` - Customer fix details
 4. ✅ `TAX_AND_FEES_IMPLEMENTATION.md` - Invoice transparency guide
 5. ✅ `QUICK_REFERENCE_INVOICE_TAXES.md` - Quick reference card
+
+---
+
+## ✅ Issue 4: UUID to Bigint Type Mismatch
+
+**Problem:** Invoice creation failed with error: `invalid input syntax for type bigint: "uuid-string"`
+
+**Root Cause:** Customer ID or Booking ID was being passed as a UUID when database expects numeric bigint
+
+**Solution Applied:**
+- Added validation in invoice API to detect UUID vs numeric IDs
+- Converts invalid UUIDs to `null` to allow invoice creation
+- Added detailed logging to identify which field has the UUID
+- Invoice still creates successfully with all customer info in text fields
+
+**Status:** ✅ **Fixed and deployed**
+
+---
+
+## ✅ Issue 5: Taxes Not Showing as Separate Line Items
+
+**Problem:** Taxes and fees weren't appearing as separate line items in invoices or emails
+
+**Root Cause:** Invoice creation form wasn't using the `addTaxesAndFees()` helper function
+
+**Solution Applied:**
+- Updated invoice creation form to import and use `invoiceHelpers.js`
+- Automatically adds IL Rental Tax as a separate line item when creating invoices
+- Updated preview modal to show tax breakdown (Subtotal + Tax = Total)
+- Updated main invoice form to display tax calculation in real-time
+- Tax rate: 8% (configurable in `config.js`)
+
+**Status:** ✅ **Fixed and deployed**
 
 ---
 
