@@ -168,17 +168,56 @@ END $$;
 -- =============================================
 -- 3. ENABLE TRIGRAM EXTENSION & CREATE INDEXES
 -- =============================================
--- Enable trigram extension FIRST (required for gin_trgm_ops indexes)
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- Enable trigram extension for fuzzy text search
+DO $$
+BEGIN
+  -- Try to create the extension
+  CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+  RAISE NOTICE 'pg_trgm extension enabled';
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'pg_trgm extension may already exist or require superuser: %', SQLERRM;
+END $$;
 
 -- The booking API searches for existing customers by phone
 -- These indexes make those lookups much faster
+-- We'll create them if the extension is available
 
-CREATE INDEX IF NOT EXISTS idx_customers_phone_search
-  ON public.customers USING gin (phone gin_trgm_ops);
+DO $$
+BEGIN
+  -- Try to create phone search index
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
+    CREATE INDEX IF NOT EXISTS idx_customers_phone_search
+      ON public.customers USING gin (phone gin_trgm_ops);
+    RAISE NOTICE 'Created phone search index with trigram support';
+  ELSE
+    -- Fallback to regular btree index
+    CREATE INDEX IF NOT EXISTS idx_customers_phone_search
+      ON public.customers (phone);
+    RAISE NOTICE 'Created basic phone index (pg_trgm not available)';
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Could not create phone index: %', SQLERRM;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_customers_email_search
-  ON public.customers USING gin (email gin_trgm_ops);
+DO $$
+BEGIN
+  -- Try to create email search index
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
+    CREATE INDEX IF NOT EXISTS idx_customers_email_search
+      ON public.customers USING gin (email gin_trgm_ops);
+    RAISE NOTICE 'Created email search index with trigram support';
+  ELSE
+    -- Fallback to regular btree index
+    CREATE INDEX IF NOT EXISTS idx_customers_email_search
+      ON public.customers (email);
+    RAISE NOTICE 'Created basic email index (pg_trgm not available)';
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Could not create email index: %', SQLERRM;
+END $$;
 
 -- =============================================
 -- 4. VERIFY BOOKINGS TABLE HAS customer_id FK
