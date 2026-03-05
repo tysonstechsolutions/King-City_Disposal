@@ -101,9 +101,25 @@ All critical issues have been identified, fixed, and are ready to deploy.
 **Solution Applied:**
 - Updated invoice creation form to import and use `invoiceHelpers.js`
 - Automatically adds IL Rental Tax as a separate line item when creating invoices
-- Updated preview modal to show tax breakdown (Subtotal + Tax = Total)
-- Updated main invoice form to display tax calculation in real-time
+- Added optional Credit Card Processing Fee (2.9% + $0.30)
+- Added checkbox to include/exclude CC fee (checked by default)
+- Updated preview modal to show tax and fee breakdown
+- Updated main invoice form to display calculations in real-time
 - Tax rate: 8% (configurable in `config.js`)
+
+**How It Works:**
+1. By default, invoices include CC processing fee (most customers pay by card)
+2. Uncheck "Include credit card processing fee" for check/cash payments
+3. Invoice shows: `Subtotal + Tax (8%) + CC Fee (2.9% + $0.30) = Total`
+
+**Example Invoice Breakdown:**
+```
+30 Yard Dumpster - 10-Day Rental    $575.00
+IL Rental Tax (8%)                   $46.00
+Card Processing Fee (2.9% + $0.30)  $18.33
+------------------------------------------
+Total                               $639.33
+```
 
 **Status:** ✅ **Fixed and deployed**
 
