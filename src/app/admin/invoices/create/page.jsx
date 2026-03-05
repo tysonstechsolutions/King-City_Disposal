@@ -69,6 +69,7 @@ function CreateInvoiceContent() {
     purchase_order: '', // PO number (some customers require this)
     payment_terms: 0, // Due on receipt by default
     send_immediately: false,
+    include_cc_fee: true, // Include credit card processing fee by default
   })
 
   useEffect(() => {
@@ -238,7 +239,22 @@ function CreateInvoiceContent() {
     }))
   }
 
-  const subtotal = invoice.line_items.reduce((sum, item) => sum + (item.amount_cents || 0), 0)
+  const baseSubtotal = invoice.line_items.reduce((sum, item) => sum + (item.amount_cents || 0), 0)
+
+  // Calculate tax and fees for display
+  const taxRate = config.payments?.salesTaxRate || 0.08
+  const taxCents = Math.round(baseSubtotal * taxRate)
+
+  // Calculate CC fee if enabled
+  let ccFeeCents = 0
+  if (invoice.include_cc_fee) {
+    const stripeRate = config.payments?.stripeProcessingRate || 0.029 // 2.9%
+    const stripeFlat = config.payments?.stripeProcessingFlat || 30 // $0.30
+    const runningTotal = baseSubtotal + taxCents
+    ccFeeCents = Math.round((runningTotal + stripeFlat) / (1 - stripeRate) - runningTotal)
+  }
+
+  const subtotal = baseSubtotal + taxCents + ccFeeCents
 
   const handleSubmit = async (sendNow = false) => {
     if (!invoice.customer_name) {
@@ -279,7 +295,9 @@ function CreateInvoiceContent() {
         }))
 
       // Add taxes and fees as separate line items
-      const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems)
+      const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems, {
+        includeStripeFee: invoice.include_cc_fee
+      })
 
       const payload = {
         invoice_number: invoice.invoice_number.trim() || null, // null = auto-generate
@@ -746,16 +764,38 @@ function CreateInvoiceContent() {
               <div className="space-y-2">
                 <div className="flex justify-between text-dark-300">
                   <span>Subtotal</span>
-                  <span>${(subtotal / 100).toFixed(2)}</span>
+                  <span>${(baseSubtotal / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-dark-300">
-                  <span>IL Rental Tax ({Math.round((config.payments?.salesTaxRate || 0.08) * 100)}%)</span>
-                  <span>${(Math.round(subtotal * (config.payments?.salesTaxRate || 0.08)) / 100).toFixed(2)}</span>
+                  <span>IL Rental Tax ({Math.round(taxRate * 100)}%)</span>
+                  <span>${(taxCents / 100).toFixed(2)}</span>
                 </div>
+                {invoice.include_cc_fee && ccFeeCents > 0 && (
+                  <div className="flex justify-between text-dark-300">
+                    <span>Card Processing Fee (2.9% + $0.30)</span>
+                    <span>${(ccFeeCents / 100).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-white text-xl font-bold pt-2 border-t border-dark-700">
                   <span>Total</span>
-                  <span>${((subtotal + Math.round(subtotal * (config.payments?.salesTaxRate || 0.08))) / 100).toFixed(2)}</span>
+                  <span>${(subtotal / 100).toFixed(2)}</span>
                 </div>
+              </div>
+
+              {/* CC Fee Toggle */}
+              <div className="mt-4 pt-4 border-t border-dark-700">
+                <label className="flex items-center gap-2 text-dark-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={invoice.include_cc_fee}
+                    onChange={(e) => setInvoice({ ...invoice, include_cc_fee: e.target.checked })}
+                    className="w-4 h-4 rounded border-dark-600 bg-dark-700 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                  />
+                  <span>Include credit card processing fee</span>
+                </label>
+                <p className="text-sm text-dark-500 mt-1 ml-6">
+                  Uncheck if customer is paying by check or cash
+                </p>
               </div>
             </div>
           </div>
@@ -848,7 +888,9 @@ function CreateInvoiceContent() {
                 }))
 
               // Add taxes and fees as separate line items
-              const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems)
+              const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems, {
+                includeStripeFee: invoice.include_cc_fee
+              })
 
               const payload = {
                 invoice_number: invoice.invoice_number.trim() || null,
@@ -934,9 +976,20 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
   const lineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
 
   // Calculate tax for preview
+  const previewBaseSubtotal = subtotal
   const taxRate = config.payments?.salesTaxRate || 0.08
-  const taxCents = Math.round(subtotal * taxRate)
-  const totalWithTax = subtotal + taxCents
+  const taxCents = Math.round(previewBaseSubtotal * taxRate)
+
+  // Calculate CC fee for preview
+  let previewCcFeeCents = 0
+  if (invoice.include_cc_fee) {
+    const stripeRate = config.payments?.stripeProcessingRate || 0.029
+    const stripeFlat = config.payments?.stripeProcessingFlat || 30
+    const runningTotal = previewBaseSubtotal + taxCents
+    previewCcFeeCents = Math.round((runningTotal + stripeFlat) / (1 - stripeRate) - runningTotal)
+  }
+
+  const totalWithTax = previewBaseSubtotal + taxCents + previewCcFeeCents
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
@@ -1048,12 +1101,18 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
           <div class="totals">
             <div class="row">
               <span class="label">Subtotal</span>
-              <span>${formatCurrency(subtotal)}</span>
+              <span>${formatCurrency(previewBaseSubtotal)}</span>
             </div>
             <div class="row">
               <span class="label">IL Rental Tax (${Math.round(taxRate * 100)}%)</span>
               <span>${formatCurrency(taxCents)}</span>
             </div>
+            ${invoice.include_cc_fee && previewCcFeeCents > 0 ? `
+            <div class="row">
+              <span class="label">Card Processing Fee (2.9% + $0.30)</span>
+              <span>${formatCurrency(previewCcFeeCents)}</span>
+            </div>
+            ` : ''}
             <div class="row total">
               <span>Total</span>
               <span>${formatCurrency(totalWithTax)}</span>
@@ -1212,12 +1271,18 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
                   <div className="w-64 space-y-2">
                     <div className="flex justify-between">
                       <span className="text-neutral-500">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(subtotal)}</span>
+                      <span className="font-medium">{formatCurrency(previewBaseSubtotal)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-neutral-500">IL Rental Tax ({Math.round(taxRate * 100)}%)</span>
                       <span className="font-medium">{formatCurrency(taxCents)}</span>
                     </div>
+                    {invoice.include_cc_fee && previewCcFeeCents > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-500">Card Processing Fee (2.9% + $0.30)</span>
+                        <span className="font-medium">{formatCurrency(previewCcFeeCents)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold pt-2 border-t border-neutral-200">
                       <span>Total</span>
                       <span>{formatCurrency(totalWithTax)}</span>
