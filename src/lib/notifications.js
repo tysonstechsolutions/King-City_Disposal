@@ -336,21 +336,20 @@ export function invoiceEmail(invoice) {
   const invoiceUrl = `${siteUrl}/invoice/${invoice.invoice_number}`;
   const amount = `$${((invoice.total_cents || 0) / 100).toFixed(2)}`;
 
-<<<<<<< Updated upstream
   // Parse line items for breakdown display
-=======
-  // Parse line items
->>>>>>> Stashed changes
   let lineItems = [];
   try {
     lineItems = typeof invoice.line_items === 'string'
       ? JSON.parse(invoice.line_items)
       : (invoice.line_items || []);
   } catch (e) {
-<<<<<<< Updated upstream
+    console.error('Failed to parse line items:', e);
     lineItems = [];
   }
 
+  const formatCurrency = (cents) => `$${((cents || 0) / 100).toFixed(2)}`;
+
+  // Build line items HTML
   const lineItemsHtml = lineItems.length > 0 ? `
     <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
       <thead>
@@ -363,7 +362,7 @@ export function invoiceEmail(invoice) {
         ${lineItems.map(item => `
         <tr style="border-bottom: 1px solid #eee;">
           <td style="padding: 8px 0;">${escapeHtml(item.description || '')}</td>
-          <td style="padding: 8px 0; text-align: right;">$${((item.amount_cents || item.total_cents || 0) / 100).toFixed(2)}</td>
+          <td style="padding: 8px 0; text-align: right;">${formatCurrency(item.amount_cents || item.total_cents || 0)}</td>
         </tr>`).join('')}
       </tbody>
       <tfoot>
@@ -374,44 +373,9 @@ export function invoiceEmail(invoice) {
       </tfoot>
     </table>` : `<div style="font-size: 32px; font-weight: bold; color: #3d8b64; text-align: center; margin: 20px 0;">${escapeHtml(amount)}</div>`;
 
-  const lineItemsText = lineItems.length > 0
-    ? lineItems.map(item => `  ${item.description}: $${((item.amount_cents || item.total_cents || 0) / 100).toFixed(2)}`).join('\n') + `\n  ─────────────────────\n  Total: ${amount}`
-=======
-    console.error('Failed to parse line items:', e);
-  }
-
-  const formatCurrency = (cents) => `$${((cents || 0) / 100).toFixed(2)}`;
-
-  // Build line items HTML
-  const lineItemsHtml = lineItems.length > 0 ? `
-    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr style="border-bottom: 2px solid #eee;">
-            <th style="text-align: left; padding: 8px 0; color: #666; font-size: 12px; text-transform: uppercase;">Item</th>
-            <th style="text-align: right; padding: 8px 0; color: #666; font-size: 12px; text-transform: uppercase;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${lineItems.map(item => `
-            <tr style="border-bottom: 1px solid #f0f0f0;">
-              <td style="padding: 10px 0;">${escapeHtml(item.description)}</td>
-              <td style="text-align: right; padding: 10px 0; font-weight: 500;">${formatCurrency(item.amount_cents)}</td>
-            </tr>
-          `).join('')}
-          <tr style="border-top: 2px solid #eee;">
-            <td style="padding: 12px 0; font-weight: bold; font-size: 18px;">Total</td>
-            <td style="text-align: right; padding: 12px 0; font-weight: bold; font-size: 18px; color: #3d8b64;">${escapeHtml(amount)}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  ` : `<div class="amount">${escapeHtml(amount)}</div>`;
-
   // Build line items text
   const lineItemsText = lineItems.length > 0
-    ? lineItems.map(item => `  ${item.description}: ${formatCurrency(item.amount_cents)}`).join('\n') + `\n\nTotal: ${amount}`
->>>>>>> Stashed changes
+    ? lineItems.map(item => `  ${item.description}: ${formatCurrency(item.amount_cents || item.total_cents || 0)}`).join('\n') + `\n  ─────────────────────\n  Total: ${amount}`
     : `Amount Due: ${amount}`;
 
   const html = `
@@ -461,11 +425,7 @@ Invoice ${invoice.invoice_number}
 Hi ${invoice.customer_name?.split(' ')[0] || 'there'},
 
 ${lineItemsText}
-<<<<<<< Updated upstream
 ${invoice.due_date ? `\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}` : ''}
-=======
-${invoice.due_date ? `Due Date: ${new Date(invoice.due_date).toLocaleDateString()}` : ''}
->>>>>>> Stashed changes
 
 View Invoice: ${invoiceUrl}
 

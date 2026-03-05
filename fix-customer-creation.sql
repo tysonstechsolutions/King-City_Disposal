@@ -166,19 +166,19 @@ END $$;
 
 
 -- =============================================
--- 3. CREATE INDEX ON PHONE FOR FAST LOOKUPS
+-- 3. ENABLE TRIGRAM EXTENSION & CREATE INDEXES
 -- =============================================
+-- Enable trigram extension FIRST (required for gin_trgm_ops indexes)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- The booking API searches for existing customers by phone
--- This index makes those lookups much faster
+-- These indexes make those lookups much faster
 
 CREATE INDEX IF NOT EXISTS idx_customers_phone_search
   ON public.customers USING gin (phone gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS idx_customers_email_search
   ON public.customers USING gin (email gin_trgm_ops);
-
--- Enable trigram extension if not already enabled (for fuzzy search)
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 
 -- =============================================
