@@ -345,9 +345,23 @@ export async function POST(request) {
     // ============================================
     // 4. CREATE STRIPE CHECKOUT SESSION
     // ============================================
+    // ============================================
+    // ONLINE BOOKINGS REQUIRE IMMEDIATE PAYMENT
+    // ============================================
+    // Online bookings must be paid at time of booking
+    // Admin-created invoices can be sent for later payment
     let checkoutUrl = null;
 
-    if (priceCents > 0 && process.env.STRIPE_SECRET_KEY) {
+    if (priceCents > 0) {
+      // Verify Stripe is configured
+      if (!process.env.STRIPE_SECRET_KEY) {
+        logger.error('Stripe not configured for online booking payment');
+        return NextResponse.json(
+          { error: 'Online payment is currently unavailable. Please call us to book: ' + config.phone },
+          { status: 503 }
+        );
+      }
+
       try {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kingcitydisposal.com';
         const bookingId = savedBooking[0]?.id;
@@ -413,23 +427,43 @@ export async function POST(request) {
           checkoutUrl = stripeData.url;
           logger.info('Stripe checkout created', { booking_id: bookingId, url: stripeData.url, base: priceCents, tax: taxCents, stripeFee });
         } else {
-          logger.error('Stripe checkout failed', null, { error: stripeData.error });
+          logger.error('Stripe checkout creation failed', null, { error: stripeData.error });
+          // FAIL the booking if payment checkout can't be created
+          return NextResponse.json(
+            { error: 'Unable to create payment checkout. Please try again or call us: ' + config.phone },
+            { status: 500 }
+          );
         }
       } catch (stripeError) {
         logger.error('Stripe checkout error', stripeError);
-        // Don't fail the booking if Stripe fails - they can pay later
+        // FAIL the booking if payment checkout errors
+        return NextResponse.json(
+          { error: 'Payment system error. Please call us to book: ' + config.phone },
+          { status: 500 }
+        );
+      }
+
+      // REQUIRE checkout URL for online bookings
+      if (!checkoutUrl) {
+        logger.error('No checkout URL generated for online booking');
+        return NextResponse.json(
+          { error: 'Payment checkout failed. Please call us to book: ' + config.phone },
+          { status: 500 }
+        );
       }
     }
 
     // ============================================
-    // 5. RETURN SUCCESS
+    // 5. RETURN SUCCESS WITH PAYMENT CHECKOUT
     // ============================================
+    // At this point, checkoutUrl is guaranteed to exist
+    // Online bookings always require immediate payment
     return NextResponse.json({
       success: true,
       bookingId: savedBooking[0]?.id,
       customerId: customer?.id || null,
       checkoutUrl,
-      message: checkoutUrl ? 'Booking saved! Complete payment to confirm.' : 'Booking received!',
+      message: 'Booking created! Redirecting to secure payment...',
     });
 
   } catch (error) {

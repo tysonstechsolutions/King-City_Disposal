@@ -523,10 +523,12 @@ function BookingPageContent() {
       const result = await response.json()
 
       if (result.success) {
+        // Online bookings always require payment
         if (result.checkoutUrl) {
           window.location.href = result.checkoutUrl
         } else {
-          router.push(`/payment-success?booking=${result.bookingId}`)
+          // This should never happen - payment is required
+          setSubmitError('Payment checkout unavailable. Please call us at ' + config.phone)
         }
       } else {
         setSubmitError(result.error || 'Something went wrong. Please try again.')
