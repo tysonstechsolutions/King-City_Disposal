@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { config } from '../../../../config'
 import { useToast } from '../../../../components/Toast'
+import { addTaxesAndFees } from '../../../../lib/invoiceHelpers'
 import {
   ArrowLeft,
   Plus,
@@ -269,6 +270,17 @@ function CreateInvoiceContent() {
         }
       }
 
+      // Filter valid line items
+      const validLineItems = invoice.line_items
+        .filter(item => item.description && item.amount_cents > 0)
+        .map(item => ({
+          description: item.description,
+          amount_cents: item.amount_cents
+        }))
+
+      // Add taxes and fees as separate line items
+      const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems)
+
       const payload = {
         invoice_number: invoice.invoice_number.trim() || null, // null = auto-generate
         purchase_order: invoice.purchase_order.trim() || null,
@@ -288,14 +300,12 @@ function CreateInvoiceContent() {
         date_set: invoice.date_set || null,
         weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
         weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
-        line_items: invoice.line_items.filter(item => item.description && item.amount_cents > 0).map(item => ({
-          description: item.description,
-          amount_cents: item.amount_cents
-        })),
+        line_items: lineItemsWithTaxes,
         notes: invoice.notes,
         due_date: dueDate.toISOString().split('T')[0],
-        subtotal_cents: subtotal,
-        total_cents: subtotal,
+        subtotal_cents,
+        tax_cents,
+        total_cents,
         status: sendNow ? 'sent' : 'draft',
         sent_at: sendNow ? new Date().toISOString() : null,
       }
@@ -732,10 +742,20 @@ function CreateInvoiceContent() {
             </button>
 
             {/* Total */}
-            <div className="mt-6 pt-4 border-t border-dark-700 flex justify-end">
-              <div className="text-right">
-                <p className="text-sm text-dark-400">Total</p>
-                <p className="text-2xl font-bold">${(subtotal / 100).toFixed(2)}</p>
+            <div className="mt-6 pt-4 border-t border-dark-700">
+              <div className="space-y-2">
+                <div className="flex justify-between text-dark-300">
+                  <span>Subtotal</span>
+                  <span>${(subtotal / 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-dark-300">
+                  <span>IL Rental Tax ({Math.round((config.payments?.salesTaxRate || 0.08) * 100)}%)</span>
+                  <span>${(Math.round(subtotal * (config.payments?.salesTaxRate || 0.08)) / 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-white text-xl font-bold pt-2 border-t border-dark-700">
+                  <span>Total</span>
+                  <span>${((subtotal + Math.round(subtotal * (config.payments?.salesTaxRate || 0.08))) / 100).toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -819,6 +839,17 @@ function CreateInvoiceContent() {
                 }
               }
 
+              // Filter valid line items
+              const validLineItems = invoice.line_items
+                .filter(item => item.description && item.amount_cents > 0)
+                .map(item => ({
+                  description: item.description,
+                  amount_cents: item.amount_cents
+                }))
+
+              // Add taxes and fees as separate line items
+              const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems)
+
               const payload = {
                 invoice_number: invoice.invoice_number.trim() || null,
                 purchase_order: invoice.purchase_order.trim() || null,
@@ -838,14 +869,12 @@ function CreateInvoiceContent() {
                 date_set: invoice.date_set || null,
                 weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
                 weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
-                line_items: invoice.line_items.filter(item => item.description && item.amount_cents > 0).map(item => ({
-                  description: item.description,
-                  amount_cents: item.amount_cents
-                })),
+                line_items: lineItemsWithTaxes,
                 notes: invoice.notes,
                 due_date: dueDate.toISOString().split('T')[0],
-                subtotal_cents: subtotal,
-                total_cents: subtotal,
+                subtotal_cents,
+                tax_cents,
+                total_cents,
                 status: 'draft',
               }
 
@@ -903,6 +932,11 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
   dueDate.setDate(dueDate.getDate() + (invoice.payment_terms || 15))
 
   const lineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
+
+  // Calculate tax for preview
+  const taxRate = config.payments?.salesTaxRate || 0.08
+  const taxCents = Math.round(subtotal * taxRate)
+  const totalWithTax = subtotal + taxCents
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
@@ -1016,9 +1050,13 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
               <span class="label">Subtotal</span>
               <span>${formatCurrency(subtotal)}</span>
             </div>
+            <div class="row">
+              <span class="label">IL Rental Tax (${Math.round(taxRate * 100)}%)</span>
+              <span>${formatCurrency(taxCents)}</span>
+            </div>
             <div class="row total">
               <span>Total</span>
-              <span>${formatCurrency(subtotal)}</span>
+              <span>${formatCurrency(totalWithTax)}</span>
             </div>
           </div>
         </div>
@@ -1176,9 +1214,13 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
                       <span className="text-neutral-500">Subtotal</span>
                       <span className="font-medium">{formatCurrency(subtotal)}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">IL Rental Tax ({Math.round(taxRate * 100)}%)</span>
+                      <span className="font-medium">{formatCurrency(taxCents)}</span>
+                    </div>
                     <div className="flex justify-between text-lg font-bold pt-2 border-t border-neutral-200">
                       <span>Total</span>
-                      <span>{formatCurrency(subtotal)}</span>
+                      <span>{formatCurrency(totalWithTax)}</span>
                     </div>
                   </div>
                 </div>
