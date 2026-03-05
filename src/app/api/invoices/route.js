@@ -64,6 +64,8 @@ export async function POST(request) {
     const body = await request.json();
     console.log('Creating invoice with data:', {
       customer_name: body.customer_name,
+      customer_id: body.customer_id,
+      booking_id: body.booking_id,
       line_items_count: body.line_items?.length
     });
     
@@ -119,10 +121,21 @@ export async function POST(request) {
 
     const today = new Date().toISOString().split('T')[0];
 
+    // Validate IDs - database expects bigint (numeric), not UUIDs
+    const validCustomerId = customer_id && /^\d+$/.test(String(customer_id)) ? customer_id : null;
+    const validBookingId = booking_id && /^\d+$/.test(String(booking_id)) ? booking_id : null;
+
+    if (customer_id && !validCustomerId) {
+      console.warn('Invalid customer_id format (expected numeric, got UUID?):', customer_id);
+    }
+    if (booking_id && !validBookingId) {
+      console.warn('Invalid booking_id format (expected numeric, got UUID?):', booking_id);
+    }
+
     const invoiceData = {
       invoice_number,
-      customer_id,
-      booking_id,
+      customer_id: validCustomerId,
+      booking_id: validBookingId,
       customer_name,
       customer_phone,
       customer_email,
@@ -187,9 +200,9 @@ export async function POST(request) {
     const [invoice] = await response.json();
 
     // If linked to a booking, update the booking
-    if (booking_id) {
+    if (validBookingId) {
       await fetch(
-        `${supabaseUrl}/rest/v1/bookings?id=eq.${booking_id}`,
+        `${supabaseUrl}/rest/v1/bookings?id=eq.${validBookingId}`,
         {
           method: 'PATCH',
           headers: {
