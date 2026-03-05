@@ -217,8 +217,20 @@ export async function GET(request) {
   }
 
   try {
+    // Verify Supabase config
+    if (!supabaseUrl || !getSupabaseKey()) {
+      console.error('Supabase configuration missing:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!getSupabaseKey()
+      });
+      return NextResponse.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
     let query = 'order=created_at.desc';
-    
+
     if (id) {
       query = `id=eq.${id}`;
     } else if (invoiceNumber) {
@@ -244,14 +256,29 @@ export async function GET(request) {
 
     if (response.ok) {
       const data = await response.json();
-      // Parse line_items JSON
-      const invoices = data.map(inv => ({
-        ...inv,
-        line_items: typeof inv.line_items === 'string' ? JSON.parse(inv.line_items) : inv.line_items
-      }));
+      // Parse line_items JSON with error handling
+      const invoices = data.map(inv => {
+        let parsedLineItems = [];
+        try {
+          if (typeof inv.line_items === 'string') {
+            parsedLineItems = JSON.parse(inv.line_items);
+          } else if (Array.isArray(inv.line_items)) {
+            parsedLineItems = inv.line_items;
+          }
+        } catch (e) {
+          console.error(`Failed to parse line_items for invoice ${inv.invoice_number}:`, e);
+          parsedLineItems = [];
+        }
+        return {
+          ...inv,
+          line_items: parsedLineItems
+        };
+      });
       return NextResponse.json(invoices);
     }
 
+    const errorText = await response.text();
+    console.error('Failed to fetch invoices:', response.status, errorText);
     return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 });
 
   } catch (error) {
