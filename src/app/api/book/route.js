@@ -125,7 +125,19 @@ async function findOrCreateCustomer({ name, phone, email, address, city, zip }) 
     return created;
   }
 
-  logger.error('Failed to create customer');
+  // Enhanced error logging for debugging
+  const errorText = await createResponse.text();
+  logger.error('Failed to create customer', null, {
+    status: createResponse.status,
+    error: errorText,
+    customerData: { name, phone, email, address, city, zip }
+  });
+  console.error('Customer creation failed:', {
+    status: createResponse.status,
+    error: errorText,
+    name,
+    phone
+  });
   return null;
 }
 
@@ -318,9 +330,12 @@ export async function POST(request) {
     const dumpster = config.dumpsters.find(d => d.id === dumpsterSize);
     const priceDisplay = priceCents ? `$${(priceCents / 100).toFixed(2)}` : 'TBD';
 
+    // Add warning if customer creation failed
+    const customerWarning = !customer ? '\n\n⚠️ WARNING: Customer record not created - please add manually!' : '';
+
     try {
       await notifyOwner(
-        `🚛 NEW BOOKING (PENDING PAYMENT)\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n📌 Placement: ${placementNotes || 'Not specified'}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}\n\n⏳ Awaiting online payment...`
+        `🚛 NEW BOOKING (PENDING PAYMENT)\n\n${customerName}\n📞 ${customerPhone}\n📍 ${address}\n📌 Placement: ${placementNotes || 'Not specified'}\n\n📦 ${dumpster?.name || dumpsterSize}\n📅 ${deliveryDate}\n⏱️ ${rentalDuration}\n💰 ${priceDisplay}\n\n⏳ Awaiting online payment...${customerWarning}`
       );
       logger.notification('sms', 'team', true, { booking_id: savedBooking[0]?.id });
     } catch (notifyError) {
