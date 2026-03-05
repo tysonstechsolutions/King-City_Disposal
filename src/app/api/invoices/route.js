@@ -52,7 +52,20 @@ export async function POST(request) {
   }
 
   try {
+    // Verify Supabase config
+    if (!supabaseUrl || !getSupabaseKey()) {
+      console.error('Supabase configuration missing for invoice creation');
+      return NextResponse.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
+    console.log('Creating invoice with data:', {
+      customer_name: body.customer_name,
+      line_items_count: body.line_items?.length
+    });
     
     const {
       customer_id,
@@ -93,7 +106,9 @@ export async function POST(request) {
     // Use custom invoice number if provided, otherwise auto-generate
     let invoice_number = body.invoice_number;
     if (!invoice_number) {
+      console.log('Generating invoice number...');
       invoice_number = await generateInvoiceNumber();
+      console.log('Generated invoice number:', invoice_number);
     }
 
     // Calculate overage if weight provided
@@ -136,6 +151,7 @@ export async function POST(request) {
       sent_at,
     };
 
+    console.log('Sending invoice data to Supabase...');
     const response = await fetch(
       `${supabaseUrl}/rest/v1/invoices`,
       {
@@ -152,9 +168,18 @@ export async function POST(request) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Invoice creation error:', errorText);
+      console.error('Invoice creation error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        invoice_number
+      });
       return NextResponse.json(
-        { error: 'Failed to create invoice' },
+        {
+          error: 'Failed to create invoice',
+          details: errorText,
+          invoice_number
+        },
         { status: 500 }
       );
     }
@@ -189,9 +214,16 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Invoice error:', error);
+    console.error('Invoice API error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return NextResponse.json(
-      { error: error.message },
+      {
+        error: error.message || 'Internal server error',
+        type: error.name
+      },
       { status: 500 }
     );
   }
