@@ -25,10 +25,20 @@ export default function CustomerInvoicePage() {
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState(null)
+  const [showRequestForm, setShowRequestForm] = useState(false)
+  const [requestType, setRequestType] = useState('')
+  const [requestMessage, setRequestMessage] = useState('')
+  const [requestSubmitting, setRequestSubmitting] = useState(false)
+  const [requestSuccess, setRequestSuccess] = useState(false)
 
   useEffect(() => {
     fetchInvoice()
-    markAsViewed()
+    // Only mark as viewed if not admin/preview mode
+    const urlParams = new URLSearchParams(window.location.search)
+    const isAdminView = urlParams.get('admin') === 'true' || urlParams.get('preview') === 'true'
+    if (!isAdminView) {
+      markAsViewed()
+    }
   }, [params.id])
 
   const fetchInvoice = async () => {
@@ -85,6 +95,42 @@ export default function CustomerInvoicePage() {
       alert('Error processing payment')
     }
     setPaying(false)
+  }
+
+  const handleRequestSubmit = async (e) => {
+    e.preventDefault()
+    if (!requestType) {
+      alert('Please select a request type')
+      return
+    }
+
+    setRequestSubmitting(true)
+    try {
+      const response = await fetch('/api/customer-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_number: invoice.invoice_number,
+          customer_name: invoice.customer_name,
+          customer_email: invoice.customer_email,
+          customer_phone: invoice.customer_phone,
+          request_type: requestType,
+          message: requestMessage,
+        }),
+      })
+
+      if (response.ok) {
+        setRequestSuccess(true)
+        setShowRequestForm(false)
+        setTimeout(() => setRequestSuccess(false), 5000)
+      } else {
+        alert('Failed to submit request. Please call us instead.')
+      }
+    } catch (err) {
+      console.error('Error submitting request:', err)
+      alert('Error submitting request. Please call us instead.')
+    }
+    setRequestSubmitting(false)
   }
 
   const formatCurrency = (cents) => {
@@ -393,6 +439,86 @@ export default function CustomerInvoicePage() {
               </div>
             )}
 
+            {/* Extension/Swap Request Section - Hidden on print */}
+            <div className="mt-6 print:hidden">
+              {requestSuccess && (
+                <div className="mb-4 p-4 bg-green-100 border border-green-300 rounded-lg text-green-800">
+                  <p className="font-semibold">Request submitted successfully!</p>
+                  <p className="text-sm">We'll contact you soon to confirm.</p>
+                </div>
+              )}
+
+              {!showRequestForm ? (
+                <button
+                  onClick={() => setShowRequestForm(true)}
+                  className="w-full py-3 bg-dark-800 border border-dark-600 text-white rounded-lg font-medium hover:bg-dark-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Truck className="w-4 h-4" />
+                  Need to Extend or Swap Your Dumpster?
+                </button>
+              ) : (
+                <div className="bg-dark-800 border border-dark-600 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Submit a Request</h3>
+                  <form onSubmit={handleRequestSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        What do you need?
+                      </label>
+                      <select
+                        value={requestType}
+                        onChange={(e) => setRequestType(e.target.value)}
+                        required
+                        className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Select an option...</option>
+                        <option value="extension">Extend Rental Period</option>
+                        <option value="swap">Request Swap (Pick up full, drop off empty)</option>
+                        <option value="pickup">Request Early Pickup</option>
+                        <option value="other">Other Request</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Additional Details (Optional)
+                      </label>
+                      <textarea
+                        value={requestMessage}
+                        onChange={(e) => setRequestMessage(e.target.value)}
+                        rows={3}
+                        placeholder="Let us know any specific details or dates..."
+                        className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="submit"
+                        disabled={requestSubmitting}
+                        className="flex-1 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {requestSubmitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          'Submit Request'
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowRequestForm(false)}
+                        className="px-6 py-3 bg-dark-900 border border-dark-600 text-white rounded-lg font-medium hover:bg-dark-800 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+
             {/* Contact Information */}
             <div className="mt-8 pt-6 border-t border-dark-700 print:mt-4 print:pt-3 print:border-gray-300">
               <div className="text-center space-y-4 print:space-y-1">
@@ -425,8 +551,8 @@ export default function CustomerInvoicePage() {
         {/* Questions - Hidden on print */}
         <div className="mt-6 text-center text-dark-300 print:hidden">
           <p>Questions about this invoice?</p>
-          <a href={`tel:${config.phone}`} className="text-primary font-medium hover:underline">
-            Call {config.phone}
+          <a href={`tel:${config.billingPhone}`} className="text-primary font-medium hover:underline">
+            Call {config.billingPhone}
           </a>
         </div>
       </div>
@@ -436,12 +562,13 @@ export default function CustomerInvoicePage() {
         @media print {
           @page {
             size: letter;
-            margin: 0.5in;
+            margin: 0.4in;
           }
           html, body {
             background: white !important;
             color: black !important;
-            font-size: 12px !important;
+            font-size: 10px !important;
+            line-height: 1.3 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
@@ -460,6 +587,22 @@ export default function CustomerInvoicePage() {
           /* Keep status border visible */
           .print\\:border { border-color: #d1d5db !important; }
           a { text-decoration: none !important; }
+          /* Compact spacing for tables */
+          table { margin-bottom: 0.25rem !important; }
+          th, td { padding: 0.15rem 0 !important; }
+          /* Reduce all print margins and padding */
+          .print\\:mb-4 { margin-bottom: 0.5rem !important; }
+          .print\\:mb-3 { margin-bottom: 0.4rem !important; }
+          .print\\:mt-4 { margin-top: 0.5rem !important; }
+          .print\\:mt-3 { margin-top: 0.4rem !important; }
+          .print\\:p-2 { padding: 0.3rem !important; }
+          .print\\:py-1 { padding-top: 0.15rem !important; padding-bottom: 0.15rem !important; }
+          .print\\:py-1\\.5 { padding-top: 0.2rem !important; padding-bottom: 0.2rem !important; }
+          .print\\:pt-2 { padding-top: 0.3rem !important; }
+          .print\\:pt-3 { padding-top: 0.4rem !important; }
+          /* Prevent page breaks */
+          .max-w-3xl { page-break-inside: avoid !important; }
+          table { page-break-inside: avoid !important; }
         }
       `}</style>
     </div>

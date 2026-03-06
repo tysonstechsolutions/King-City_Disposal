@@ -143,6 +143,30 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
   const supabaseUrl = config.supabase.url;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
+  // ⚠️ CRITICAL: Check if invoice already exists for this booking to prevent duplicates
+  try {
+    const checkResponse = await fetch(
+      `${supabaseUrl}/rest/v1/invoices?booking_id=eq.${booking.id}&status=eq.paid`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (checkResponse.ok) {
+      const existing = await checkResponse.json();
+      if (existing && existing.length > 0) {
+        console.log(`Invoice already exists for booking ${booking.id}: ${existing[0].invoice_number} - skipping duplicate creation`);
+        return existing[0]; // Return existing invoice instead of creating duplicate
+      }
+    }
+  } catch (e) {
+    console.error('Error checking for existing invoice:', e);
+    // Continue to create invoice if check fails
+  }
+
   const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
   const dumpsterName = dumpster?.name || booking.dumpster_size;
   const invoiceNumber = await generateInvoiceNumber();
@@ -158,7 +182,7 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
     { description: `${dumpsterName} - ${booking.rental_duration} Rental`, amount_cents: basePriceCents },
   ];
   if (taxCents > 0) {
-    lineItems.push({ description: 'IL Rental Tax (8%)', amount_cents: taxCents });
+    lineItems.push({ description: 'IL Rental Tax (9.5%)', amount_cents: taxCents });
   }
   if (stripeFeeCents > 0) {
     lineItems.push({ description: 'Card Processing Fee', amount_cents: stripeFeeCents });
@@ -295,12 +319,13 @@ export async function POST(request) {
         const booking = await getBooking(bookingId);
 
         if (booking) {
-          // Update booking as paid
+          // Update booking as paid with actual amount paid
           await updateBooking(bookingId, {
             paid: true,
             paid_at: new Date().toISOString(),
             stripe_session_id: session.id,
             status: 'confirmed',
+            price_cents: session.amount_total, // ✅ FIX: Store actual amount paid (includes tax + fees)
           });
 
           // Get dumpster info
@@ -334,6 +359,15 @@ export async function POST(request) {
           let invoice = null;
           try {
             invoice = await createInvoiceForBooking(booking, session.amount_total, session.metadata);
+
+            // ✅ FIX: Ensure invoice is linked to booking (safety check)
+            if (invoice && invoice.id) {
+              await updateBooking(bookingId, {
+                invoice_id: invoice.id,
+                invoiced_at: new Date().toISOString(),
+              });
+              console.log(`✅ Invoice ${invoice.invoice_number} linked to booking ${bookingId}`);
+            }
 
             if (invoice && booking.customer_phone) {
               const invoiceUrl = `${siteUrl}/invoice/${invoice.invoice_number}`;
@@ -534,6 +568,75 @@ export async function POST(request) {
             );
           } catch (e) {
             console.error('Team notification failed:', e);
+          }
+        }
+      }
+
+      // ========================================
+      // INVOICE PAYMENT
+      // ========================================
+      else if (type === 'invoice') {
+        const invoiceId = metadata.invoice_id;
+        const invoiceNumber = metadata.invoice_number;
+        const supabaseUrl = config.supabase.url;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+        if (invoiceId || invoiceNumber) {
+          try {
+            // Update invoice to paid
+            const query = invoiceId
+              ? `id=eq.${invoiceId}`
+              : `invoice_number=eq.${invoiceNumber}`;
+
+            const updateResponse = await fetch(
+              `${supabaseUrl}/rest/v1/invoices?${query}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Prefer': 'return=representation',
+                },
+                body: JSON.stringify({
+                  status: 'paid',
+                  paid_at: new Date().toISOString(),
+                  amount_paid_cents: session.amount_total,
+                  payment_method: 'stripe',
+                  stripe_payment_intent_id: session.payment_intent,
+                }),
+              }
+            );
+
+            if (updateResponse.ok) {
+              const [invoice] = await updateResponse.json();
+              console.log(`Invoice ${invoice?.invoice_number || invoiceNumber} marked as PAID`);
+
+              // Send SMS notification to business
+              const priceDisplay = `$${(session.amount_total / 100).toFixed(2)}`;
+              await notifyOwner(
+                `💰 INVOICE PAID!\n\nInvoice: ${invoice?.invoice_number || invoiceNumber}\nCustomer: ${session.customer_details?.name || metadata.customer_name || 'Unknown'}\nAmount: ${priceDisplay}\n\nInvoice automatically marked as PAID.`
+              );
+
+              // Send confirmation to customer if email/phone available
+              const customerEmail = session.customer_details?.email || metadata.customer_email;
+              const customerPhone = metadata.customer_phone;
+
+              if (customerEmail || customerPhone) {
+                await notifyCustomer({
+                  phone: customerPhone,
+                  email: customerEmail,
+                  subject: `Payment Received - Invoice ${invoice?.invoice_number || invoiceNumber}`,
+                  smsMessage: `✅ Payment received!\n\nInvoice: ${invoice?.invoice_number || invoiceNumber}\nAmount: ${priceDisplay}\n\nThank you for your business!\n\n${config.businessName}\n${config.billingPhone}`,
+                  emailHtml: `<p>Thank you for your payment of ${priceDisplay} for invoice ${invoice?.invoice_number || invoiceNumber}.</p><p>Your payment has been processed successfully.</p><p>${config.businessName}<br>${config.billingPhone}</p>`,
+                  emailText: `Thank you for your payment of ${priceDisplay} for invoice ${invoice?.invoice_number || invoiceNumber}.\n\nYour payment has been processed successfully.\n\n${config.businessName}\n${config.billingPhone}`,
+                });
+              }
+            } else {
+              console.error('Failed to update invoice:', await updateResponse.text());
+            }
+          } catch (e) {
+            console.error('Invoice payment processing error:', e);
           }
         }
       }

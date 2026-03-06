@@ -18,7 +18,7 @@ export function addTaxesAndFees(lineItems, options = {}) {
   const subtotal = lineItems.reduce((sum, item) => sum + (item.amount_cents || 0), 0);
 
   // Get tax and fee rates from config or options
-  const taxRate = options.taxRate ?? config.payments?.salesTaxRate ?? 0.08; // Default 8% IL rental tax
+  const taxRate = options.taxRate ?? config.payments?.salesTaxRate ?? 0.095; // Default 9.5% IL rental tax
   const includeStripeFee = options.includeStripeFee ?? false; // Only add if customer is paying by card
 
   // Calculate tax

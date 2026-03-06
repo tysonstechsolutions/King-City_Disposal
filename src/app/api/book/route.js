@@ -386,7 +386,7 @@ export async function POST(request) {
           'line_items[0][price_data][unit_amount]': priceCents.toString(),
           'line_items[0][quantity]': '1',
           'line_items[1][price_data][currency]': 'usd',
-          'line_items[1][price_data][product_data][name]': 'IL Rental Tax (8%)',
+          'line_items[1][price_data][product_data][name]': 'IL Rental Tax (9.5%)',
           'line_items[1][price_data][unit_amount]': taxCents.toString(),
           'line_items[1][quantity]': '1',
           'line_items[2][price_data][currency]': 'usd',

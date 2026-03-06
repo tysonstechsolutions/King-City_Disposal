@@ -91,6 +91,7 @@ export async function POST(request) {
         'metadata[invoice_number]': invoice.invoice_number,
         'metadata[customer_name]': invoice.customer_name || '',
         'metadata[customer_phone]': invoice.customer_phone || '',
+        'metadata[customer_email]': invoice.customer_email || '',
         'after_completion[type]': 'redirect',
         'after_completion[redirect][url]': `${siteUrl}/payment-success?invoice=${invoice.invoice_number}`,
         'phone_number_collection[enabled]': 'true',

@@ -114,7 +114,7 @@ export const config = {
     lateFeeGraceDays: 30,     // Apply after 30 days overdue
 
     // Transaction fees passed to customer
-    salesTaxRate: 0.08,                // 8% Illinois rental tax
+    salesTaxRate: 0.095,               // 9.5% Illinois rental tax
     stripeProcessingRate: 0.029,       // 2.9%
     stripeProcessingFlat: 30,          // + $0.30 (in cents)
   },
