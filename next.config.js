@@ -23,6 +23,11 @@ const nextConfig = {
         destination: '/',
         permanent: true,
       },
+      {
+        source: '/week',
+        destination: '/',
+        permanent: true,
+      },
     ]
   },
   // Security headers

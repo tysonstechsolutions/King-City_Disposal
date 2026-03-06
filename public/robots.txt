@@ -16,6 +16,11 @@ Disallow: /my-rentals/
 Disallow: /payment-success/
 Disallow: /extension-confirmed/
 
+# Block Next.js internal files
+Disallow: /_next/static/
+Disallow: /_next/image/
+Disallow: /*.json$
+
 # Block search and filter pages that may cause duplicate content
 Disallow: /*?*
 
