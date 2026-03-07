@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
 
 export default function HealthCheckPage() {
   const [health, setHealth] = useState(null);
@@ -56,7 +55,7 @@ export default function HealthCheckPage() {
   };
 
   return (
-    <AdminLayout>
+    <div className="min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">System Health Monitor</h1>
@@ -208,6 +207,6 @@ export default function HealthCheckPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   );
 }
