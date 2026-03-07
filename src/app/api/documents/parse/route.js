@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
 import { requireAdminAuth } from '../../../../lib/adminAuth';
+import { callClaudeWithFallback } from '../../../../lib/claudeModels';
 import * as XLSX from 'xlsx';
 
 // Force dynamic rendering (not static)
@@ -389,48 +390,32 @@ export async function POST(request) {
       ];
     }
 
-    // 3. Call Claude AI API
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 4000,
-        messages: [
-          {
-            role: 'user',
-            content: messageContent,
-          }
-        ],
-      }),
+    // 3. Call Claude AI API with automatic fallback to older models
+    const claudeResult = await callClaudeWithFallback({
+      apiKey: anthropicKey,
+      messages: [
+        {
+          role: 'user',
+          content: messageContent,
+        }
+      ],
+      maxTokens: 4000,
     });
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      logger.error('Claude API error', null, { error: errorText, status: claudeResponse.status });
+    // Check if call failed (all models failed)
+    if (!claudeResult.success) {
+      logger.error('Claude API error - all models failed', null, { error: claudeResult.error });
       await updateDocumentStatus(document_id, 'failed');
 
-      // Parse error for more detail
-      let errorMessage = 'Failed to parse invoice with AI';
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error?.message || errorJson.message || errorText;
-      } catch {
-        errorMessage = errorText || 'Failed to parse invoice with AI';
-      }
-
       return NextResponse.json(
-        { error: errorMessage },
+        { error: `Failed to parse document with AI: ${claudeResult.error}` },
         { status: 500 }
       );
     }
 
-    const claudeResult = await claudeResponse.json();
-    const aiText = claudeResult.content[0]?.text || '';
+    logger.info('Document parsed successfully', { model: claudeResult.model, document_id });
+    const claudeData = claudeResult.data;
+    const aiText = claudeData.content[0]?.text || '';
 
     // 4. Parse the JSON response
     let parsedData;
