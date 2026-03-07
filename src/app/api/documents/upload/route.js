@@ -15,12 +15,21 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 // Allowed file types
 const ALLOWED_TYPES = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
+  // Images
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
+  'image/bmp', 'image/tiff', 'image/svg+xml',
+  // PDF
   'application/pdf',
+  // Excel
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
   'application/vnd.ms-excel', // xls
-  'text/xml', 'application/xml', // xml
-  'text/csv',
+  // Word
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+  'application/msword', // doc
+  // Text
+  'text/plain', 'text/csv', 'text/xml', 'application/xml',
+  // Other common types
+  'application/octet-stream', // Generic binary - allow and check extension
 ];
 
 export async function POST(request) {
@@ -56,11 +65,17 @@ export async function POST(request) {
     if (file.type && !ALLOWED_TYPES.includes(file.type)) {
       // Also allow by extension for files without proper MIME type
       const ext = file.name?.toLowerCase().split('.').pop();
-      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'pdf', 'xlsx', 'xls', 'xml', 'csv'];
+      const allowedExtensions = [
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'bmp', 'tiff', 'svg',
+        'pdf',
+        'xlsx', 'xls',
+        'docx', 'doc',
+        'txt', 'csv', 'xml'
+      ];
       if (!allowedExtensions.includes(ext)) {
-        logger.warn('File upload rejected - invalid type', { type: file.type, name: file.name });
+        logger.warn('File upload rejected - invalid type', { type: file.type, name: file.name, ext });
         return NextResponse.json(
-          { error: 'Invalid file type. Allowed: images, PDF, Excel, XML, CSV' },
+          { error: 'Invalid file type. Allowed: images (JPG, PNG, HEIC, etc), PDF, Excel, Word, CSV, XML' },
           { status: 400 }
         );
       }
