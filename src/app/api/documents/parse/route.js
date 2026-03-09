@@ -373,14 +373,16 @@ export async function POST(request) {
       ];
     } else {
       // Image or PDF - use vision
-      const base64Image = Buffer.from(fileBuffer).toString('base64');
+      const base64Data = Buffer.from(fileBuffer).toString('base64');
+      const isPdf = mediaType === 'application/pdf' || document.file_name?.toLowerCase().endsWith('.pdf');
+
       messageContent = [
         {
-          type: 'image',
+          type: isPdf ? 'document' : 'image',
           source: {
             type: 'base64',
-            media_type: mediaType,
-            data: base64Image,
+            media_type: isPdf ? 'application/pdf' : mediaType,
+            data: base64Data,
           },
         },
         {

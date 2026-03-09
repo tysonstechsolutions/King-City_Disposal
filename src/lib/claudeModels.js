@@ -9,15 +9,15 @@
 export const CLAUDE_MODELS = {
   // Primary models (try these first)
   PRIMARY: [
-    'claude-sonnet-4-5-20250929',      // Sonnet 4.5 (current)
-    'claude-opus-4-5-20251101',        // Opus 4.5 (if available)
+    'claude-sonnet-4-5-20250514',      // Claude 4.5 Sonnet (newest, fast)
+    'claude-3-5-sonnet-20241022',      // Claude 3.5 Sonnet (Oct 2024, very reliable)
   ],
 
   // Fallback models (try if primary fails)
   FALLBACK: [
-    'claude-3-5-sonnet-20241022',      // Sonnet 3.5 (Oct 2024)
     'claude-3-5-sonnet-20240620',      // Sonnet 3.5 (Jun 2024)
     'claude-3-opus-20240229',          // Opus 3 (older but reliable)
+    'claude-3-sonnet-20240229',        // Sonnet 3 (oldest fallback)
   ],
 };
 
@@ -93,8 +93,10 @@ export async function callClaudeWithFallback({
         continue; // Try next model
       }
 
-      // Other error - don't retry with different model
-      throw new Error(`Claude API error: ${errorText}`);
+      // Other error (rate limit, auth, etc.) - still try next model
+      console.warn(`[Claude] API error with ${model}:`, errorText);
+      lastError = { model, error: errorText, status: response.status };
+      // Continue to try next model
 
     } catch (error) {
       console.error(`[Claude] Error with model ${model}:`, error.message);
@@ -103,10 +105,12 @@ export async function callClaudeWithFallback({
     }
   }
 
-  // All models failed
-  throw new Error(
-    `All Claude models failed. Last error with ${lastError?.model}: ${lastError?.error}`
-  );
+  // All models failed - return error object instead of throwing
+  return {
+    success: false,
+    error: `All Claude models failed. Last error with ${lastError?.model}: ${lastError?.error}`,
+    lastModel: lastError?.model,
+  };
 }
 
 /**
