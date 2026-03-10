@@ -367,7 +367,8 @@ export default function CustomerInvoicePage() {
                       <span>-{formatCurrency(invoice.discount_cents)}</span>
                     </div>
                   )}
-                  {invoice.tax_cents > 0 && (
+                  {/* Only show tax if there's a tax line item in line_items - not from the legacy tax_cents field */}
+                  {lineItems.some(item => item.is_tax || item.description?.toLowerCase().includes('tax')) && invoice.tax_cents > 0 && (
                     <div className="flex justify-between">
                       <span className="text-dark-300 print:text-gray-600">Tax</span>
                       <span className="font-medium print:text-black">{formatCurrency(invoice.tax_cents)}</span>

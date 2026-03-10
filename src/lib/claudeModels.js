@@ -9,15 +9,12 @@
 export const CLAUDE_MODELS = {
   // Primary models (try these first)
   PRIMARY: [
-    'claude-sonnet-4-5-20250514',      // Claude 4.5 Sonnet (newest, fast)
-    'claude-3-5-sonnet-20241022',      // Claude 3.5 Sonnet (Oct 2024, very reliable)
+    'claude-3-haiku-20240307',         // Haiku 3 (fast, cheap, widely available)
   ],
 
   // Fallback models (try if primary fails)
   FALLBACK: [
-    'claude-3-5-sonnet-20240620',      // Sonnet 3.5 (Jun 2024)
-    'claude-3-opus-20240229',          // Opus 3 (older but reliable)
-    'claude-3-sonnet-20240229',        // Sonnet 3 (oldest fallback)
+    'claude-3-sonnet-20240229',        // Sonnet 3 (fallback)
   ],
 };
 

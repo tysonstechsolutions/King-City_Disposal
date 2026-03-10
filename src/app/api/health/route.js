@@ -10,6 +10,11 @@ import { callClaudeWithFallback, getBestClaudeModel } from '../../../lib/claudeM
 
 export async function GET() {
   const startTime = Date.now();
+
+  // Debug: log first 25 chars of API key
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  console.log('[Health] API key prefix:', apiKey?.substring(0, 25) || 'NOT SET');
+
   const checks = {
     timestamp: new Date().toISOString(),
     overall_status: 'healthy',
