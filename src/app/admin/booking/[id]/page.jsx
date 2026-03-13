@@ -555,12 +555,78 @@ export default function BookingDetailPage() {
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-dark-400 text-sm">Paid</p>
-                  <p className={`font-medium ${booking.paid ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {booking.paid ? '✓ Paid' : 'Not yet'}
-                  </p>
+              </div>
+            </div>
+
+            {/* Payment Status */}
+            <div className="bg-dark-800 rounded-2xl border border-dark-700 p-6">
+              <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-primary-400" />
+                Payment Status
+              </h2>
+
+              <div className="space-y-4">
+                <div className={`p-4 rounded-xl border ${booking.paid ? 'bg-green-500/10 border-green-500/30' : 'bg-yellow-500/10 border-yellow-500/30'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {booking.paid ? (
+                        <CheckCircle2 className="w-6 h-6 text-green-400" />
+                      ) : (
+                        <AlertCircle className="w-6 h-6 text-yellow-400" />
+                      )}
+                      <div>
+                        <p className={`font-semibold ${booking.paid ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {booking.paid ? 'Paid' : 'Unpaid'}
+                        </p>
+                        {booking.paid && booking.paid_at && (
+                          <p className="text-dark-400 text-sm">
+                            {new Date(booking.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {booking.stripe_session_id && ' via Stripe'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-white font-bold text-xl">
+                      ${booking.price_cents ? (booking.price_cents / 100).toFixed(2) : '0.00'}
+                    </p>
+                  </div>
                 </div>
+
+                {!booking.paid && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Mark this booking as paid? This should only be used for cash/check/manual payments.')) return;
+                      try {
+                        const token = sessionStorage.getItem('adminToken');
+                        const response = await fetch(`/api/admin/bookings/${params.id}`, {
+                          method: 'PATCH',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                          },
+                          body: JSON.stringify({
+                            paid: true,
+                            paid_at: new Date().toISOString(),
+                            payment_method: 'manual',
+                          }),
+                        });
+                        if (response.ok) {
+                          toast.success('Marked as paid');
+                          fetchBooking();
+                        } else {
+                          toast.error('Failed to update payment status');
+                        }
+                      } catch (err) {
+                        console.error('Error:', err);
+                        toast.error('Error updating payment');
+                      }
+                    }}
+                    className="w-full px-4 py-3 bg-green-500/20 text-green-400 border border-green-500/30 rounded-xl hover:bg-green-500/30 transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                    Mark as Paid (Cash/Check/Manual)
+                  </button>
+                )}
               </div>
             </div>
 

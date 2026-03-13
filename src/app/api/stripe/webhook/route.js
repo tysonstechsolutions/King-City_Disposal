@@ -182,7 +182,7 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
     { description: `${dumpsterName} - ${booking.rental_duration} Rental`, amount_cents: basePriceCents },
   ];
   if (taxCents > 0) {
-    lineItems.push({ description: 'IL Rental Tax (9.5%)', amount_cents: taxCents });
+    lineItems.push({ description: 'Illinois Sales Tax', amount_cents: taxCents });
   }
   if (stripeFeeCents > 0) {
     lineItems.push({ description: 'Card Processing Fee', amount_cents: stripeFeeCents });

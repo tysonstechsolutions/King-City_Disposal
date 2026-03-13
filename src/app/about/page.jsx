@@ -15,6 +15,9 @@ import {
 export const metadata = {
   title: `About Us - Locally Owned Dumpster Rental | ${config.businessName}`,
   description: `${config.businessName} is a locally owned dumpster rental company serving ${config.address.city}, IL and Southern Illinois. Fast delivery, transparent pricing, and honest service.`,
+  alternates: {
+    canonical: `${config.websiteUrl}/about`,
+  },
 }
 
 export default function AboutPage() {

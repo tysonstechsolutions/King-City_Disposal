@@ -265,7 +265,7 @@ export function bookingConfirmationEmail(booking) {
       ` : ''}
       ${booking.tax_cents > 0 ? `
       <div class="details-row">
-        <span class="label">IL Rental Tax (9.5%):</span>
+        <span class="label">Illinois Sales Tax:</span>
         <span class="value">$${(booking.tax_cents / 100).toFixed(2)}</span>
       </div>
       ` : ''}
@@ -315,7 +315,7 @@ Duration: ${booking.rental_duration}
 Address: ${booking.address}
 ${booking.placement_notes ? `Placement: ${booking.placement_notes}` : ''}
 ${booking.base_price_cents ? `Rental Price: $${(booking.base_price_cents / 100).toFixed(2)}` : ''}
-${booking.tax_cents > 0 ? `IL Rental Tax (9.5%): $${(booking.tax_cents / 100).toFixed(2)}` : ''}
+${booking.tax_cents > 0 ? `Illinois Sales Tax: $${(booking.tax_cents / 100).toFixed(2)}` : ''}
 ${booking.stripe_fee_cents > 0 ? `Card Processing Fee: $${(booking.stripe_fee_cents / 100).toFixed(2)}` : ''}
 ${booking.price_cents ? `Total Paid: $${(booking.price_cents / 100).toFixed(2)}` : ''}
 

@@ -261,7 +261,42 @@ export async function POST(request) {
     }
 
     // ============================================
-    // 1. FIND OR CREATE CUSTOMER
+    // 1. CHECK FOR DUPLICATE BOOKING
+    // ============================================
+    // Prevent duplicate bookings: same name + address + delivery date
+    const parsedDeliveryDate = parseDeliveryDate(deliveryDate);
+
+    const duplicateCheckResponse = await fetch(
+      `${supabaseUrl}/rest/v1/bookings?customer_name=ilike.${encodeURIComponent(customerName)}&address=ilike.${encodeURIComponent(address)}&delivery_date=eq.${parsedDeliveryDate}&status=neq.cancelled`,
+      {
+        headers: {
+          'apikey': getSupabaseKey(),
+          'Authorization': `Bearer ${getSupabaseKey()}`,
+        },
+      }
+    );
+
+    if (duplicateCheckResponse.ok) {
+      const existingBookings = await duplicateCheckResponse.json();
+      if (existingBookings && existingBookings.length > 0) {
+        logger.warn('Duplicate booking attempt blocked', {
+          customerName,
+          address,
+          deliveryDate: parsedDeliveryDate,
+          existingBookingId: existingBookings[0].id,
+        });
+        return NextResponse.json(
+          {
+            error: `A booking already exists for ${customerName} at this address on ${parsedDeliveryDate}. If you need to modify your booking, please call us at ${config.phone}.`,
+            duplicateBooking: true,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ============================================
+    // 2. FIND OR CREATE CUSTOMER
     // ============================================
     const customer = await findOrCreateCustomer({
       name: customerName,
@@ -273,7 +308,7 @@ export async function POST(request) {
     });
 
     // ============================================
-    // 2. SAVE BOOKING TO DATABASE
+    // 3. SAVE BOOKING TO DATABASE
     // ============================================
     const bookingData = {
       customer_id: customer?.id || null,
@@ -286,7 +321,7 @@ export async function POST(request) {
       placement_notes: placementNotes || null,
       dumpster_size: dumpsterSize,
       rental_duration: rentalDuration,
-      delivery_date: parseDeliveryDate(deliveryDate),
+      delivery_date: parsedDeliveryDate,
       price_cents: priceCents || 0,
       project_type: projectType || null,
       status: 'pending',
@@ -368,12 +403,11 @@ export async function POST(request) {
         const durationMatch = rentalDuration.match(/(\d+)-day/);
         const durationLabel = durationMatch ? `${durationMatch[1]}-Day` : '10-Day';
 
-        // Calculate fees
-        const taxRate = config.payments.salesTaxRate || 0;
+        // Calculate fees - flat $16.88 rental tax
+        const taxCents = config.payments.flatRentalTaxCents || 1688;
         const stripeRate = config.payments.stripeProcessingRate || 0;
         const stripeFlat = config.payments.stripeProcessingFlat || 0;
 
-        const taxCents = Math.round(priceCents * taxRate);
         // Stripe fee is calculated on the total after tax
         const subtotalWithTax = priceCents + taxCents;
         // To pass Stripe fee to customer: fee = (subtotal + flat) / (1 - rate) - subtotal
@@ -386,7 +420,7 @@ export async function POST(request) {
           'line_items[0][price_data][unit_amount]': priceCents.toString(),
           'line_items[0][quantity]': '1',
           'line_items[1][price_data][currency]': 'usd',
-          'line_items[1][price_data][product_data][name]': 'IL Rental Tax (9.5%)',
+          'line_items[1][price_data][product_data][name]': 'Illinois Sales Tax',
           'line_items[1][price_data][unit_amount]': taxCents.toString(),
           'line_items[1][quantity]': '1',
           'line_items[2][price_data][currency]': 'usd',

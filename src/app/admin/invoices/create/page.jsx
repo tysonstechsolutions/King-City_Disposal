@@ -63,7 +63,7 @@ function CreateInvoiceContent() {
     weight_included_tons: 3, // 3 tons default (matches config)
     overage_rate: 75, // Default overage rate per ton
     line_items: [
-      { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 }
+      { id: 1, description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500, preset: '30yd' }
     ],
     notes: '',
     purchase_order: '', // PO number (some customers require this)
@@ -161,8 +161,10 @@ function CreateInvoiceContent() {
       weight_tons: weightTons,
       line_items: [
         {
+          id: Date.now(),
           description: `${dumpster?.name || booking.dumpster_size} - ${booking.rental_duration} Rental`,
-          amount_cents: basePrice * 100
+          amount_cents: basePrice * 100,
+          preset: 'custom'
         }
       ]
     }))
@@ -186,7 +188,7 @@ function CreateInvoiceContent() {
   const addLineItem = () => {
     setInvoice(prev => ({
       ...prev,
-      line_items: [...prev.line_items, { description: '', amount_cents: null }]
+      line_items: [...prev.line_items, { id: Date.now(), description: '', amount_cents: null }]
     }))
   }
 
@@ -231,6 +233,7 @@ function CreateInvoiceContent() {
       line_items: [
         ...prev.line_items,
         {
+          id: Date.now(),
           description: `Weight Overage (${overageTons} tons over limit)`,
           amount_cents: overageCents,
           preset: 'overage'
@@ -241,9 +244,8 @@ function CreateInvoiceContent() {
 
   const baseSubtotal = invoice.line_items.reduce((sum, item) => sum + (item.amount_cents || 0), 0)
 
-  // Calculate tax and fees for display
-  const taxRate = config.payments?.salesTaxRate || 0.08
-  const taxCents = Math.round(baseSubtotal * taxRate)
+  // Flat rental tax of $16.88
+  const taxCents = config.payments?.flatRentalTaxCents || 1688
 
   // Calculate CC fee if enabled
   let ccFeeCents = 0
@@ -665,7 +667,7 @@ function CreateInvoiceContent() {
 
             <div className="space-y-3">
               {invoice.line_items.map((item, index) => (
-                <div key={index} className="flex gap-3">
+                <div key={item.id || index} className="flex gap-3">
                   <div className="flex-1 flex gap-2">
                     <select
                       value={item.preset || 'custom'}
@@ -680,23 +682,32 @@ function CreateInvoiceContent() {
                           'haul': { description: 'Haul Fee', amount_cents: 0 },
                           'overage': { description: 'Weight Overage', amount_cents: 0 },
                           'tonnage': { description: 'Actual Tonnage', amount_cents: 0 },
-                          'custom': { description: item.description, amount_cents: item.amount_cents },
                         }
-                        const selected = presets[preset] || presets.custom
-                        setInvoice(prev => ({
-                          ...prev,
-                          line_items: prev.line_items.map((li, i) =>
-                            i === index ? { ...selected, preset } : li
-                          )
-                        }))
+                        if (preset === 'custom') {
+                          // Just mark as custom, keep existing values
+                          setInvoice(prev => ({
+                            ...prev,
+                            line_items: prev.line_items.map((li, i) =>
+                              i === index ? { ...li, preset: 'custom' } : li
+                            )
+                          }))
+                        } else {
+                          const selected = presets[preset]
+                          setInvoice(prev => ({
+                            ...prev,
+                            line_items: prev.line_items.map((li, i) =>
+                              i === index ? { ...selected, preset, _displayValue: undefined } : li
+                            )
+                          }))
+                        }
                       }}
                       className="w-48 px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     >
                       <option value="custom">Custom...</option>
-                      <option value="30yd">30yd Dumpster</option>
-                      <option value="20yd">20yd Dumpster</option>
+                      <option value="30yd">30yd Dumpster ($575)</option>
+                      <option value="20yd">20yd Dumpster ($475)</option>
                       <option value="compactor">Self-Contained Compactor</option>
-                      <option value="extended">Extended Use Charge</option>
+                      <option value="extended">Extended Use Charge ($50)</option>
                       <option value="monthly">Monthly Fee</option>
                       <option value="haul">Haul Fee</option>
                       <option value="overage">Weight Overage</option>
@@ -704,12 +715,13 @@ function CreateInvoiceContent() {
                     </select>
                     <input
                       type="text"
-                      value={item.description}
+                      value={item.description || ''}
                       onChange={(e) => {
+                        const newDescription = e.target.value
                         setInvoice(prev => ({
                           ...prev,
                           line_items: prev.line_items.map((li, i) =>
-                            i === index ? { ...li, description: e.target.value, preset: 'custom' } : li
+                            i === index ? { ...li, description: newDescription, preset: 'custom' } : li
                           )
                         }))
                       }}
@@ -720,22 +732,22 @@ function CreateInvoiceContent() {
                   <div className="relative w-32">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
                     <input
-                      type="text"
-                      inputMode="decimal"
-                      value={item._displayValue !== undefined ? item._displayValue : (item.amount_cents ? (item.amount_cents / 100).toFixed(2) : '')}
-                      onChange={(e) => updateLineItem(index, 'amount_cents', e.target.value)}
-                      onBlur={(e) => {
-                        // Format to 2 decimal places on blur
-                        const cents = item.amount_cents || 0
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
+                      onChange={(e) => {
+                        const dollars = parseFloat(e.target.value) || 0
+                        const cents = Math.round(dollars * 100)
                         setInvoice(prev => ({
                           ...prev,
                           line_items: prev.line_items.map((li, i) =>
-                            i === index ? { ...li, _displayValue: undefined } : li
+                            i === index ? { ...li, amount_cents: cents, preset: 'custom' } : li
                           )
                         }))
                       }}
                       placeholder="0.00"
-                      className="w-full pl-7 pr-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      className="w-full pl-7 pr-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <button
@@ -767,7 +779,7 @@ function CreateInvoiceContent() {
                   <span>${(baseSubtotal / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-dark-300">
-                  <span>IL Rental Tax ({Math.round(taxRate * 100)}%)</span>
+                  <span>Illinois Sales Tax</span>
                   <span>${(taxCents / 100).toFixed(2)}</span>
                 </div>
                 {invoice.include_cc_fee && ccFeeCents > 0 && (
@@ -975,21 +987,20 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
 
   const lineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
 
-  // Calculate tax for preview
+  // Flat rental tax for preview
   const previewBaseSubtotal = subtotal
-  const taxRate = config.payments?.salesTaxRate || 0.08
-  const taxCents = Math.round(previewBaseSubtotal * taxRate)
+  const previewTaxCents = config.payments?.flatRentalTaxCents || 1688
 
   // Calculate CC fee for preview
   let previewCcFeeCents = 0
   if (invoice.include_cc_fee) {
     const stripeRate = config.payments?.stripeProcessingRate || 0.029
     const stripeFlat = config.payments?.stripeProcessingFlat || 30
-    const runningTotal = previewBaseSubtotal + taxCents
+    const runningTotal = previewBaseSubtotal + previewTaxCents
     previewCcFeeCents = Math.round((runningTotal + stripeFlat) / (1 - stripeRate) - runningTotal)
   }
 
-  const totalWithTax = previewBaseSubtotal + taxCents + previewCcFeeCents
+  const totalWithTax = previewBaseSubtotal + previewTaxCents + previewCcFeeCents
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
@@ -1104,8 +1115,8 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
               <span>${formatCurrency(previewBaseSubtotal)}</span>
             </div>
             <div class="row">
-              <span class="label">IL Rental Tax (${Math.round(taxRate * 100)}%)</span>
-              <span>${formatCurrency(taxCents)}</span>
+              <span class="label">Illinois Sales Tax</span>
+              <span>${formatCurrency(previewTaxCents)}</span>
             </div>
             ${invoice.include_cc_fee && previewCcFeeCents > 0 ? `
             <div class="row">
@@ -1274,8 +1285,8 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
                       <span className="font-medium">{formatCurrency(previewBaseSubtotal)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">IL Rental Tax ({Math.round(taxRate * 100)}%)</span>
-                      <span className="font-medium">{formatCurrency(taxCents)}</span>
+                      <span className="text-neutral-500">Illinois Sales Tax</span>
+                      <span className="font-medium">{formatCurrency(previewTaxCents)}</span>
                     </div>
                     {invoice.include_cc_fee && previewCcFeeCents > 0 && (
                       <div className="flex justify-between">

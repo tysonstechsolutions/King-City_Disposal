@@ -72,6 +72,7 @@ export default function ChatbotWidget() {
   const [contactEmail, setContactEmail] = useState('')
   const [contactCity, setContactCity] = useState('')
   const [contactZip, setContactZip] = useState('')
+  const [smsConsent, setSmsConsent] = useState(false)
   const [bookingData, setBookingData] = useState({
     projectType: '',
     address: '',
@@ -1095,7 +1096,6 @@ export default function ChatbotWidget() {
                     placeholder="Phone number"
                     className="input-field w-full"
                   />
-                  <p className="text-xs text-dark-500 -mt-1">By providing your number, you agree to receive booking &amp; invoice texts. Msg &amp; data rates apply. Reply STOP to opt out.</p>
                   <input
                     type="email"
                     value={contactEmail}
@@ -1120,9 +1120,22 @@ export default function ChatbotWidget() {
                       maxLength={5}
                     />
                   </div>
+                  {/* SMS Consent - Required for Twilio A2P 10DLC */}
+                  <label className="flex items-start gap-2 cursor-pointer bg-dark-600 rounded-lg p-3">
+                    <input
+                      type="checkbox"
+                      checked={smsConsent}
+                      onChange={(e) => setSmsConsent(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-dark-500 bg-dark-700 text-primary focus:ring-primary"
+                    />
+                    <span className="text-xs text-dark-300">
+                      I agree to receive SMS from {config.businessName} for booking updates, delivery notifications, and invoices. Msg & data rates apply. Reply STOP to opt out. <a href="/sms-terms" target="_blank" className="text-primary hover:underline">SMS Terms</a>
+                    </span>
+                  </label>
                   <button
                     type="submit"
-                    className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+                    disabled={!smsConsent}
+                    className={`w-full py-3 flex items-center justify-center gap-2 rounded-lg font-medium transition-colors ${smsConsent ? 'btn-primary' : 'bg-dark-600 text-dark-400 cursor-not-allowed'}`}
                   >
                     <ArrowRight className="w-5 h-5" />
                     Continue

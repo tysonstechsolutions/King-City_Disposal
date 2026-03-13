@@ -12,6 +12,9 @@ import {
 export const metadata = {
   title: `Dumpster Sizes - 20 & 30 Yard Roll-Off Dumpsters | ${config.businessName}`,
   description: `Compare dumpster sizes for your project. 20 and 30 yard roll-off dumpsters available for delivery in ${config.address.city}, IL and surrounding areas.`,
+  alternates: {
+    canonical: `${config.websiteUrl}/dumpsters`,
+  },
 }
 
 export default function DumpstersPage() {

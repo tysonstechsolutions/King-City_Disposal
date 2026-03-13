@@ -12,6 +12,9 @@ import {
 export const metadata = {
   title: `Dumpster Rental Pricing | ${config.businessName}`,
   description: `Transparent dumpster rental pricing in ${config.address.city}, IL. 20 and 30 yard dumpsters starting at $475 for 10 days. No hidden fees.`,
+  alternates: {
+    canonical: `${config.websiteUrl}/pricing`,
+  },
 }
 
 export default function PricingPage() {

@@ -3,6 +3,9 @@ import { config } from '../../config'
 export const metadata = {
   title: 'Privacy Policy',
   description: `Privacy Policy for ${config.businessName} - How we collect, use, and protect your information.`,
+  alternates: {
+    canonical: `${config.websiteUrl}/privacy`,
+  },
 }
 
 export default function PrivacyPage() {

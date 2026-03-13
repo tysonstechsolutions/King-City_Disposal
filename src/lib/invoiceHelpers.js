@@ -17,20 +17,17 @@ export function addTaxesAndFees(lineItems, options = {}) {
   // Calculate base subtotal from provided line items
   const subtotal = lineItems.reduce((sum, item) => sum + (item.amount_cents || 0), 0);
 
-  // Get tax and fee rates from config or options
-  const taxRate = options.taxRate ?? config.payments?.salesTaxRate ?? 0.095; // Default 9.5% IL rental tax
+  // Get flat rental tax from config (default $16.88)
+  const taxCents = options.taxCents ?? config.payments?.flatRentalTaxCents ?? 1688;
   const includeStripeFee = options.includeStripeFee ?? false; // Only add if customer is paying by card
-
-  // Calculate tax
-  const taxCents = Math.round(subtotal * taxRate);
 
   // Start with base line items
   const allLineItems = [...lineItems];
 
-  // Add tax line item if applicable
+  // Add flat tax line item
   if (taxCents > 0) {
     allLineItems.push({
-      description: `IL Rental Tax (${Math.round(taxRate * 100)}%)`,
+      description: 'Illinois Sales Tax',
       amount_cents: taxCents,
       is_tax: true,
     });

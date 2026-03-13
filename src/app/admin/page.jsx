@@ -601,6 +601,18 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-dark-700">
                       <div className="flex items-center gap-3 text-dark-500 text-sm">
                         <span>{timeAgo(booking.created_at)}</span>
+                        {/* Payment status badge */}
+                        {booking.paid ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/15 text-green-400 border border-green-500/30 rounded text-xs">
+                            <DollarSign className="w-3 h-3" />
+                            Paid
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded text-xs">
+                            <DollarSign className="w-3 h-3" />
+                            Unpaid
+                          </span>
+                        )}
                         {booking.placement_lat && (
                           <span className="text-green-400">📍 Has placement</span>
                         )}

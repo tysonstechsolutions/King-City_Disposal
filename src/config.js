@@ -98,8 +98,8 @@ export const config = {
   payments: {
     enabled: true,
 
-    // If false, customers can book without paying (invoice later)
-    requirePaymentUpfront: false,
+    // If true, customers MUST pay via Stripe before booking is saved
+    requirePaymentUpfront: true,
 
     // Accepted payment methods
     methods: ["cash", "check", "venmo", "square", "card"],
@@ -114,7 +114,7 @@ export const config = {
     lateFeeGraceDays: 30,     // Apply after 30 days overdue
 
     // Transaction fees passed to customer
-    salesTaxRate: 0.095,               // 9.5% Illinois rental tax
+    flatRentalTaxCents: 1688,          // Flat $16.88 rental tax (in cents)
     stripeProcessingRate: 0.029,       // 2.9%
     stripeProcessingFlat: 30,          // + $0.30 (in cents)
   },
@@ -246,7 +246,7 @@ export const config = {
       // Which project types recommend this size
       recommendedFor: ["construction", "major-renovation", "commercial"],
       pricing: {
-        "10-day": 525,
+        "10-day": 575,
       },
       weightIncluded: "3 tons",
       weightLimit: 6000,      // 3 tons in lbs (for weight overage calc)

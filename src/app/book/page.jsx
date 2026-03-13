@@ -87,6 +87,7 @@ function BookingPageContent() {
     customerName: '',
     customerPhone: '',
     customerEmail: '',
+    smsConsent: false,
     surcharges: {},
   })
 
@@ -469,7 +470,7 @@ function BookingPageContent() {
         }
         return formData.deliveryDate
       case 4:
-        return formData.customerPhone
+        return formData.customerPhone && formData.smsConsent
       case 5:
         return true
       default:
@@ -979,7 +980,27 @@ function BookingPageContent() {
                     className="w-full pl-10 px-4 py-3 border border-dark-600 bg-dark-700 text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-colors text-lg"
                   />
                 </div>
-                <p className="text-xs text-dark-400 mt-2">By providing your phone number, you agree to receive booking confirmations and invoice notifications via text. Msg &amp; data rates may apply. Reply STOP to opt out.</p>
+              </div>
+
+              {/* SMS Consent Checkbox - Required for Twilio A2P 10DLC compliance */}
+              <div className="bg-dark-700 rounded-lg p-4 border border-dark-600">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.smsConsent || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, smsConsent: e.target.checked }))}
+                    className="mt-1 w-5 h-5 rounded border-dark-500 bg-dark-600 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                  />
+                  <div className="text-sm">
+                    <span className="text-white font-medium">I agree to receive text messages from {config.businessName}</span>
+                    <p className="text-dark-400 mt-1">
+                      By checking this box, you consent to receive SMS messages from King City Disposal including booking confirmations, delivery updates, pickup reminders, and invoice notifications. Message frequency varies. Message and data rates may apply.
+                    </p>
+                    <p className="text-dark-400 mt-2">
+                      Reply STOP to opt out at any time. Reply HELP for assistance. View our <a href="/sms-terms" target="_blank" className="text-primary hover:underline">SMS Terms</a> and <a href="/privacy" target="_blank" className="text-primary hover:underline">Privacy Policy</a>.
+                    </p>
+                  </div>
+                </label>
               </div>
 
               {/* Show who they are */}

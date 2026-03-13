@@ -3,6 +3,9 @@ import { config } from '../../config'
 export const metadata = {
   title: 'Terms of Service',
   description: `Terms of Service for ${config.businessName} dumpster rental services.`,
+  alternates: {
+    canonical: `${config.websiteUrl}/terms`,
+  },
 }
 
 export default function TermsPage() {
