@@ -732,11 +732,11 @@ function CreateInvoiceContent() {
                   <div className="relative w-32">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
-                      onChange={(e) => {
+                      type="text"
+                      inputMode="decimal"
+                      defaultValue={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
+                      key={`amount-${item.id || index}-${item.preset}`}
+                      onBlur={(e) => {
                         const dollars = parseFloat(e.target.value) || 0
                         const cents = Math.round(dollars * 100)
                         setInvoice(prev => ({
@@ -745,9 +745,13 @@ function CreateInvoiceContent() {
                             i === index ? { ...li, amount_cents: cents, preset: 'custom' } : li
                           )
                         }))
+                        // Format the display value on blur
+                        if (dollars > 0) {
+                          e.target.value = dollars.toFixed(2)
+                        }
                       }}
                       placeholder="0.00"
-                      className="w-full pl-7 pr-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full pl-7 pr-3 py-2 border bg-dark-700 text-white border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
                   <button
