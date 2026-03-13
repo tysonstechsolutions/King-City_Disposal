@@ -57,7 +57,10 @@ function CreateInvoiceContent() {
     rental_duration: '10-day',
     delivery_date: '',
     pickup_date: '',
-    invoice_date: new Date().toISOString().split('T')[0], // Invoice date (can be future dated)
+    invoice_date: (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })(), // Invoice date (uses local date, not UTC)
     date_set: '', // Date dumpster was serviced
     weight_tons: '',
     weight_included_tons: 3, // 3 tons default (matches config)
