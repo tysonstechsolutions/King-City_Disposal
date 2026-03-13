@@ -571,6 +571,19 @@ export default function AdminPage() {
 
                       {/* Booking Details */}
                       <div className="flex flex-wrap items-center gap-4 lg:gap-6">
+                        {/* Service Type Badge (for swap/extension/pickup) */}
+                        {booking.service_type && booking.service_type !== 'Delivery' && (
+                          <div className="text-center">
+                            <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                              booking.service_type === 'Swap Out' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                              booking.service_type === 'Extension' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                              booking.service_type === 'Pickup' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
+                              'bg-dark-600 text-dark-300'
+                            }`}>
+                              {booking.service_type}
+                            </span>
+                          </div>
+                        )}
                         <div className="text-center">
                           <p className="text-dark-500 text-xs uppercase">Size</p>
                           <p className="text-white font-medium text-sm">

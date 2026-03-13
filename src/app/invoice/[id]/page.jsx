@@ -184,9 +184,16 @@ export default function CustomerInvoicePage() {
     )
   }
 
-  const lineItems = typeof invoice.line_items === 'string'
+  const allLineItems = typeof invoice.line_items === 'string'
     ? JSON.parse(invoice.line_items)
     : (invoice.line_items || [])
+
+  // Filter out tax and fee items (they're shown in summary section)
+  const lineItems = allLineItems.filter(item =>
+    !item.is_tax && !item.is_fee &&
+    !item.description?.toLowerCase().includes('sales tax') &&
+    !item.description?.toLowerCase().includes('processing fee')
+  )
 
   const balanceDue = invoice.total_cents - (invoice.amount_paid_cents || 0)
 
@@ -367,10 +374,9 @@ export default function CustomerInvoicePage() {
                       <span>-{formatCurrency(invoice.discount_cents)}</span>
                     </div>
                   )}
-                  {/* Only show tax if there's a tax line item in line_items - not from the legacy tax_cents field */}
-                  {lineItems.some(item => item.is_tax || item.description?.toLowerCase().includes('tax')) && invoice.tax_cents > 0 && (
+                  {invoice.tax_cents > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-dark-300 print:text-gray-600">Tax</span>
+                      <span className="text-dark-300 print:text-gray-600">Illinois Sales Tax</span>
                       <span className="font-medium print:text-black">{formatCurrency(invoice.tax_cents)}</span>
                     </div>
                   )}

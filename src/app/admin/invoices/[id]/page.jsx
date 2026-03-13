@@ -823,12 +823,33 @@ export default function InvoiceDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {invoice.line_items?.map((item, index) => (
+                  {/* Service line items only (filter out tax/fees) */}
+                  {invoice.line_items?.filter(item =>
+                    !item.is_tax && !item.is_fee &&
+                    !item.description?.toLowerCase().includes('sales tax') &&
+                    !item.description?.toLowerCase().includes('processing fee')
+                  ).map((item, index) => (
                     <div key={index} className="flex justify-between py-2 border-b border-dark-700 last:border-0">
                       <span className="text-dark-200">{item.description}</span>
                       <span className="font-medium">{formatCurrency(item.amount_cents)}</span>
                     </div>
                   ))}
+
+                  {/* Subtotal */}
+                  {invoice.subtotal_cents > 0 && (
+                    <div className="flex justify-between py-2 border-t border-dark-600">
+                      <span className="text-dark-400">Subtotal</span>
+                      <span className="font-medium">{formatCurrency(invoice.subtotal_cents)}</span>
+                    </div>
+                  )}
+
+                  {/* Tax */}
+                  {invoice.tax_cents > 0 && (
+                    <div className="flex justify-between py-2 border-b border-dark-700">
+                      <span className="text-dark-200">Illinois Sales Tax</span>
+                      <span className="font-medium">{formatCurrency(invoice.tax_cents)}</span>
+                    </div>
+                  )}
 
                   {invoice.late_fee_cents > 0 && (
                     <div className="flex justify-between py-2 border-b border-dark-700 text-red-400">

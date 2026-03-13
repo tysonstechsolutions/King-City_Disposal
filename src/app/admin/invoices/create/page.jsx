@@ -291,7 +291,7 @@ function CreateInvoiceContent() {
         }
       }
 
-      // Filter valid line items
+      // Filter valid line items (services only - no tax/fees)
       const validLineItems = invoice.line_items
         .filter(item => item.description && item.amount_cents > 0)
         .map(item => ({
@@ -299,8 +299,8 @@ function CreateInvoiceContent() {
           amount_cents: item.amount_cents
         }))
 
-      // Add taxes and fees as separate line items
-      const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems, {
+      // Calculate totals (tax and fees stored separately, not as line items)
+      const { subtotal_cents, tax_cents, fee_cents, total_cents } = addTaxesAndFees(validLineItems, {
         includeStripeFee: invoice.include_cc_fee
       })
 
@@ -323,11 +323,12 @@ function CreateInvoiceContent() {
         date_set: invoice.date_set || null,
         weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
         weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
-        line_items: lineItemsWithTaxes,
+        line_items: validLineItems, // Only services, no tax/fees
         notes: invoice.notes,
         due_date: dueDate.toISOString().split('T')[0],
         subtotal_cents,
         tax_cents,
+        fee_cents, // CC processing fee stored separately
         total_cents,
         status: sendNow ? 'sent' : 'draft',
         sent_at: sendNow ? new Date().toISOString() : null,
@@ -898,7 +899,7 @@ function CreateInvoiceContent() {
                 }
               }
 
-              // Filter valid line items
+              // Filter valid line items (services only - no tax/fees)
               const validLineItems = invoice.line_items
                 .filter(item => item.description && item.amount_cents > 0)
                 .map(item => ({
@@ -906,8 +907,8 @@ function CreateInvoiceContent() {
                   amount_cents: item.amount_cents
                 }))
 
-              // Add taxes and fees as separate line items
-              const { lineItems: lineItemsWithTaxes, subtotal_cents, tax_cents, total_cents } = addTaxesAndFees(validLineItems, {
+              // Calculate totals (tax and fees stored separately, not as line items)
+              const { subtotal_cents, tax_cents, fee_cents, total_cents } = addTaxesAndFees(validLineItems, {
                 includeStripeFee: invoice.include_cc_fee
               })
 
@@ -930,11 +931,12 @@ function CreateInvoiceContent() {
                 date_set: invoice.date_set || null,
                 weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
                 weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
-                line_items: lineItemsWithTaxes,
+                line_items: validLineItems, // Only services, no tax/fees
                 notes: invoice.notes,
                 due_date: dueDate.toISOString().split('T')[0],
                 subtotal_cents,
                 tax_cents,
+                fee_cents, // CC processing fee stored separately
                 total_cents,
                 status: 'draft',
               }
