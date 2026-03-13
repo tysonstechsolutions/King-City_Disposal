@@ -7,7 +7,17 @@
 
 import { config } from '../config'
 
-const SUPABASE_URL = config.supabase.url
+/**
+ * Get the Supabase URL at runtime (not module init) for serverless compatibility
+ * Environment variables may not be available during module initialization in Vercel
+ */
+export function getSupabaseUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || config.supabase.url
+}
+
+// Legacy export for backwards compatibility (use getSupabaseUrl() in new code)
+// This may be empty on first request in serverless - prefer getSupabaseUrl()
+export const supabaseUrl = getSupabaseUrl()
 
 /**
  * Get the Supabase API key with proper priority
@@ -57,7 +67,8 @@ export function getSupabaseUpsertHeaders(options = {}) {
  * @param {string} [query] - Optional query string (without leading ?)
  */
 export function buildSupabaseUrl(table, query = '') {
-  const baseUrl = `${SUPABASE_URL}/rest/v1/${table}`
+  const url = getSupabaseUrl()
+  const baseUrl = `${url}/rest/v1/${table}`
   return query ? `${baseUrl}?${query}` : baseUrl
 }
 
@@ -132,6 +143,3 @@ export async function supabaseUpdate(table, query, data, returnData = true) {
 export async function supabaseDelete(table, query, returnData = false) {
   return supabaseQuery(table, { method: 'DELETE', query, returnData })
 }
-
-// Export URL for direct use where needed
-export const supabaseUrl = SUPABASE_URL

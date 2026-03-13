@@ -7,7 +7,8 @@ import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
 
-const supabaseUrl = config.supabase.url;
+// Get Supabase credentials at runtime (not module init) for serverless compatibility
+const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL || config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
 // Maximum file size: 50MB
@@ -87,13 +88,33 @@ export async function POST(request) {
     const storagePath = `${category}/${timestamp}_${sanitizedName}`;
 
     // Upload to Supabase Storage
+    const supabaseUrl = getSupabaseUrl();
+    const supabaseKey = getSupabaseKey();
+
+    // Debug logging
+    logger.info('Upload attempt', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseKey,
+      urlPrefix: supabaseUrl?.substring(0, 30),
+      category,
+      fileName: file.name
+    });
+
+    if (!supabaseUrl || !supabaseKey) {
+      logger.error('Missing Supabase credentials', null, { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey });
+      return NextResponse.json(
+        { error: 'Server configuration error: Missing Supabase credentials' },
+        { status: 500 }
+      );
+    }
+
     const fileBuffer = await file.arrayBuffer();
     const uploadResponse = await fetch(
       `${supabaseUrl}/storage/v1/object/documents/${storagePath}`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': file.type,
           'x-upsert': 'true',
         },
@@ -162,8 +183,8 @@ export async function POST(request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
           'Prefer': 'return=representation',
         },
         body: JSON.stringify(documentData),
@@ -189,8 +210,8 @@ export async function POST(request) {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': getSupabaseKey(),
-            'Authorization': `Bearer ${getSupabaseKey()}`,
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({
             actual_weight_lbs: parseInt(weightLbs),
@@ -246,8 +267,11 @@ export async function GET(request) {
   const category = searchParams.get('category');
 
   try {
+    const supabaseUrl = getSupabaseUrl();
+    const supabaseKey = getSupabaseKey();
+
     let query = 'order=created_at.desc';
-    
+
     if (bookingId) {
       query += `&booking_id=eq.${bookingId}`;
     }
@@ -262,21 +286,21 @@ export async function GET(request) {
       `${supabaseUrl}/rest/v1/documents?${query}`,
       {
         headers: {
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
         },
       }
     );
 
     if (response.ok) {
       const documents = await response.json();
-      
+
       // Add public URLs for each document
       const docsWithUrls = documents.map(doc => ({
         ...doc,
         url: `${supabaseUrl}/storage/v1/object/public/documents/${doc.storage_path}`,
       }));
-      
+
       return NextResponse.json(docsWithUrls);
     }
 
