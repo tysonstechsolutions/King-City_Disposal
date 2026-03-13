@@ -30,6 +30,7 @@ export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [uploadServiceDate, setUploadServiceDate] = useState('')
+  const [uploadCategory, setUploadCategory] = useState('invoice')
   const [showUploadForm, setShowUploadForm] = useState(false)
 
   const fileInputRef = useRef(null)
@@ -72,12 +73,16 @@ export default function UploadPage() {
     }
 
     const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
+      'application/pdf',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
       'text/csv'
     ]
-    if (!allowedTypes.includes(file.type)) {
+    // Also allow by file extension (some phones don't set proper MIME types)
+    const ext = file.name?.toLowerCase().split('.').pop()
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'pdf', 'xlsx', 'xls', 'csv']
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
       toast.error('Invalid file type. Use image, PDF, Excel, or CSV.')
       return
     }
@@ -104,6 +109,7 @@ export default function UploadPage() {
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('title', selectedFile.name)
+      formData.append('category', uploadCategory)
       if (uploadServiceDate) formData.append('service_date', uploadServiceDate)
 
       const response = await fetch('/api/documents/upload', {
@@ -119,6 +125,7 @@ export default function UploadPage() {
         setSelectedFile(null)
         setPreview(null)
         setUploadServiceDate('')
+        setUploadCategory('invoice')
         setShowUploadForm(false)
         if (fileInputRef.current) fileInputRef.current.value = ''
 
@@ -158,6 +165,7 @@ export default function UploadPage() {
     setPreview(null)
     setShowUploadForm(false)
     setUploadServiceDate('')
+    setUploadCategory('invoice')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -193,7 +201,7 @@ export default function UploadPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,application/pdf,.xlsx,.xls,.csv"
+              accept="image/*,.heic,.heif,application/pdf,.xlsx,.xls,.csv"
               onChange={handleFileSelect}
               className="hidden"
               capture="environment"
@@ -249,6 +257,34 @@ export default function UploadPage() {
               <button onClick={cancelUpload} className="p-2 text-dark-500 hover:text-white hover:bg-dark-700 rounded-lg transition-colors">
                 <X className="w-6 h-6" />
               </button>
+            </div>
+
+            {/* Document Type */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                <FileText className="w-4 h-4 inline mr-2" />
+                Document Type
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'invoice', label: 'Invoice' },
+                  { value: 'fuel_receipt', label: 'Fuel Receipt' },
+                  { value: 'weight_ticket', label: 'Weight Ticket' },
+                ].map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setUploadCategory(type.value)}
+                    className={`py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+                      uploadCategory === type.value
+                        ? 'bg-primary text-white'
+                        : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Service Date Input */}

@@ -310,6 +310,21 @@ export async function POST(request) {
     const document = documents[0];
     const docCategory = category || document.category || 'invoice';
 
+    // Delete any existing parsed_invoice for this document (for re-parsing)
+    if (document.parsed_invoice_id) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/parsed_invoices?document_id=eq.${document_id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
+      );
+      logger.info('Deleted existing parsed invoice for re-parsing', { document_id });
+    }
+
     // Update document status to 'parsing'
     await fetch(
       `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
@@ -320,7 +335,7 @@ export async function POST(request) {
           'apikey': getSupabaseKey(),
           'Authorization': `Bearer ${getSupabaseKey()}`,
         },
-        body: JSON.stringify({ parse_status: 'parsing' }),
+        body: JSON.stringify({ parse_status: 'parsing', parsed_invoice_id: null }),
       }
     );
 
@@ -465,8 +480,25 @@ export async function POST(request) {
     // Note: Vendor expenses do NOT create customers - gas stations, landfills, etc. are vendors, not customers
 
     // 6. Store in parsed_invoices table
-    const taxYear = parsedData.invoice_date
-      ? new Date(parsedData.invoice_date).getFullYear()
+
+    // Validate and format dates - handle invalid formats from AI
+    const formatDate = (dateStr) => {
+      if (!dateStr) return null;
+      // Try to parse the date
+      const parsed = new Date(dateStr);
+      if (isNaN(parsed.getTime())) {
+        logger.warn('Invalid date format from AI', { dateStr });
+        return null;
+      }
+      // Return in YYYY-MM-DD format
+      return parsed.toISOString().split('T')[0];
+    };
+
+    const formattedInvoiceDate = formatDate(parsedData.invoice_date);
+    const formattedDueDate = formatDate(parsedData.due_date);
+
+    const taxYear = formattedInvoiceDate
+      ? new Date(formattedInvoiceDate).getFullYear()
       : new Date().getFullYear();
 
     const parsedInvoiceData = {
@@ -482,8 +514,8 @@ export async function POST(request) {
       to_phone: parsedData.to?.phone || null,
       to_email: parsedData.to?.email || null,
       invoice_number: parsedData.invoice_number || null,
-      invoice_date: parsedData.invoice_date || null,
-      due_date: parsedData.due_date || null,
+      invoice_date: formattedInvoiceDate,
+      due_date: formattedDueDate,
       payment_terms: parsedData.payment_terms || null,
       line_items: JSON.stringify(parsedData.line_items || []),
       subtotal_cents: parsedData.subtotal_cents || null,
@@ -516,10 +548,31 @@ export async function POST(request) {
 
     if (!insertResponse.ok) {
       const errorText = await insertResponse.text();
-      logger.error('Failed to insert parsed invoice', null, { error: errorText });
+      logger.error('Failed to insert parsed invoice', null, {
+        error: errorText,
+        document_id,
+        parsedInvoiceData,
+      });
       await updateDocumentStatus(document_id, 'failed');
+
+      // Try to parse the error for better feedback
+      let errorMsg = 'Failed to save parsed data';
+      try {
+        const errorObj = JSON.parse(errorText);
+        if (errorObj.message) {
+          errorMsg = `Failed to save: ${errorObj.message}`;
+        } else if (errorObj.details) {
+          errorMsg = `Failed to save: ${errorObj.details}`;
+        }
+      } catch (e) {
+        // Keep generic error if can't parse
+        if (errorText && errorText.length < 200) {
+          errorMsg = `Failed to save: ${errorText}`;
+        }
+      }
+
       return NextResponse.json(
-        { error: 'Failed to save parsed data' },
+        { error: errorMsg },
         { status: 500 }
       );
     }
