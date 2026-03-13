@@ -50,9 +50,10 @@ export default function ReportsPage() {
         const results = await Promise.allSettled([
           fetch(`${config.supabase.url}/rest/v1/bookings?order=created_at.desc`, { headers }),
           fetch(`${config.supabase.url}/rest/v1/invoices?order=created_at.desc`, { headers }),
-          fetch(`${config.supabase.url}/rest/v1/expenses?order=date.desc`, { headers }),
-          // Fetch parsed documents with amounts (vendor expenses from uploaded receipts)
-          fetch(`${config.supabase.url}/rest/v1/documents?amount_cents=not.is.null&order=document_date.desc`, { headers }),
+          // Expenses from parsed documents (receipts with amounts)
+          fetch(`${config.supabase.url}/rest/v1/parsed_invoices?invoice_type=eq.expense&order=invoice_date.desc`, { headers }),
+          // Fetch documents with amounts (vendor expenses from uploaded receipts)
+          fetch(`${config.supabase.url}/rest/v1/documents?amount_cents=gt.0&order=document_date.desc`, { headers }),
         ])
 
         // Process each result independently
