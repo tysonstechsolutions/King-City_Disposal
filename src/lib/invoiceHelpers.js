@@ -1,86 +1,118 @@
 // ============================================
 // INVOICE HELPER FUNCTIONS
 // ============================================
-// Utility functions for invoice calculations and line item generation
+// Single source of truth for all invoice calculations
+// Backend uses these - frontend should send raw line items only
 
 import { config } from '../config';
 
+// ============================================
+// CONFIGURATION (from config.js)
+// ============================================
+const TAX_CENTS = config.payments?.flatRentalTaxCents ?? 1688; // $16.88 flat tax
+const STRIPE_RATE = config.payments?.stripeProcessingRate ?? 0.029; // 2.9%
+const STRIPE_FLAT = config.payments?.stripeProcessingFlat ?? 30; // $0.30 in cents
+const OVERAGE_RATE_PER_TON = config.pricing?.overagePerTon ?? 105; // $105/ton
+const EXTENSION_RATE_PER_WEEK = 100; // $100/week
+
+// ============================================
+// MAIN CALCULATION FUNCTION
+// ============================================
 /**
- * Adds tax and fee line items to an invoice
- * This ensures customers see exactly where extra costs come from
+ * Calculate invoice totals from line items
+ * This is the SINGLE SOURCE OF TRUTH for invoice math
  *
- * @param {Array} lineItems - Base line items (e.g., dumpster rental)
- * @param {Object} options - Optional fee configuration
- * @returns {Object} - { lineItems, subtotal, tax, fees, total }
+ * @param {Array} lineItems - Service line items (NO tax/fees)
+ * @param {Object} options
+ * @param {boolean} options.includeCardFee - Whether to add CC processing fee
+ * @param {number} options.discountCents - Discount amount in cents
+ * @param {number} options.lateFeesCents - Late fees in cents (already calculated)
+ * @returns {Object} Calculated totals
+ */
+export function calculateInvoiceTotals(lineItems, options = {}) {
+  const {
+    includeCardFee = false,
+    discountCents = 0,
+    lateFeesCents = 0,
+  } = options;
+
+  // Step 1: Sum service line items (filter out any tax/fee items that snuck in)
+  const serviceItems = lineItems.filter(item => !item.is_tax && !item.is_fee);
+  const subtotalCents = serviceItems.reduce((sum, item) => sum + (item.amount_cents || 0), 0);
+
+  // Step 2: Tax is flat $16.88
+  const taxCents = TAX_CENTS;
+
+  // Step 3: Calculate running total before CC fee
+  let runningTotal = subtotalCents + taxCents + lateFeesCents - discountCents;
+
+  // Step 4: Calculate CC fee if needed
+  // Formula: fee = (total + flat) / (1 - rate) - total
+  // This ensures customer pays the fee, not the business
+  let ccFeeCents = 0;
+  if (includeCardFee && runningTotal > 0) {
+    ccFeeCents = Math.round((runningTotal + STRIPE_FLAT) / (1 - STRIPE_RATE) - runningTotal);
+  }
+
+  // Step 5: Final total
+  const totalCents = runningTotal + ccFeeCents;
+
+  return {
+    subtotal_cents: subtotalCents,
+    tax_cents: taxCents,
+    cc_fee_cents: ccFeeCents,
+    late_fee_cents: lateFeesCents,
+    discount_cents: discountCents,
+    total_cents: totalCents,
+  };
+}
+
+// ============================================
+// LEGACY FUNCTION (for backwards compatibility)
+// ============================================
+/**
+ * @deprecated Use calculateInvoiceTotals instead
+ * This adds tax/fee as line items which is NOT recommended
  */
 export function addTaxesAndFees(lineItems, options = {}) {
-  // Calculate base subtotal from provided line items
-  const subtotal = lineItems.reduce((sum, item) => sum + (item.amount_cents || 0), 0);
+  const result = calculateInvoiceTotals(lineItems, {
+    includeCardFee: options.includeStripeFee,
+  });
 
-  // Get flat rental tax from config (default $16.88)
-  const taxCents = options.taxCents ?? config.payments?.flatRentalTaxCents ?? 1688;
-  const includeStripeFee = options.includeStripeFee ?? false; // Only add if customer is paying by card
-
-  // Start with base line items
+  // Build line items array including tax/fees for display purposes only
   const allLineItems = [...lineItems];
 
-  // Add flat tax line item
-  if (taxCents > 0) {
+  if (result.tax_cents > 0) {
     allLineItems.push({
       description: 'Illinois Sales Tax',
-      amount_cents: taxCents,
+      amount_cents: result.tax_cents,
       is_tax: true,
     });
   }
 
-  // Calculate total so far
-  let runningTotal = subtotal + taxCents;
-
-  // Add Stripe processing fee if customer is paying by card
-  if (includeStripeFee) {
-    const stripeRate = config.payments?.stripeProcessingRate ?? 0.029; // 2.9%
-    const stripeFlat = config.payments?.stripeProcessingFlat ?? 30; // $0.30
-
-    // Calculate fee: (subtotal + tax + flat) / (1 - rate) - (subtotal + tax)
-    const stripeFee = Math.round((runningTotal + stripeFlat) / (1 - stripeRate) - runningTotal);
-
-    if (stripeFee > 0) {
-      allLineItems.push({
-        description: `Card Processing Fee (${Math.round(stripeRate * 100)}% + $${(stripeFlat / 100).toFixed(2)})`,
-        amount_cents: stripeFee,
-        is_fee: true,
-      });
-      runningTotal += stripeFee;
-    }
+  if (result.cc_fee_cents > 0) {
+    allLineItems.push({
+      description: `Card Processing Fee (${Math.round(STRIPE_RATE * 100)}% + $${(STRIPE_FLAT / 100).toFixed(2)})`,
+      amount_cents: result.cc_fee_cents,
+      is_fee: true,
+    });
   }
 
   return {
     lineItems: allLineItems,
-    subtotal_cents: subtotal,
-    tax_cents: taxCents,
-    fee_cents: includeStripeFee ? (runningTotal - subtotal - taxCents) : 0,
-    total_cents: runningTotal,
+    subtotal_cents: result.subtotal_cents,
+    tax_cents: result.tax_cents,
+    fee_cents: result.cc_fee_cents,
+    total_cents: result.total_cents,
   };
 }
 
-/**
- * Formats line items for display (removes internal flags)
- *
- * @param {Array} lineItems - Line items with possible internal flags
- * @returns {Array} - Clean line items for display
- */
-export function cleanLineItemsForDisplay(lineItems) {
-  return lineItems.map(({ description, amount_cents }) => ({
-    description,
-    amount_cents,
-  }));
-}
+// ============================================
+// LINE ITEM GENERATORS
+// ============================================
 
 /**
- * Creates standard dumpster rental line item
- *
- * @param {Object} params - Rental details
- * @returns {Object} - Line item object
+ * Create a dumpster rental line item
  */
 export function createDumpsterLineItem({ dumpsterSize, rentalDuration, priceCents }) {
   return {
@@ -90,35 +122,29 @@ export function createDumpsterLineItem({ dumpsterSize, rentalDuration, priceCent
 }
 
 /**
- * Creates weight overage line item
- *
- * @param {Number} actualTons - Actual weight in tons
- * @param {Number} includedTons - Included weight in tons
- * @param {Number} ratePerTon - Overage rate per ton (dollars)
- * @returns {Object|null} - Line item object or null if no overage
+ * Create a weight overage line item
+ * @param {number} actualLbs - Actual weight in pounds
+ * @param {number} includedLbs - Included weight in pounds
+ * @param {number} ratePerTon - Rate per ton in dollars (default $105)
  */
-export function createOverageLineItem(actualTons, includedTons, ratePerTon = 105) {
-  const overageTons = actualTons - includedTons;
-  if (overageTons <= 0) return null;
+export function createOverageLineItem(actualLbs, includedLbs, ratePerTon = OVERAGE_RATE_PER_TON) {
+  const overageLbs = Math.max(0, actualLbs - includedLbs);
+  if (overageLbs <= 0) return null;
 
+  const overageTons = overageLbs / 2000;
   const overageCents = Math.round(overageTons * ratePerTon * 100);
 
   return {
-    description: `Weight Overage (${overageTons.toFixed(2)} tons over ${includedTons} ton limit @ $${ratePerTon}/ton)`,
+    description: `Weight Overage (${overageTons.toFixed(2)} tons over ${(includedLbs / 2000).toFixed(1)} ton limit @ $${ratePerTon}/ton)`,
     amount_cents: overageCents,
   };
 }
 
 /**
- * Creates extended rental line item
- *
- * @param {Number} weeks - Number of extra weeks
- * @param {Number} ratePerWeek - Extension rate per week (dollars)
- * @param {Boolean} wasDumped - Whether container was dumped
- * @returns {Object} - Line item object
+ * Create an extension line item
  */
-export function createExtensionLineItem(weeks, ratePerWeek = 100, wasDumped = true) {
-  const rate = wasDumped ? ratePerWeek : (ratePerWeek / 2); // Half price if not dumped
+export function createExtensionLineItem(weeks, ratePerWeek = EXTENSION_RATE_PER_WEEK, wasDumped = true) {
+  const rate = wasDumped ? ratePerWeek : Math.round(ratePerWeek / 2);
   const totalCents = Math.round(weeks * rate * 100);
 
   return {
@@ -128,59 +154,143 @@ export function createExtensionLineItem(weeks, ratePerWeek = 100, wasDumped = tr
 }
 
 /**
- * Example: Complete invoice with taxes and fees
- *
- * This shows how to use these helpers when creating an invoice
+ * Create a late fee line item
+ * @param {number} subtotalCents - Original invoice subtotal
+ * @param {number} monthsLate - Number of months overdue
+ * @param {number} ratePercent - Late fee rate (default 5%)
  */
-export function createCompleteInvoiceLineItems(invoiceData) {
-  const baseItems = [];
+export function createLateFeeLineItem(subtotalCents, monthsLate, ratePercent = 5) {
+  if (monthsLate <= 0) return null;
+
+  const lateFeePercent = monthsLate * ratePercent;
+  const lateFeeCents = Math.round(subtotalCents * (lateFeePercent / 100));
+
+  return {
+    description: `Late Fee (${lateFeePercent}% - ${monthsLate} month${monthsLate > 1 ? 's' : ''} overdue)`,
+    amount_cents: lateFeeCents,
+    is_late_fee: true,
+  };
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Clean line items for storage (remove internal flags)
+ */
+export function cleanLineItemsForStorage(lineItems) {
+  return lineItems
+    .filter(item => !item.is_tax && !item.is_fee) // Remove tax/fee items
+    .map(({ description, amount_cents }) => ({
+      description,
+      amount_cents,
+    }));
+}
+
+/**
+ * Format line items for display (keeps all items)
+ */
+export function cleanLineItemsForDisplay(lineItems) {
+  return lineItems.map(({ description, amount_cents }) => ({
+    description,
+    amount_cents,
+  }));
+}
+
+/**
+ * Calculate balance due
+ */
+export function calculateBalanceDue(totalCents, amountPaidCents) {
+  return Math.max(0, (totalCents || 0) - (amountPaidCents || 0));
+}
+
+/**
+ * Determine invoice status based on payments
+ */
+export function determineInvoiceStatus(totalCents, amountPaidCents, currentStatus) {
+  const balanceDue = calculateBalanceDue(totalCents, amountPaidCents);
+
+  if (balanceDue <= 0) {
+    return 'paid';
+  }
+
+  if (amountPaidCents > 0) {
+    return 'partial';
+  }
+
+  // Keep current status if no payments made
+  return currentStatus || 'draft';
+}
+
+// ============================================
+// COMPLETE INVOICE BUILDER
+// ============================================
+/**
+ * Build a complete invoice with all calculations
+ * Use this when creating invoices from bookings or scratch
+ */
+export function buildInvoice(data) {
+  const {
+    dumpsterSize,
+    rentalDuration,
+    priceCents,
+    weightLbs,
+    weightIncludedLbs,
+    extensionWeeks,
+    customLineItems = [],
+    includeCardFee = false,
+    discountCents = 0,
+  } = data;
+
+  // Build line items
+  const lineItems = [];
 
   // Add dumpster rental
-  if (invoiceData.dumpsterSize && invoiceData.rentalDuration && invoiceData.priceCents) {
-    baseItems.push(createDumpsterLineItem({
-      dumpsterSize: invoiceData.dumpsterSize,
-      rentalDuration: invoiceData.rentalDuration,
-      priceCents: invoiceData.priceCents,
+  if (dumpsterSize && rentalDuration && priceCents) {
+    lineItems.push(createDumpsterLineItem({
+      dumpsterSize,
+      rentalDuration,
+      priceCents,
     }));
   }
 
-  // Add weight overage if applicable
-  if (invoiceData.actualTons && invoiceData.includedTons) {
-    const overageItem = createOverageLineItem(
-      invoiceData.actualTons,
-      invoiceData.includedTons,
-      invoiceData.overageRate
-    );
-    if (overageItem) baseItems.push(overageItem);
+  // Add weight overage
+  if (weightLbs && weightIncludedLbs) {
+    const overage = createOverageLineItem(weightLbs, weightIncludedLbs);
+    if (overage) lineItems.push(overage);
   }
 
-  // Add extension if applicable
-  if (invoiceData.extensionWeeks) {
-    baseItems.push(createExtensionLineItem(
-      invoiceData.extensionWeeks,
-      invoiceData.extensionRate,
-      invoiceData.wasDumped
-    ));
+  // Add extension
+  if (extensionWeeks) {
+    lineItems.push(createExtensionLineItem(extensionWeeks));
   }
 
-  // Add custom line items
-  if (invoiceData.customLineItems) {
-    baseItems.push(...invoiceData.customLineItems);
-  }
+  // Add custom items
+  lineItems.push(...customLineItems);
 
-  // Add taxes and fees
-  const result = addTaxesAndFees(baseItems, {
-    includeStripeFee: invoiceData.paymentMethod === 'card',
+  // Calculate totals
+  const totals = calculateInvoiceTotals(lineItems, {
+    includeCardFee,
+    discountCents,
   });
 
-  return result;
+  return {
+    line_items: lineItems,
+    ...totals,
+  };
 }
 
 export default {
+  calculateInvoiceTotals,
   addTaxesAndFees,
-  cleanLineItemsForDisplay,
   createDumpsterLineItem,
   createOverageLineItem,
   createExtensionLineItem,
-  createCompleteInvoiceLineItems,
+  createLateFeeLineItem,
+  cleanLineItemsForStorage,
+  cleanLineItemsForDisplay,
+  calculateBalanceDue,
+  determineInvoiceStatus,
+  buildInvoice,
 };

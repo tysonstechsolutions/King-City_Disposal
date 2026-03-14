@@ -4,16 +4,23 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
-import { invoiceCreateSchema, validateInput } from '../../../lib/validations';
 import { requireAdminAuth } from '../../../lib/adminAuth';
+import {
+  calculateInvoiceTotals,
+  cleanLineItemsForStorage
+} from '../../../lib/invoiceHelpers';
 
-const supabaseUrl = config.supabase.url;
+// Get Supabase credentials at runtime for serverless
+const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL || config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
 // ============================================
 // GENERATE INVOICE NUMBER
 // ============================================
 async function generateInvoiceNumber() {
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseKey = getSupabaseKey();
+
   try {
     const response = await fetch(
       `${supabaseUrl}/rest/v1/rpc/generate_invoice_number`,
@@ -21,8 +28,8 @@ async function generateInvoiceNumber() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({}),
       }
@@ -51,9 +58,12 @@ export async function POST(request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseKey = getSupabaseKey();
+
   try {
     // Verify Supabase config
-    if (!supabaseUrl || !getSupabaseKey()) {
+    if (!supabaseUrl || !supabaseKey) {
       console.error('Supabase configuration missing for invoice creation');
       return NextResponse.json(
         { error: 'Database configuration error' },
@@ -68,7 +78,7 @@ export async function POST(request) {
       booking_id: body.booking_id,
       line_items_count: body.line_items?.length
     });
-    
+
     const {
       customer_id,
       booking_id,
@@ -87,15 +97,14 @@ export async function POST(request) {
       weight_lbs,
       weight_included_lbs,
       line_items,
-      subtotal_cents,
-      tax_cents = 0,
-      cc_fee_cents = 0,
-      discount_cents = 0,
-      total_cents,
-      due_date,
       notes,
       status = 'draft',
       sent_at,
+      due_date,
+      purchase_order,
+      // Frontend may send these, but we recalculate them
+      include_cc_fee = false,
+      discount_cents = 0,
     } = body;
 
     if (!customer_name || !line_items || line_items.length === 0) {
@@ -104,6 +113,17 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    // Clean line items (remove any tax/fee items that frontend might have included)
+    const cleanedLineItems = cleanLineItemsForStorage(line_items);
+
+    // BACKEND CALCULATES TOTALS - single source of truth
+    const totals = calculateInvoiceTotals(cleanedLineItems, {
+      includeCardFee: include_cc_fee,
+      discountCents: discount_cents,
+    });
+
+    console.log('Calculated totals:', totals);
 
     // Use custom invoice number if provided, otherwise auto-generate
     let invoice_number = body.invoice_number;
@@ -134,6 +154,7 @@ export async function POST(request) {
 
     const invoiceData = {
       invoice_number,
+      purchase_order: purchase_order || null,
       customer_id: validCustomerId,
       booking_id: validBookingId,
       customer_name,
@@ -151,12 +172,14 @@ export async function POST(request) {
       weight_lbs,
       weight_included_lbs,
       overage_lbs,
-      line_items: JSON.stringify(line_items),
-      subtotal_cents,
-      tax_cents,
-      cc_fee_cents,
-      discount_cents,
-      total_cents: total_cents || subtotal_cents,
+      // Store ONLY service line items (no tax/fees)
+      line_items: JSON.stringify(cleanedLineItems),
+      // Store calculated totals from backend
+      subtotal_cents: totals.subtotal_cents,
+      tax_cents: totals.tax_cents,
+      cc_fee_cents: totals.cc_fee_cents,
+      discount_cents: totals.discount_cents,
+      total_cents: totals.total_cents,
       amount_paid_cents: 0,
       due_date,
       notes,
@@ -171,8 +194,8 @@ export async function POST(request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
           'Prefer': 'return=representation',
         },
         body: JSON.stringify(invoiceData),
@@ -207,8 +230,8 @@ export async function POST(request) {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': getSupabaseKey(),
-            'Authorization': `Bearer ${getSupabaseKey()}`,
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({
             invoice_id: invoice.id,
@@ -218,12 +241,13 @@ export async function POST(request) {
       );
     }
 
-    console.log(`✅ Invoice created: ${invoice_number}`);
+    console.log(`✅ Invoice created: ${invoice_number} | Total: $${(totals.total_cents / 100).toFixed(2)}`);
 
     return NextResponse.json({
       success: true,
       invoice,
       invoice_number,
+      totals, // Return calculated totals for verification
     });
 
   } catch (error) {
@@ -252,6 +276,9 @@ export async function GET(request) {
   const customerId = searchParams.get('customer_id');
   const status = searchParams.get('status');
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseKey = getSupabaseKey();
+
   // Public access allowed for single invoice lookup by invoice_number (customer view)
   // All other queries require admin auth
   if (!invoiceNumber) {
@@ -263,10 +290,10 @@ export async function GET(request) {
 
   try {
     // Verify Supabase config
-    if (!supabaseUrl || !getSupabaseKey()) {
+    if (!supabaseUrl || !supabaseKey) {
       console.error('Supabase configuration missing:', {
         hasUrl: !!supabaseUrl,
-        hasKey: !!getSupabaseKey()
+        hasKey: !!supabaseKey
       });
       return NextResponse.json(
         { error: 'Database configuration error' },
@@ -293,8 +320,8 @@ export async function GET(request) {
       `${supabaseUrl}/rest/v1/invoices?${query}`,
       {
         headers: {
-          'apikey': getSupabaseKey(),
-          'Authorization': `Bearer ${getSupabaseKey()}`,
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
         },
       }
     );
@@ -314,9 +341,14 @@ export async function GET(request) {
           console.error(`Failed to parse line_items for invoice ${inv.invoice_number}:`, e);
           parsedLineItems = [];
         }
+
+        // Calculate balance_due on the fly (don't rely on stored value)
+        const balance_due_cents = Math.max(0, (inv.total_cents || 0) - (inv.amount_paid_cents || 0));
+
         return {
           ...inv,
-          line_items: parsedLineItems
+          line_items: parsedLineItems,
+          balance_due_cents, // Always calculated fresh
         };
       });
       return NextResponse.json(invoices);

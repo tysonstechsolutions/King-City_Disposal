@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { config } from '../../../../config'
 import { useToast } from '../../../../components/Toast'
-import { addTaxesAndFees } from '../../../../lib/invoiceHelpers'
+import { calculateInvoiceTotals } from '../../../../lib/invoiceHelpers'
 import {
   ArrowLeft,
   Plus,
@@ -245,21 +245,11 @@ function CreateInvoiceContent() {
     }))
   }
 
-  const baseSubtotal = invoice.line_items.reduce((sum, item) => sum + (item.amount_cents || 0), 0)
-
-  // Flat rental tax of $16.88
-  const taxCents = config.payments?.flatRentalTaxCents || 1688
-
-  // Calculate CC fee if enabled
-  let ccFeeCents = 0
-  if (invoice.include_cc_fee) {
-    const stripeRate = config.payments?.stripeProcessingRate || 0.029 // 2.9%
-    const stripeFlat = config.payments?.stripeProcessingFlat || 30 // $0.30
-    const runningTotal = baseSubtotal + taxCents
-    ccFeeCents = Math.round((runningTotal + stripeFlat) / (1 - stripeRate) - runningTotal)
-  }
-
-  const subtotal = baseSubtotal + taxCents + ccFeeCents
+  // Use centralized calculation function for display
+  const validLineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
+  const calculatedTotals = calculateInvoiceTotals(validLineItems, {
+    includeCardFee: invoice.include_cc_fee,
+  })
 
   const handleSubmit = async (sendNow = false) => {
     if (!invoice.customer_name) {
@@ -291,18 +281,13 @@ function CreateInvoiceContent() {
         }
       }
 
-      // Filter valid line items (services only - no tax/fees)
-      const validLineItems = invoice.line_items
+      // Send line items to backend - backend calculates all totals
+      const lineItemsToSend = invoice.line_items
         .filter(item => item.description && item.amount_cents > 0)
         .map(item => ({
           description: item.description,
           amount_cents: item.amount_cents
         }))
-
-      // Calculate totals (tax and fees stored separately, not as line items)
-      const { subtotal_cents, tax_cents, fee_cents, total_cents } = addTaxesAndFees(validLineItems, {
-        includeStripeFee: invoice.include_cc_fee
-      })
 
       const payload = {
         invoice_number: invoice.invoice_number.trim() || null, // null = auto-generate
@@ -323,13 +308,10 @@ function CreateInvoiceContent() {
         date_set: invoice.date_set || null,
         weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
         weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
-        line_items: validLineItems, // Only services, no tax/fees
+        line_items: lineItemsToSend, // Only services - backend calculates tax/fees
         notes: invoice.notes,
         due_date: dueDate.toISOString().split('T')[0],
-        subtotal_cents,
-        tax_cents,
-        fee_cents, // CC processing fee stored separately
-        total_cents,
+        include_cc_fee: invoice.include_cc_fee, // Backend uses this to calculate CC fee
         status: sendNow ? 'sent' : 'draft',
         sent_at: sendNow ? new Date().toISOString() : null,
       }
@@ -784,21 +766,21 @@ function CreateInvoiceContent() {
               <div className="space-y-2">
                 <div className="flex justify-between text-dark-300">
                   <span>Subtotal</span>
-                  <span>${(baseSubtotal / 100).toFixed(2)}</span>
+                  <span>${(calculatedTotals.subtotal_cents / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-dark-300">
                   <span>Illinois Sales Tax</span>
-                  <span>${(taxCents / 100).toFixed(2)}</span>
+                  <span>${(calculatedTotals.tax_cents / 100).toFixed(2)}</span>
                 </div>
-                {invoice.include_cc_fee && ccFeeCents > 0 && (
+                {invoice.include_cc_fee && calculatedTotals.cc_fee_cents > 0 && (
                   <div className="flex justify-between text-dark-300">
                     <span>Card Processing Fee (2.9% + $0.30)</span>
-                    <span>${(ccFeeCents / 100).toFixed(2)}</span>
+                    <span>${(calculatedTotals.cc_fee_cents / 100).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-white text-xl font-bold pt-2 border-t border-dark-700">
                   <span>Total</span>
-                  <span>${(subtotal / 100).toFixed(2)}</span>
+                  <span>${(calculatedTotals.total_cents / 100).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -871,7 +853,7 @@ function CreateInvoiceContent() {
       {showPreview && (
         <InvoicePreviewModal
           invoice={invoice}
-          subtotal={subtotal}
+          calculatedTotals={calculatedTotals}
           config={config}
           onClose={() => setShowPreview(false)}
           onSaveDraft={async () => {
@@ -899,18 +881,13 @@ function CreateInvoiceContent() {
                 }
               }
 
-              // Filter valid line items (services only - no tax/fees)
-              const validLineItems = invoice.line_items
+              // Send line items to backend - backend calculates totals
+              const lineItemsToSend = invoice.line_items
                 .filter(item => item.description && item.amount_cents > 0)
                 .map(item => ({
                   description: item.description,
                   amount_cents: item.amount_cents
                 }))
-
-              // Calculate totals (tax and fees stored separately, not as line items)
-              const { subtotal_cents, tax_cents, fee_cents, total_cents } = addTaxesAndFees(validLineItems, {
-                includeStripeFee: invoice.include_cc_fee
-              })
 
               const payload = {
                 invoice_number: invoice.invoice_number.trim() || null,
@@ -931,13 +908,10 @@ function CreateInvoiceContent() {
                 date_set: invoice.date_set || null,
                 weight_lbs: invoice.weight_tons ? Math.round(parseFloat(invoice.weight_tons) * 2000) : null,
                 weight_included_lbs: invoice.weight_included_tons ? Math.round(parseFloat(invoice.weight_included_tons) * 2000) : null,
-                line_items: validLineItems, // Only services, no tax/fees
+                line_items: lineItemsToSend, // Only services - backend calculates tax/fees
                 notes: invoice.notes,
                 due_date: dueDate.toISOString().split('T')[0],
-                subtotal_cents,
-                tax_cents,
-                fee_cents, // CC processing fee stored separately
-                total_cents,
+                include_cc_fee: invoice.include_cc_fee, // Backend uses this
                 status: 'draft',
               }
 
@@ -972,7 +946,7 @@ function CreateInvoiceContent() {
 }
 
 // Invoice Preview Modal Component
-function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, onAddPayment, onSaveDraft }) {
+function InvoicePreviewModal({ invoice, calculatedTotals, config, onClose, onSendNow, onAddPayment, onSaveDraft }) {
   const formatCurrency = (cents) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -996,20 +970,8 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
 
   const lineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
 
-  // Flat rental tax for preview
-  const previewBaseSubtotal = subtotal
-  const previewTaxCents = config.payments?.flatRentalTaxCents || 1688
-
-  // Calculate CC fee for preview
-  let previewCcFeeCents = 0
-  if (invoice.include_cc_fee) {
-    const stripeRate = config.payments?.stripeProcessingRate || 0.029
-    const stripeFlat = config.payments?.stripeProcessingFlat || 30
-    const runningTotal = previewBaseSubtotal + previewTaxCents
-    previewCcFeeCents = Math.round((runningTotal + stripeFlat) / (1 - stripeRate) - runningTotal)
-  }
-
-  const totalWithTax = previewBaseSubtotal + previewTaxCents + previewCcFeeCents
+  // Use pre-calculated totals from parent
+  const { subtotal_cents, tax_cents, cc_fee_cents, total_cents } = calculatedTotals
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
@@ -1121,21 +1083,21 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
           <div class="totals">
             <div class="row">
               <span class="label">Subtotal</span>
-              <span>${formatCurrency(previewBaseSubtotal)}</span>
+              <span>${formatCurrency(subtotal_cents)}</span>
             </div>
             <div class="row">
               <span class="label">Illinois Sales Tax</span>
-              <span>${formatCurrency(previewTaxCents)}</span>
+              <span>${formatCurrency(tax_cents)}</span>
             </div>
-            ${invoice.include_cc_fee && previewCcFeeCents > 0 ? `
+            ${invoice.include_cc_fee && cc_fee_cents > 0 ? `
             <div class="row">
               <span class="label">Card Processing Fee (2.9% + $0.30)</span>
-              <span>${formatCurrency(previewCcFeeCents)}</span>
+              <span>${formatCurrency(cc_fee_cents)}</span>
             </div>
             ` : ''}
             <div class="row total">
               <span>Total</span>
-              <span>${formatCurrency(totalWithTax)}</span>
+              <span>${formatCurrency(total_cents)}</span>
             </div>
           </div>
         </div>
@@ -1291,21 +1253,21 @@ function InvoicePreviewModal({ invoice, subtotal, config, onClose, onSendNow, on
                   <div className="w-64 space-y-2">
                     <div className="flex justify-between">
                       <span className="text-neutral-500">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(previewBaseSubtotal)}</span>
+                      <span className="font-medium">{formatCurrency(subtotal_cents)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-neutral-500">Illinois Sales Tax</span>
-                      <span className="font-medium">{formatCurrency(previewTaxCents)}</span>
+                      <span className="font-medium">{formatCurrency(tax_cents)}</span>
                     </div>
-                    {invoice.include_cc_fee && previewCcFeeCents > 0 && (
+                    {invoice.include_cc_fee && cc_fee_cents > 0 && (
                       <div className="flex justify-between">
                         <span className="text-neutral-500">Card Processing Fee (2.9% + $0.30)</span>
-                        <span className="font-medium">{formatCurrency(previewCcFeeCents)}</span>
+                        <span className="font-medium">{formatCurrency(cc_fee_cents)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-bold pt-2 border-t border-neutral-200">
                       <span>Total</span>
-                      <span>{formatCurrency(totalWithTax)}</span>
+                      <span>{formatCurrency(total_cents)}</span>
                     </div>
                   </div>
                 </div>
