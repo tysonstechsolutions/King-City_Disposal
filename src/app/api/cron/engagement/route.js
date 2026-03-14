@@ -10,42 +10,10 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { sendSMS } from '../../../../lib/notifications';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
-
-// ============================================
-// SEND SMS HELPER
-// ============================================
-async function sendSMS(to, message) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !from || !to) return false;
-
-  let cleanPhone = to.replace(/\D/g, '');
-  if (cleanPhone.length === 10) cleanPhone = '1' + cleanPhone;
-  if (!cleanPhone.startsWith('+')) cleanPhone = '+' + cleanPhone;
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-        },
-        body: new URLSearchParams({ To: cleanPhone, From: from, Body: message }),
-      }
-    );
-    return response.ok;
-  } catch (e) {
-    console.error('SMS error:', e);
-    return false;
-  }
-}
 
 // ============================================
 // 1. REVIEW REQUESTS (After Pickup)

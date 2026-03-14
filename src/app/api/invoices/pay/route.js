@@ -73,29 +73,38 @@ export async function POST(request) {
       ? lineItems.map(item => item.description).join(', ')
       : `Invoice ${invoice.invoice_number}`;
 
-    // Create Stripe payment link
-    const stripeResponse = await fetch('https://api.stripe.com/v1/payment_links', {
+    // Create Stripe Checkout Session (NOT a Payment Link!)
+    // Checkout Sessions properly pass metadata to the webhook
+    const checkoutParams = new URLSearchParams({
+      'line_items[0][price_data][currency]': 'usd',
+      'line_items[0][price_data][product_data][name]': `Invoice ${invoice.invoice_number}`,
+      'line_items[0][price_data][product_data][description]': description.substring(0, 500),
+      'line_items[0][price_data][unit_amount]': amountDue.toString(),
+      'line_items[0][quantity]': '1',
+      'mode': 'payment',
+      'metadata[type]': 'invoice',
+      'metadata[invoice_id]': invoice.id.toString(),
+      'metadata[invoice_number]': invoice.invoice_number,
+      'metadata[customer_name]': invoice.customer_name || '',
+      'metadata[customer_phone]': invoice.customer_phone || '',
+      'metadata[customer_email]': invoice.customer_email || '',
+      'success_url': `${siteUrl}/payment-success?invoice=${invoice.invoice_number}&session_id={CHECKOUT_SESSION_ID}`,
+      'cancel_url': `${siteUrl}/invoice/${invoice.invoice_number}?canceled=true`,
+      'phone_number_collection[enabled]': 'true',
+    });
+
+    // Pre-fill customer email if available
+    if (invoice.customer_email) {
+      checkoutParams.append('customer_email', invoice.customer_email);
+    }
+
+    const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
       },
-      body: new URLSearchParams({
-        'line_items[0][price_data][currency]': 'usd',
-        'line_items[0][price_data][product_data][name]': `Invoice ${invoice.invoice_number}`,
-        'line_items[0][price_data][product_data][description]': description.substring(0, 500),
-        'line_items[0][price_data][unit_amount]': amountDue.toString(),
-        'line_items[0][quantity]': '1',
-        'metadata[type]': 'invoice',
-        'metadata[invoice_id]': invoice.id.toString(),
-        'metadata[invoice_number]': invoice.invoice_number,
-        'metadata[customer_name]': invoice.customer_name || '',
-        'metadata[customer_phone]': invoice.customer_phone || '',
-        'metadata[customer_email]': invoice.customer_email || '',
-        'after_completion[type]': 'redirect',
-        'after_completion[redirect][url]': `${siteUrl}/payment-success?invoice=${invoice.invoice_number}`,
-        'phone_number_collection[enabled]': 'true',
-      }),
+      body: checkoutParams,
     });
 
     const stripeData = await stripeResponse.json();

@@ -16,72 +16,10 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { sendSMS, sendEmail } from '../../../../lib/notifications';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
-
-// ============================================
-// SEND SMS
-// ============================================
-async function sendSMS(to, message) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !from || !to) return false;
-
-  let cleanPhone = to.replace(/\D/g, '');
-  if (cleanPhone.length === 10) cleanPhone = '1' + cleanPhone;
-  if (!cleanPhone.startsWith('+')) cleanPhone = '+' + cleanPhone;
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-        },
-        body: new URLSearchParams({ To: cleanPhone, From: from, Body: message }),
-      }
-    );
-    return response.ok;
-  } catch (e) {
-    console.error('SMS error:', e);
-    return false;
-  }
-}
-
-// ============================================
-// SEND EMAIL (via Resend or fallback)
-// ============================================
-async function sendEmail(to, subject, htmlContent, textContent) {
-  const resendApiKey = process.env.RESEND_API_KEY;
-
-  if (!resendApiKey || !to) return false;
-
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resendApiKey}`,
-      },
-      body: JSON.stringify({
-        from: `King City Disposal Billing <billing@${process.env.RESEND_DOMAIN || 'kingcitydisposal.com'}>`,
-        to: to,
-        subject: subject,
-        html: htmlContent,
-        text: textContent,
-      }),
-    });
-    return response.ok;
-  } catch (e) {
-    console.error('Email error:', e);
-    return false;
-  }
-}
 
 // ============================================
 // GET INVOICES NEEDING REMINDERS
@@ -443,8 +381,8 @@ export async function GET(request) {
       // Send SMS if phone available
       if (invoice.customer_phone) {
         const message = buildReminderMessage(invoice);
-        const smsSuccess = await sendSMS(invoice.customer_phone, message);
-        if (smsSuccess) {
+        const smsResult = await sendSMS(invoice.customer_phone, message);
+        if (smsResult.success) {
           smsSent++;
           reminderSent = true;
           console.log(`✅ SMS sent for ${invoice.invoice_number} (${invoice.reminder_type})`);
@@ -458,8 +396,8 @@ export async function GET(request) {
       // 2. Either send_both flag is set (30+ days overdue) OR no phone available
       if (invoice.customer_email && (invoice.send_both || !invoice.customer_phone)) {
         const { subject, html, text } = buildReminderEmail(invoice);
-        const emailSuccess = await sendEmail(invoice.customer_email, subject, html, text);
-        if (emailSuccess) {
+        const emailResult = await sendEmail({ to: invoice.customer_email, subject, html, text });
+        if (emailResult.success) {
           emailSent++;
           reminderSent = true;
           console.log(`✅ Email sent for ${invoice.invoice_number} (${invoice.reminder_type})`);

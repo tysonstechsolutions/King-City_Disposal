@@ -23,6 +23,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { sendSMS } from '../../../../lib/notifications';
 
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
@@ -32,42 +33,6 @@ function verifyCronSecret(request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) return false;
   return authHeader === `Bearer ${cronSecret}`;
-}
-
-// Send SMS via Twilio
-async function sendSMS(to, message) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !from) {
-    console.log('Twilio not configured, skipping SMS');
-    return null;
-  }
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-        },
-        body: new URLSearchParams({ To: to, From: from, Body: message }),
-      }
-    );
-
-    const data = await response.json();
-    if (data.error_code) {
-      console.error(`SMS error to ${to}:`, data.error_message);
-      return null;
-    }
-    return data;
-  } catch (e) {
-    console.error('SMS send error:', e);
-    return null;
-  }
 }
 
 // Query Supabase
@@ -105,18 +70,6 @@ async function updateBooking(id, updates) {
   });
 }
 
-// Format phone for Twilio (+1XXXXXXXXXX)
-function formatPhoneForTwilio(phone) {
-  const cleaned = phone.replace(/\D/g, '');
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`;
-  }
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `+${cleaned}`;
-  }
-  return `+${cleaned}`;
-}
-
 // ============================================
 // MAIN CRON HANDLER
 // ============================================
@@ -152,7 +105,7 @@ export async function GET(request) {
 
     for (const booking of deliveryBookings) {
       try {
-        const phone = formatPhoneForTwilio(booking.customer_phone);
+        const phone = booking.customer_phone;
         const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
 
         const message = `Hi ${booking.customer_name.split(' ')[0]}! 🚛
@@ -168,8 +121,8 @@ Questions? Reply to this text or call ${config.phone}
 
 - ${config.businessName}`;
 
-        const sent = await sendSMS(phone, message);
-        if (sent) {
+        const result = await sendSMS(phone, message);
+        if (result.success) {
           await updateBooking(booking.id, { delivery_reminder_sent: new Date().toISOString() });
           results.deliveryReminders++;
           console.log(`✅ Delivery reminder sent to ${booking.customer_name}`);
@@ -200,7 +153,7 @@ Questions? Reply to this text or call ${config.phone}
         const pickupDateStr = pickupDate.toISOString().split('T')[0];
         if (pickupDateStr !== tomorrowStr) continue;
 
-        const phone = formatPhoneForTwilio(booking.customer_phone);
+        const phone = booking.customer_phone;
         const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
         const dailyRate = dumpster?.dailyExtension || 20;
 
@@ -215,8 +168,8 @@ All done? Make sure nothing is blocking the dumpster!
 
 - ${config.businessName}`;
 
-        const sent = await sendSMS(phone, message);
-        if (sent) {
+        const result = await sendSMS(phone, message);
+        if (result.success) {
           await updateBooking(booking.id, { pickup_reminder_sent: new Date().toISOString() });
           results.pickupReminders++;
           console.log(`✅ Pickup reminder sent to ${booking.customer_name}`);
@@ -238,14 +191,14 @@ All done? Make sure nothing is blocking the dumpster!
         // Check if completed 2+ days ago
         const completedDate = new Date(booking.completed_at || booking.updated_at);
         const daysSinceCompletion = Math.floor((today - completedDate) / (1000 * 60 * 60 * 24));
-        
+
         if (daysSinceCompletion < 2) continue;
 
-        const phone = formatPhoneForTwilio(booking.customer_phone);
+        const phone = booking.customer_phone;
         const firstName = booking.customer_name.split(' ')[0];
 
         // Use Google Business Profile link if available
-        const reviewLink = config.social?.google || 
+        const reviewLink = config.social?.google ||
           `https://search.google.com/local/writereview?placeid=${config.googlePlaceId || ''}`;
 
         const message = `Hi ${firstName}! Thanks for choosing ${config.businessName}! 🙏
@@ -257,8 +210,8 @@ How did we do? We'd really appreciate a quick Google review - it helps other fol
 Thanks again!
 - The ${config.businessName} Team`;
 
-        const sent = await sendSMS(phone, message);
-        if (sent) {
+        const result = await sendSMS(phone, message);
+        if (result.success) {
           await updateBooking(booking.id, { review_request_sent: new Date().toISOString() });
           results.reviewRequests++;
           console.log(`✅ Review request sent to ${booking.customer_name}`);

@@ -14,34 +14,9 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { sendSMS } from '../../../../lib/notifications';
 
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
-
-async function sendSMS(to, message) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !from) return null;
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-        },
-        body: new URLSearchParams({ To: to, From: from, Body: message }),
-      }
-    );
-    return response.ok;
-  } catch (e) {
-    console.error('SMS error:', e);
-    return false;
-  }
-}
 
 async function queryBookings(filter) {
   const response = await fetch(
