@@ -5,26 +5,21 @@ import { usePathname } from 'next/navigation'
 import { config } from '../config'
 import {
   Package,
-  CalendarDays,
   Truck,
   Users,
   FileText,
   CreditCard,
-  Upload,
   FolderOpen,
   Receipt,
   BarChart3,
-  Plus,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/admin', label: 'Bookings', icon: Package },
-  { href: '/admin/capacity', label: 'Calendar', icon: CalendarDays },
-  { href: '/admin/fleet', label: 'Fleet', icon: Truck },
+  { href: '/admin/capacity', label: 'Fleet', icon: Truck },
   { href: '/admin/customers', label: 'Customers', icon: Users },
-  { href: '/admin/invoices', label: 'Invoices', icon: FileText, quickCreate: '/admin/invoices/create' },
+  { href: '/admin/invoices', label: 'Invoices', icon: FileText },
   { href: '/admin/payments', label: 'Payments', icon: CreditCard },
-  { href: '/admin/upload', label: 'Upload', icon: Upload },
   { href: '/admin/documents', label: 'Docs', icon: FolderOpen },
   { href: '/admin/expenses', label: 'Expenses', icon: Receipt },
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
@@ -46,28 +41,18 @@ export default function AdminNav() {
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-1 overflow-x-auto">
             {navItems.map((item) => (
-              <div key={item.href} className="flex items-center">
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                    isActive(item.href)
-                      ? 'bg-primary text-white'
-                      : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                </Link>
-                {item.quickCreate && (
-                  <Link
-                    href={item.quickCreate}
-                    title="New Invoice"
-                    className="ml-0.5 p-1.5 text-neutral-600 hover:text-primary hover:bg-neutral-800 rounded-lg transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </Link>
-                )}
-              </div>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  isActive(item.href)
+                    ? 'bg-primary text-white'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{item.label}</span>
+              </Link>
             ))}
           </div>
           <p className="text-neutral-500 text-sm hidden md:block">{config.businessName}</p>

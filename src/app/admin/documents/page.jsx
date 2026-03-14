@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
@@ -28,7 +28,10 @@ import {
   ChevronDown,
   FolderOpen,
   Clock,
-  Receipt
+  Receipt,
+  Upload,
+  Camera,
+  Plus
 } from 'lucide-react'
 
 export default function DocumentsPage() {
@@ -45,6 +48,15 @@ export default function DocumentsPage() {
   const [reviewingDoc, setReviewingDoc] = useState(null)
   const [parsedInvoice, setParsedInvoice] = useState(null)
   const [parsing, setParsing] = useState({})
+
+  // Upload state
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [uploadServiceDate, setUploadServiceDate] = useState('')
+  const [uploadCategory, setUploadCategory] = useState('invoice')
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
@@ -75,6 +87,104 @@ export default function DocumentsPage() {
       console.error('Error fetching documents:', err)
     }
     setLoading(false)
+  }
+
+  // ============================================
+  // UPLOAD FUNCTIONS
+  // ============================================
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large. Maximum 10MB.')
+      return
+    }
+
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv'
+    ]
+    const ext = file.name?.toLowerCase().split('.').pop()
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'pdf', 'xlsx', 'xls', 'csv']
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
+      toast.error('Invalid file type. Use image, PDF, Excel, or CSV.')
+      return
+    }
+
+    setSelectedFile(file)
+    setShowUploadModal(true)
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onloadend = () => setPreview(reader.result)
+      reader.readAsDataURL(file)
+    } else {
+      setPreview(null)
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!selectedFile) return
+
+    setUploading(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('title', selectedFile.name)
+      formData.append('category', uploadCategory)
+      if (uploadServiceDate) formData.append('service_date', uploadServiceDate)
+
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success('Uploaded! AI is analyzing...')
+        closeUploadModal()
+
+        // Fire-and-forget AI parsing
+        if (data.document?.id) {
+          fetch('/api/documents/parse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ document_id: data.document.id }),
+          })
+            .then(parseResponse => {
+              if (parseResponse.ok) {
+                toast.success('Document analyzed!')
+              }
+              fetchDocuments()
+            })
+            .catch(console.error)
+        }
+
+        fetchDocuments()
+      } else {
+        const err = await response.json()
+        toast.error(err.error || 'Upload failed')
+      }
+    } catch (err) {
+      console.error('Upload error:', err)
+      toast.error('Failed to upload')
+    }
+
+    setUploading(false)
+  }
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false)
+    setSelectedFile(null)
+    setPreview(null)
+    setUploadServiceDate('')
+    setUploadCategory('invoice')
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const deleteDocument = async (e, id) => {
@@ -271,6 +381,14 @@ export default function DocumentsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.heic,.heif,application/pdf,.xlsx,.xls,.csv"
+                onChange={handleFileSelect}
+                className="hidden"
+                capture="environment"
+              />
               <button
                 onClick={fetchDocuments}
                 disabled={loading}
@@ -280,11 +398,11 @@ export default function DocumentsPage() {
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
               <button
-                onClick={() => router.push('/admin/upload')}
+                onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
               >
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">Upload New</span>
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Upload</span>
               </button>
             </div>
           </div>
@@ -440,7 +558,7 @@ export default function DocumentsPage() {
                   Clear filters
                 </button>
               ) : (
-                <button onClick={() => router.push('/admin/upload')} className="text-primary hover:underline">
+                <button onClick={() => fileInputRef.current?.click()} className="text-primary hover:underline">
                   Upload your first document
                 </button>
               )}
@@ -608,6 +726,126 @@ export default function DocumentsPage() {
             parseDocument({ stopPropagation: () => {} }, reviewingDoc.id)
           }}
         />
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-800 border border-dark-700 rounded-2xl max-w-md w-full">
+            <div className="p-4 border-b border-dark-700 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Upload className="w-5 h-5 text-primary" />
+                </div>
+                <h2 className="text-lg font-bold text-white">Upload Document</h2>
+              </div>
+              <button
+                onClick={closeUploadModal}
+                className="p-2 hover:bg-dark-700 rounded-lg text-dark-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* File Preview */}
+              <div className="flex items-start gap-4">
+                {preview ? (
+                  <img src={preview} alt="Preview" className="w-20 h-20 object-cover rounded-xl" />
+                ) : (
+                  <div className="w-20 h-20 bg-dark-700 rounded-xl flex items-center justify-center">
+                    {selectedFile?.type?.startsWith('image/') ? (
+                      <Image className="w-8 h-8 text-dark-500" />
+                    ) : selectedFile?.type?.includes('pdf') ? (
+                      <FileText className="w-8 h-8 text-dark-500" />
+                    ) : (
+                      <FileSpreadsheet className="w-8 h-8 text-dark-500" />
+                    )}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-white truncate">{selectedFile?.name}</p>
+                  <p className="text-sm text-dark-400">
+                    {selectedFile && (selectedFile.size / 1024).toFixed(0)} KB
+                  </p>
+                </div>
+              </div>
+
+              {/* Document Type */}
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-2">Document Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'invoice', label: 'Invoice' },
+                    { value: 'fuel_receipt', label: 'Fuel' },
+                    { value: 'weight_ticket', label: 'Weight' },
+                  ].map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setUploadCategory(type.value)}
+                      className={`py-2.5 px-3 rounded-lg font-medium text-sm transition-all ${
+                        uploadCategory === type.value
+                          ? 'bg-primary text-white'
+                          : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Service Date */}
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-2">
+                  Service Date (optional)
+                </label>
+                <input
+                  type="date"
+                  value={uploadServiceDate}
+                  onChange={(e) => setUploadServiceDate(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-dark-700 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+              </div>
+
+              {/* AI Info */}
+              <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl">
+                <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-300/80">
+                  AI will automatically extract vendor, amounts, and details after upload.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={closeUploadModal}
+                  className="flex-1 py-3 bg-dark-700 hover:bg-dark-600 text-dark-200 rounded-xl font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading}
+                  className="flex-1 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      Upload
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

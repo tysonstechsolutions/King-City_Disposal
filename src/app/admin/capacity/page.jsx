@@ -10,9 +10,8 @@ import {
   Package,
   AlertTriangle,
   RefreshCw,
-  Settings
+  CheckCircle2
 } from 'lucide-react'
-import Link from 'next/link'
 
 export default function CapacityCalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -158,8 +157,8 @@ export default function CapacityCalendarPage() {
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Package className="w-6 h-6 text-primary-600" />
-                  Capacity Calendar
+                  <Truck className="w-6 h-6 text-primary" />
+                  Fleet & Capacity
                 </h1>
                 <p className="text-sm text-dark-400">
                   {totalDumpsters} dumpsters in fleet
@@ -167,22 +166,13 @@ export default function CapacityCalendarPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Link
-                href="/admin/fleet"
-                className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
-                title="Manage Fleet"
-              >
-                <Settings className="w-5 h-5 text-dark-300" />
-              </Link>
-              <button
-                onClick={fetchBookings}
-                disabled={loading}
-                className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
-              >
-                <RefreshCw className={`w-5 h-5 text-dark-300 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
+            <button
+              onClick={fetchBookings}
+              disabled={loading}
+              className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-5 h-5 text-dark-300 ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </div>
