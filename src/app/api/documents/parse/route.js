@@ -13,7 +13,8 @@ import * as XLSX from 'xlsx';
 // Force dynamic rendering (not static)
 export const dynamic = 'force-dynamic';
 
-const supabaseUrl = config.supabase.url;
+// Get Supabase credentials at runtime (not module init) for serverless compatibility
+const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL || config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
 // ============================================
@@ -22,7 +23,7 @@ const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.sup
 async function getVendorCorrections() {
   try {
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/vendor_corrections?select=*`,
+      `${getSupabaseUrl()}/rest/v1/vendor_corrections?select=*`,
       {
         headers: {
           'apikey': getSupabaseKey(),
@@ -283,7 +284,7 @@ export async function POST(request) {
 
     // 1. Fetch the document record
     const docResponse = await fetch(
-      `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
+      `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}`,
       {
         headers: {
           'apikey': getSupabaseKey(),
@@ -313,7 +314,7 @@ export async function POST(request) {
     // Delete any existing parsed_invoice for this document (for re-parsing)
     if (document.parsed_invoice_id) {
       await fetch(
-        `${supabaseUrl}/rest/v1/parsed_invoices?document_id=eq.${document_id}`,
+        `${getSupabaseUrl()}/rest/v1/parsed_invoices?document_id=eq.${document_id}`,
         {
           method: 'DELETE',
           headers: {
@@ -327,7 +328,7 @@ export async function POST(request) {
 
     // Update document status to 'parsing'
     await fetch(
-      `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
+      `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}`,
       {
         method: 'PATCH',
         headers: {
@@ -340,7 +341,7 @@ export async function POST(request) {
     );
 
     // 2. Fetch the file from Supabase Storage
-    const fileUrl = `${supabaseUrl}/storage/v1/object/authenticated/documents/${document.storage_path}`;
+    const fileUrl = `${getSupabaseUrl()}/storage/v1/object/authenticated/documents/${document.storage_path}`;
     const fileResponse = await fetch(fileUrl, {
       headers: {
         'Authorization': `Bearer ${getSupabaseKey()}`,
@@ -533,7 +534,7 @@ export async function POST(request) {
     };
 
     const insertResponse = await fetch(
-      `${supabaseUrl}/rest/v1/parsed_invoices`,
+      `${getSupabaseUrl()}/rest/v1/parsed_invoices`,
       {
         method: 'POST',
         headers: {
@@ -633,7 +634,7 @@ export async function POST(request) {
     });
 
     await fetch(
-      `${supabaseUrl}/rest/v1/documents?id=eq.${document_id}`,
+      `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}`,
       {
         method: 'PATCH',
         headers: {
@@ -650,7 +651,7 @@ export async function POST(request) {
       // Update customer's total_spent if this is a customer invoice
       if (invoiceType === 'customer_record') {
         await fetch(
-          `${supabaseUrl}/rest/v1/rpc/increment_customer_spent`,
+          `${getSupabaseUrl()}/rest/v1/rpc/increment_customer_spent`,
           {
             method: 'POST',
             headers: {
@@ -709,7 +710,7 @@ export async function POST(request) {
 // Helper function to update document parse status
 async function updateDocumentStatus(documentId, status) {
   await fetch(
-    `${supabaseUrl}/rest/v1/documents?id=eq.${documentId}`,
+    `${getSupabaseUrl()}/rest/v1/documents?id=eq.${documentId}`,
     {
       method: 'PATCH',
       headers: {
@@ -750,7 +751,7 @@ async function findOrCreateCustomer(customerData, isVendor = false) {
 
   // Search for existing customer
   const searchResponse = await fetch(
-    `${supabaseUrl}/rest/v1/customers?or=(${query})&limit=1`,
+    `${getSupabaseUrl()}/rest/v1/customers?or=(${query})&limit=1`,
     {
       headers: {
         'apikey': getSupabaseKey(),
@@ -796,7 +797,7 @@ async function findOrCreateCustomer(customerData, isVendor = false) {
   };
 
   const createResponse = await fetch(
-    `${supabaseUrl}/rest/v1/customers`,
+    `${getSupabaseUrl()}/rest/v1/customers`,
     {
       method: 'POST',
       headers: {
@@ -845,7 +846,7 @@ export async function GET(request) {
     }
 
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/parsed_invoices?${query}`,
+      `${getSupabaseUrl()}/rest/v1/parsed_invoices?${query}`,
       {
         headers: {
           'apikey': getSupabaseKey(),
