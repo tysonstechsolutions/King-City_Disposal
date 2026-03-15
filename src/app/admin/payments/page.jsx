@@ -23,7 +23,8 @@ import {
   AlertCircle,
   Users,
   ChevronDown,
-  X
+  X,
+  Database
 } from 'lucide-react'
 
 export default function AdminPaymentsPage() {
@@ -37,6 +38,8 @@ export default function AdminPaymentsPage() {
     thisYear: 0,
     totalCount: 0
   })
+  const [backfillLoading, setBackfillLoading] = useState(false)
+  const [backfillPreview, setBackfillPreview] = useState(null)
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -204,6 +207,7 @@ export default function AdminPaymentsPage() {
   const getTypeLabel = (type) => {
     const labels = {
       booking: 'Booking',
+      invoice: 'Invoice',
       extension: 'Extension',
       overage: 'Overage',
       late_fee: 'Late Fee',
@@ -215,6 +219,7 @@ export default function AdminPaymentsPage() {
   const getTypeColor = (type) => {
     const colors = {
       booking: 'bg-blue-100 text-blue-800',
+      invoice: 'bg-green-100 text-green-800',
       extension: 'bg-purple-100 text-purple-800',
       overage: 'bg-orange-100 text-orange-800',
       late_fee: 'bg-red-100 text-red-800',
@@ -273,6 +278,52 @@ export default function AdminPaymentsPage() {
     setDateRange('all')
     setCustomerFilter('all')
     setCurrentPage(1)
+  }
+
+  const checkBackfill = async () => {
+    setBackfillLoading(true)
+    try {
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch('/api/transactions/backfill', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setBackfillPreview(data)
+      }
+    } catch (err) {
+      console.error('Backfill preview error:', err)
+    }
+    setBackfillLoading(false)
+  }
+
+  const runBackfill = async () => {
+    setBackfillLoading(true)
+    try {
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch('/api/transactions/backfill', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setBackfillPreview(null)
+        // Refresh transactions
+        fetchTransactions()
+        alert(`Backfill complete! Created ${data.total_created} transaction records.`)
+      } else {
+        const error = await response.json()
+        alert(`Backfill failed: ${error.error}`)
+      }
+    } catch (err) {
+      console.error('Backfill error:', err)
+      alert('Backfill failed: ' + err.message)
+    }
+    setBackfillLoading(false)
   }
 
   const hasActiveFilters = searchTerm || typeFilter !== 'all' || dateRange !== 'all' || customerFilter !== 'all'
@@ -413,6 +464,7 @@ export default function AdminPaymentsPage() {
               >
                 <option value="all">All Types</option>
                 <option value="booking">Bookings</option>
+                <option value="invoice">Invoices</option>
                 <option value="extension">Extensions</option>
                 <option value="overage">Overages</option>
                 <option value="late_fee">Late Fees</option>
@@ -472,7 +524,62 @@ export default function AdminPaymentsPage() {
                   Clear filters
                 </button>
               ) : (
-                <p className="text-sm">Payments will appear here after customers pay</p>
+                <div className="mt-4 text-center">
+                  <p className="text-sm mb-4">Payments will appear here after customers pay</p>
+                  {!backfillPreview ? (
+                    <button
+                      onClick={checkBackfill}
+                      disabled={backfillLoading}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600 transition-colors"
+                    >
+                      {backfillLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Database className="w-4 h-4" />
+                      )}
+                      Check for historical payments
+                    </button>
+                  ) : backfillPreview.total_to_backfill > 0 ? (
+                    <div className="bg-dark-700 rounded-lg p-4 max-w-md mx-auto text-left">
+                      <p className="text-white font-medium mb-2">
+                        Found {backfillPreview.total_to_backfill} historical payments
+                      </p>
+                      <ul className="text-sm text-dark-300 mb-4 space-y-1">
+                        {backfillPreview.invoices.need_backfill > 0 && (
+                          <li>{backfillPreview.invoices.need_backfill} paid invoices</li>
+                        )}
+                        {backfillPreview.bookings.need_backfill > 0 && (
+                          <li>{backfillPreview.bookings.need_backfill} paid bookings</li>
+                        )}
+                        <li className="text-green-400 font-medium">
+                          Total: {formatCurrency(backfillPreview.total_amount_cents)}
+                        </li>
+                      </ul>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={runBackfill}
+                          disabled={backfillLoading}
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        >
+                          {backfillLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Database className="w-4 h-4" />
+                          )}
+                          Import Payments
+                        </button>
+                        <button
+                          onClick={() => setBackfillPreview(null)}
+                          className="px-4 py-2 bg-dark-600 text-white rounded-lg hover:bg-dark-500 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-dark-500">No historical payments to import</p>
+                  )}
+                </div>
               )}
             </div>
           ) : (

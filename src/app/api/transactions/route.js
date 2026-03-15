@@ -105,13 +105,14 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const {
+      invoice_id,
       booking_id,
       customer_name,
       customer_phone,
       customer_email,
       amount_cents,
       description,
-      type, // 'booking', 'extension', 'overage', 'late_fee', 'custom'
+      type, // 'booking', 'invoice', 'extension', 'overage', 'late_fee', 'custom'
       service_address,
       dumpster_size,
       rental_duration,
@@ -138,6 +139,7 @@ export async function POST(request) {
 
     const transactionData = {
       receipt_number,
+      invoice_id: invoice_id || null,
       booking_id: booking_id || null,
       customer_name: customer_name || 'Customer',
       customer_phone: customer_phone || null,
