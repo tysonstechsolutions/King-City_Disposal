@@ -192,18 +192,20 @@ export default function DocumentsPage() {
     if (!confirm('Delete this document?')) return
 
     try {
-      await fetch(
-        `${config.supabase.url}/rest/v1/documents?id=eq.${id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
-      toast.success('Document deleted')
-      fetchDocuments()
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch(`/api/documents/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      if (response.ok) {
+        toast.success('Document deleted')
+        fetchDocuments()
+      } else {
+        const err = await response.json()
+        toast.error(err.error || 'Failed to delete document')
+      }
     } catch (err) {
       console.error('Delete error:', err)
       toast.error('Failed to delete document')
@@ -215,9 +217,13 @@ export default function DocumentsPage() {
     e.stopPropagation()
     setParsing(prev => ({ ...prev, [docId]: true }))
     try {
+      const token = sessionStorage.getItem('adminToken')
       const response = await fetch('/api/documents/parse', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ document_id: docId }),
       })
 
@@ -239,7 +245,12 @@ export default function DocumentsPage() {
   const openReview = async (doc) => {
     setReviewingDoc(doc)
     try {
-      const response = await fetch(`/api/documents/parse?document_id=${doc.id}`)
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch(`/api/documents/parse?document_id=${doc.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         if (data.length > 0) {
