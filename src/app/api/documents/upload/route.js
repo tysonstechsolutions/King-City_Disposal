@@ -228,7 +228,10 @@ export async function POST(request) {
         const parseUrl = new URL('/api/documents/parse', request.url);
         fetch(parseUrl.toString(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': process.env.CRON_SECRET || '',
+          },
           body: JSON.stringify({ document_id: document.id, category }),
         }).catch(err => logger.error('Background parse error', err));
 

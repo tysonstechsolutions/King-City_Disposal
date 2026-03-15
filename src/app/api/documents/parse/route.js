@@ -259,9 +259,15 @@ Return ONLY the JSON object, no other text.`;
 // POST - Parse an invoice document
 // ============================================
 export async function POST(request) {
-  const auth = await requireAdminAuth(request);
-  if (!auth.authorized) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
+  // Allow internal calls from upload route via internal secret
+  const internalSecret = request.headers.get('x-internal-secret');
+  const isInternalCall = internalSecret && internalSecret === process.env.CRON_SECRET;
+
+  if (!isInternalCall) {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: 401 });
+    }
   }
 
   try {
