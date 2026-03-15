@@ -608,8 +608,8 @@ export async function POST(request) {
       category: finalCategory,
       // Vendor/company name
       vendor: parsedData.from?.name || null,
-      // Document date from the invoice
-      document_date: parsedData.invoice_date || null,
+      // Service date from the invoice (when the service occurred)
+      service_date: parsedData.invoice_date || null,
       // Amount (for all document types)
       amount_cents: amountCents,
       // Weight (for weight tickets)

@@ -173,7 +173,6 @@ export async function POST(request) {
       title,
       weight_lbs: weightLbs ? parseInt(weightLbs) : null,
       amount_cents: amountCents ? parseInt(amountCents) : null,
-      document_date: new Date().toISOString().split('T')[0], // Entry date (kept for backwards compatibility)
       service_date: serviceDate || null, // Date on the receipt (when service occurred)
     };
 

@@ -612,16 +612,36 @@ export async function POST(request) {
               const [invoice] = await updateResponse.json();
               console.log(`Invoice ${invoice?.invoice_number || invoiceNumber} marked as PAID`);
 
-              // Send SMS notification to business
               const priceDisplay = `$${(session.amount_total / 100).toFixed(2)}`;
+              const customerName = session.customer_details?.name || metadata.customer_name || invoice?.customer_name || 'Customer';
+              const customerPhone = metadata.customer_phone || invoice?.customer_phone;
+              const customerEmail = session.customer_details?.email || metadata.customer_email || invoice?.customer_email;
+
+              // Create transaction record so it shows in admin payments
+              const txResult = await createTransaction({
+                invoice_id: invoice?.id || parseInt(invoiceId),
+                booking_id: invoice?.booking_id || null,
+                customer_name: customerName,
+                customer_phone: customerPhone,
+                customer_email: customerEmail,
+                amount_cents: session.amount_total,
+                description: `Invoice ${invoice?.invoice_number || invoiceNumber}`,
+                type: 'invoice',
+                service_address: invoice?.service_address || '',
+                stripe_session_id: session.id,
+                stripe_payment_intent: session.payment_intent,
+                payment_method: 'card',
+                send_sms: !!customerPhone,
+              });
+
+              console.log(`Invoice payment transaction created, receipt: ${txResult?.receipt_number}`);
+
+              // Notify owner
               await notifyOwner(
-                `💰 INVOICE PAID!\n\nInvoice: ${invoice?.invoice_number || invoiceNumber}\nCustomer: ${session.customer_details?.name || metadata.customer_name || 'Unknown'}\nAmount: ${priceDisplay}\n\nInvoice automatically marked as PAID.`
+                `💰 INVOICE PAID!\n\nInvoice: ${invoice?.invoice_number || invoiceNumber}\nCustomer: ${customerName}\nAmount: ${priceDisplay}\n\nReceipt: ${txResult?.receipt_number || 'Created'}`
               );
 
               // Send confirmation to customer if email/phone available
-              const customerEmail = session.customer_details?.email || metadata.customer_email;
-              const customerPhone = metadata.customer_phone;
-
               if (customerEmail || customerPhone) {
                 await notifyCustomer({
                   phone: customerPhone,
