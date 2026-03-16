@@ -210,7 +210,7 @@ Return a JSON object with this exact structure:
   "fees_cents": 0,
   "discount_cents": 0,
   "total_cents": 10000,
-  "expense_category": "landfill/fuel/maintenance/parts/repairs/supplies/dumpster_rental/meals/travel/phone/utilities/insurance/office/software/advertising/professional_services/equipment/uniforms/subscriptions/other - use the most specific category that fits",
+  "expense_category": "invoice/weight_ticket/fuel/disposal/truck_maintenance/office_supplies/cleaning_supplies/meals/advertising/misc - use the most specific category that fits",
   "notes": "Any additional notes, weight tickets, reference numbers, or important info",
   "confidence": 0.95
 }
@@ -228,26 +228,16 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
 - All monetary amounts must be in cents (multiply dollars by 100). Example: $525.00 = 52500 cents
 - DATE FORMAT: Convert dates to YYYY-MM-DD. Example: 1/4/2026 becomes 2026-01-04
 - For expense_category: Choose the most specific category that fits:
-  * landfill - dump fees, waste disposal
-  * fuel - gas, diesel
-  * maintenance - oil changes, tires, tune-ups, inspections
-  * parts - vehicle/equipment parts
-  * repairs - repair services
-  * supplies - office supplies, cleaning supplies
-  * dumpster_rental - rental fees for dumpsters
-  * meals - food, restaurants, coffee
-  * travel - hotels, flights, parking, tolls
-  * phone - cell phone, phone service
-  * utilities - electric, water, gas, internet
-  * insurance - vehicle, business, liability insurance
-  * office - office supplies, printing, postage
-  * software - software subscriptions, apps
-  * advertising - marketing, ads, promotional items
-  * professional_services - legal, accounting, consulting
-  * equipment - tools, machinery purchases
-  * uniforms - work clothing, safety gear
-  * subscriptions - recurring services
-  * other - if nothing else fits
+  * invoice - general business invoices, bills
+  * weight_ticket - landfill weight tickets, dump fees, waste disposal receipts
+  * fuel - gas, diesel, fuel receipts
+  * disposal - dump fees, landfill fees, waste disposal costs
+  * truck_maintenance - oil changes, tires, repairs, parts, tune-ups, inspections
+  * office_supplies - printer ink, paper, pens, postage, office equipment
+  * cleaning_supplies - cleaning products, janitorial supplies
+  * meals - food, restaurants, coffee, business meals
+  * advertising - marketing, ads, promotional items, signs, business cards
+  * misc - anything that doesn't fit above categories
 - Include weight/tonnage info in the notes field even if it appears elsewhere
 - Set confidence between 0 and 1 based on data clarity and your certainty
 - If a field is not visible or unclear, use null

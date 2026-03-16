@@ -54,7 +54,14 @@ export default function CustomersPage() {
         const data = await response.json()
         setCustomers(data.customers || data || [])
       } else {
-        console.error('Failed to fetch customers:', response.status)
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to fetch customers:', response.status, errorData)
+        if (response.status === 401) {
+          // Session expired - redirect to login
+          sessionStorage.removeItem('adminToken')
+          window.location.href = '/admin'
+          return
+        }
       }
     } catch (err) {
       console.error('Error fetching customers:', err)

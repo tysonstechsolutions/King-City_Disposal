@@ -314,10 +314,10 @@ export default function ExpensesPage() {
             <div className="bg-dark-800 rounded-xl border border-dark-700 p-4">
               <div className="flex items-center gap-2 text-dark-400 text-sm mb-1">
                 <Truck className="w-4 h-4" />
-                Landfill Fees
+                Disposal
               </div>
-              <p className="text-2xl font-bold text-blue-600">
-                {formatCurrency(summary.by_category?.landfill?.total_cents || 0)}
+              <p className="text-2xl font-bold text-cyan-600">
+                {formatCurrency((summary.by_category?.disposal?.total_cents || 0) + (summary.by_category?.landfill?.total_cents || 0))}
               </p>
             </div>
             <div className="bg-dark-800 rounded-xl border border-dark-700 p-4">

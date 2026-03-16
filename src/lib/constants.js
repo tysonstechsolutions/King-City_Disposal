@@ -19,61 +19,67 @@ import {
 } from 'lucide-react';
 
 // Document/Expense categories (for uploads and parsed documents)
-// These are the common ones - AI can create any category dynamically
+// Main categories for upload and expense tracking
 export const DOCUMENT_CATEGORIES = [
-  { id: 'landfill', label: 'Landfill/Dump', icon: Truck, color: 'blue' },
-  { id: 'fuel', label: 'Fuel', icon: Droplet, color: 'amber' },
-  { id: 'maintenance', label: 'Maintenance', icon: Wrench, color: 'orange' },
-  { id: 'parts', label: 'Parts', icon: Package, color: 'cyan' },
-  { id: 'repairs', label: 'Repairs', icon: Wrench, color: 'red' },
-  { id: 'supplies', label: 'Supplies', icon: Package, color: 'green' },
-  { id: 'meals', label: 'Meals', icon: Receipt, color: 'pink' },
-  { id: 'travel', label: 'Travel', icon: Truck, color: 'indigo' },
-  { id: 'phone', label: 'Phone', icon: Receipt, color: 'violet' },
-  { id: 'utilities', label: 'Utilities', icon: Receipt, color: 'yellow' },
-  { id: 'insurance', label: 'Insurance', icon: FileText, color: 'slate' },
-  { id: 'office', label: 'Office', icon: Package, color: 'gray' },
-  { id: 'software', label: 'Software', icon: Receipt, color: 'purple' },
-  { id: 'equipment', label: 'Equipment', icon: Wrench, color: 'emerald' },
-  { id: 'dumpster_rental', label: 'Dumpster Rental', icon: Truck, color: 'teal' },
-  { id: 'photo', label: 'Job Photo', icon: Camera, color: 'green' },
   { id: 'invoice', label: 'Invoice', icon: FileText, color: 'purple' },
-  { id: 'contract', label: 'Contract', icon: FileText, color: 'indigo' },
-  { id: 'other', label: 'Other', icon: File, color: 'neutral' },
+  { id: 'weight_ticket', label: 'Weight Ticket', icon: Scale, color: 'blue' },
+  { id: 'fuel', label: 'Fuel', icon: Droplet, color: 'amber' },
+  { id: 'disposal', label: 'Disposal', icon: Truck, color: 'cyan' },
+  { id: 'truck_maintenance', label: 'Truck Maintenance', icon: Wrench, color: 'orange' },
+  { id: 'office_supplies', label: 'Office Supplies', icon: Package, color: 'green' },
+  { id: 'cleaning_supplies', label: 'Cleaning Supplies', icon: Package, color: 'teal' },
+  { id: 'meals', label: 'Meals', icon: Receipt, color: 'pink' },
+  { id: 'advertising', label: 'Advertising', icon: Receipt, color: 'violet' },
+  { id: 'misc', label: 'Misc', icon: File, color: 'neutral' },
 ];
 
-// Expense categories (for parsed invoices)
+// Expense categories (for filtering on expenses page)
 export const EXPENSE_CATEGORIES = [
   { id: 'all', label: 'All Categories', icon: Receipt, color: 'neutral' },
-  { id: 'landfill', label: 'Landfill/Dump', icon: Truck, color: 'blue' },
+  { id: 'invoice', label: 'Invoice', icon: FileText, color: 'purple' },
+  { id: 'weight_ticket', label: 'Weight Ticket', icon: Scale, color: 'blue' },
   { id: 'fuel', label: 'Fuel', icon: Fuel, color: 'amber' },
-  { id: 'parts', label: 'Parts', icon: Package, color: 'green' },
-  { id: 'repairs', label: 'Repairs', icon: Wrench, color: 'red' },
-  { id: 'supplies', label: 'Supplies', icon: Package, color: 'purple' },
-  { id: 'dumpster_rental', label: 'Dumpster Rental', icon: Truck, color: 'indigo' },
-  { id: 'other', label: 'Other', icon: HelpCircle, color: 'neutral' },
+  { id: 'disposal', label: 'Disposal', icon: Truck, color: 'cyan' },
+  { id: 'truck_maintenance', label: 'Truck Maintenance', icon: Wrench, color: 'orange' },
+  { id: 'office_supplies', label: 'Office Supplies', icon: Package, color: 'green' },
+  { id: 'cleaning_supplies', label: 'Cleaning Supplies', icon: Package, color: 'teal' },
+  { id: 'meals', label: 'Meals', icon: Receipt, color: 'pink' },
+  { id: 'advertising', label: 'Advertising', icon: Receipt, color: 'violet' },
+  { id: 'misc', label: 'Misc', icon: HelpCircle, color: 'neutral' },
 ];
 
 // Category icons lookup (for components that need just icons)
 export const CATEGORY_ICONS = {
-  landfill: Truck,
+  invoice: FileText,
+  weight_ticket: Scale,
   fuel: Fuel,
-  parts: Package,
-  repairs: Wrench,
-  supplies: Package,
-  dumpster_rental: Truck,
+  disposal: Truck,
+  truck_maintenance: Wrench,
+  office_supplies: Package,
+  cleaning_supplies: Package,
+  meals: Receipt,
+  advertising: Receipt,
+  misc: HelpCircle,
+  // Legacy mappings for backwards compatibility
+  landfill: Truck,
   other: HelpCircle,
 };
 
 // Category labels lookup
 export const CATEGORY_LABELS = {
-  landfill: 'Landfill/Dump Fees',
+  invoice: 'Invoice',
+  weight_ticket: 'Weight Ticket',
   fuel: 'Fuel',
-  parts: 'Parts',
-  repairs: 'Repairs',
-  supplies: 'Supplies',
-  dumpster_rental: 'Dumpster Rental',
-  other: 'Other',
+  disposal: 'Disposal',
+  truck_maintenance: 'Truck Maintenance',
+  office_supplies: 'Office Supplies',
+  cleaning_supplies: 'Cleaning Supplies',
+  meals: 'Meals',
+  advertising: 'Advertising',
+  misc: 'Misc',
+  // Legacy mappings
+  landfill: 'Disposal',
+  other: 'Misc',
 };
 
 // Helper to format category ID into a nice label (for dynamic categories)

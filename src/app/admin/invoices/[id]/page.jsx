@@ -72,6 +72,14 @@ export default function InvoiceDetailPage() {
           setError('Invoice not found')
         }
       } else {
+        if (response.status === 401) {
+          // Session expired - redirect to login
+          sessionStorage.removeItem('adminToken')
+          window.location.href = '/admin'
+          return
+        }
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to fetch invoice:', response.status, errorData)
         setError('Failed to fetch invoice')
       }
     } catch (err) {
@@ -738,10 +746,11 @@ export default function InvoiceDetailPage() {
                         <input
                           type="number"
                           step="0.01"
-                          value={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
-                          onChange={(e) => updateLineItem(index, 'amount_cents', e.target.value)}
+                          defaultValue={item.amount_cents ? (item.amount_cents / 100).toFixed(2) : ''}
+                          onBlur={(e) => updateLineItem(index, 'amount_cents', e.target.value)}
                           placeholder="0.00"
                           className="w-full pl-7 pr-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                          key={`amount-${index}-${item.amount_cents}`}
                         />
                       </div>
                       <button

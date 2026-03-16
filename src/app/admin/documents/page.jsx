@@ -785,17 +785,24 @@ export default function DocumentsPage() {
               {/* Document Type */}
               <div>
                 <label className="block text-sm font-medium text-dark-300 mb-2">Document Type</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {[
                     { value: 'invoice', label: 'Invoice' },
-                    { value: 'fuel_receipt', label: 'Fuel' },
-                    { value: 'weight_ticket', label: 'Weight' },
+                    { value: 'weight_ticket', label: 'Weight Ticket' },
+                    { value: 'fuel', label: 'Fuel' },
+                    { value: 'disposal', label: 'Disposal' },
+                    { value: 'truck_maintenance', label: 'Truck Maint.' },
+                    { value: 'office_supplies', label: 'Office Supplies' },
+                    { value: 'cleaning_supplies', label: 'Cleaning' },
+                    { value: 'meals', label: 'Meals' },
+                    { value: 'advertising', label: 'Advertising' },
+                    { value: 'misc', label: 'Misc' },
                   ].map((type) => (
                     <button
                       key={type.value}
                       type="button"
                       onClick={() => setUploadCategory(type.value)}
-                      className={`py-2.5 px-3 rounded-lg font-medium text-sm transition-all ${
+                      className={`py-2 px-3 rounded-lg font-medium text-sm transition-all ${
                         uploadCategory === type.value
                           ? 'bg-primary text-white'
                           : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
