@@ -73,6 +73,7 @@ function CreateInvoiceContent() {
     payment_terms: 0, // Due on receipt by default
     send_immediately: false,
     include_cc_fee: true, // Include credit card processing fee by default
+    include_tax: true, // Include Illinois sales tax by default
   })
 
   useEffect(() => {
@@ -249,6 +250,7 @@ function CreateInvoiceContent() {
   const validLineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
   const calculatedTotals = calculateInvoiceTotals(validLineItems, {
     includeCardFee: invoice.include_cc_fee,
+    includeTax: invoice.include_tax,
   })
 
   const handleSubmit = async (sendNow = false) => {
@@ -312,6 +314,7 @@ function CreateInvoiceContent() {
         notes: invoice.notes,
         due_date: dueDate.toISOString().split('T')[0],
         include_cc_fee: invoice.include_cc_fee, // Backend uses this to calculate CC fee
+        include_tax: invoice.include_tax, // Backend uses this to calculate tax
         status: sendNow ? 'sent' : 'draft',
         sent_at: sendNow ? new Date().toISOString() : null,
       }
@@ -768,10 +771,12 @@ function CreateInvoiceContent() {
                   <span>Subtotal</span>
                   <span>${(calculatedTotals.subtotal_cents / 100).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-dark-300">
-                  <span>Illinois Sales Tax</span>
-                  <span>${(calculatedTotals.tax_cents / 100).toFixed(2)}</span>
-                </div>
+                {invoice.include_tax && calculatedTotals.tax_cents > 0 && (
+                  <div className="flex justify-between text-dark-300">
+                    <span>Illinois Sales Tax</span>
+                    <span>${(calculatedTotals.tax_cents / 100).toFixed(2)}</span>
+                  </div>
+                )}
                 {invoice.include_cc_fee && calculatedTotals.cc_fee_cents > 0 && (
                   <div className="flex justify-between text-dark-300">
                     <span>Card Processing Fee (2.9% + $0.30)</span>
@@ -784,8 +789,17 @@ function CreateInvoiceContent() {
                 </div>
               </div>
 
-              {/* CC Fee Toggle */}
-              <div className="mt-4 pt-4 border-t border-dark-700">
+              {/* Tax & Fee Toggles */}
+              <div className="mt-4 pt-4 border-t border-dark-700 space-y-3">
+                <label className="flex items-center gap-2 text-dark-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={invoice.include_tax}
+                    onChange={(e) => setInvoice({ ...invoice, include_tax: e.target.checked })}
+                    className="w-4 h-4 rounded border-dark-600 bg-dark-700 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                  />
+                  <span>Include Illinois sales tax</span>
+                </label>
                 <label className="flex items-center gap-2 text-dark-300 cursor-pointer">
                   <input
                     type="checkbox"
@@ -795,8 +809,8 @@ function CreateInvoiceContent() {
                   />
                   <span>Include credit card processing fee</span>
                 </label>
-                <p className="text-sm text-dark-500 mt-1 ml-6">
-                  Uncheck if customer is paying by check or cash
+                <p className="text-sm text-dark-500 ml-6">
+                  Uncheck fees if customer is tax-exempt or paying by check/cash
                 </p>
               </div>
             </div>
@@ -912,6 +926,7 @@ function CreateInvoiceContent() {
                 notes: invoice.notes,
                 due_date: dueDate.toISOString().split('T')[0],
                 include_cc_fee: invoice.include_cc_fee, // Backend uses this
+                include_tax: invoice.include_tax, // Backend uses this
                 status: 'draft',
               }
 

@@ -104,6 +104,7 @@ export async function POST(request) {
       purchase_order,
       // Frontend may send these, but we recalculate them
       include_cc_fee = false,
+      include_tax = true,
       discount_cents = 0,
     } = body;
 
@@ -120,6 +121,7 @@ export async function POST(request) {
     // BACKEND CALCULATES TOTALS - single source of truth
     const totals = calculateInvoiceTotals(cleanedLineItems, {
       includeCardFee: include_cc_fee,
+      includeTax: include_tax,
       discountCents: discount_cents,
     });
 
