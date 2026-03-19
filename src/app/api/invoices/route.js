@@ -143,22 +143,20 @@ export async function POST(request) {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // Validate IDs - database expects bigint (numeric), not UUIDs
+    // Validate IDs - customer_id expects bigint, booking uses UUID via booking_uuid column
     const validCustomerId = customer_id && /^\d+$/.test(String(customer_id)) ? customer_id : null;
-    const validBookingId = booking_id && /^\d+$/.test(String(booking_id)) ? booking_id : null;
+    // booking_id is now stored in booking_uuid column (UUID type)
+    const bookingUuid = booking_id || null;
 
     if (customer_id && !validCustomerId) {
       console.warn('Invalid customer_id format (expected numeric, got UUID?):', customer_id);
-    }
-    if (booking_id && !validBookingId) {
-      console.warn('Invalid booking_id format (expected numeric, got UUID?):', booking_id);
     }
 
     const invoiceData = {
       invoice_number,
       purchase_order: purchase_order || null,
       customer_id: validCustomerId,
-      booking_id: validBookingId,
+      booking_uuid: bookingUuid,
       customer_name,
       customer_phone,
       customer_email,
@@ -224,24 +222,9 @@ export async function POST(request) {
 
     const [invoice] = await response.json();
 
-    // If linked to a booking, update the booking
-    if (validBookingId) {
-      await fetch(
-        `${supabaseUrl}/rest/v1/bookings?id=eq.${validBookingId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({
-            invoice_id: invoice.id,
-            invoiced_at: new Date().toISOString(),
-          }),
-        }
-      );
-    }
+    // Note: Booking linking is done via booking_uuid on the invoice
+    // The invoice_id field on bookings has a type mismatch (expects UUID, invoice.id is integer)
+    // So we skip setting invoice_id on the booking - use booking_uuid to find related invoices
 
     console.log(`✅ Invoice created: ${invoice_number} | Total: $${(totals.total_cents / 100).toFixed(2)}`);
 
