@@ -57,8 +57,10 @@ async function updateBooking(id, updates) {
 
   if (response.ok) {
     const data = await response.json();
+    console.log(`✅ Booking ${id} updated:`, Object.keys(updates).join(', '));
     return data[0];
   }
+  console.error(`❌ updateBooking ${id} failed:`, await response.text());
   return null;
 }
 
@@ -144,9 +146,10 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
   // ⚠️ CRITICAL: Check if invoice already exists for this booking to prevent duplicates
+  // Check by customer_phone + service_address + delivery_date since booking_id type mismatch
   try {
     const checkResponse = await fetch(
-      `${supabaseUrl}/rest/v1/invoices?booking_id=eq.${booking.id}&status=eq.paid`,
+      `${supabaseUrl}/rest/v1/invoices?customer_phone=eq.${encodeURIComponent(booking.customer_phone)}&service_address=eq.${encodeURIComponent(booking.address)}&delivery_date=eq.${booking.delivery_date}&status=eq.paid`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -193,7 +196,7 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
 
   const invoiceData = {
     invoice_number: invoiceNumber,
-    booking_id: booking.id,
+    // Note: booking_id omitted due to UUID/bigint type mismatch in schema
     customer_id: booking.customer_id || null,
     customer_name: booking.customer_name,
     customer_phone: booking.customer_phone,
@@ -215,6 +218,7 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
     amount_paid_cents: amountCents,
     due_date: today,
     status: 'paid',
+    paid_at: new Date().toISOString(),
     sent_at: new Date().toISOString(),
   };
 
@@ -240,24 +244,9 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
 
     const [invoice] = await response.json();
 
-    // Link invoice to booking
-    await fetch(
-      `${supabaseUrl}/rest/v1/bookings?id=eq.${booking.id}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          invoice_id: invoice.id,
-          invoiced_at: new Date().toISOString(),
-        }),
-      }
-    );
-
-    console.log(`Invoice ${invoiceNumber} created for booking ${booking.id}`);
+    // Note: Skipping invoice_id linking due to UUID/bigint type mismatch
+    // Invoices are linked by customer_phone + service_address + delivery_date
+    console.log(`✅ Invoice ${invoiceNumber} created for booking ${booking.id}`);
     return invoice;
   } catch (e) {
     console.error('Invoice creation error:', e);
@@ -322,10 +311,9 @@ export async function POST(request) {
           // Update booking as paid with actual amount paid
           await updateBooking(bookingId, {
             paid: true,
-            paid_at: new Date().toISOString(),
-            stripe_session_id: session.id,
+            stripe_payment_id: session.id,
             status: 'confirmed',
-            price_cents: session.amount_total, // ✅ FIX: Store actual amount paid (includes tax + fees)
+            price_cents: session.amount_total,
           });
 
           // Get dumpster info
@@ -360,14 +348,8 @@ export async function POST(request) {
           try {
             invoice = await createInvoiceForBooking(booking, session.amount_total, session.metadata);
 
-            // ✅ FIX: Ensure invoice is linked to booking (safety check)
-            if (invoice && invoice.id) {
-              await updateBooking(bookingId, {
-                invoice_id: invoice.id,
-                invoiced_at: new Date().toISOString(),
-              });
-              console.log(`✅ Invoice ${invoice.invoice_number} linked to booking ${bookingId}`);
-            }
+            // Note: Skipping invoice_id linking due to UUID/bigint type mismatch in schema
+            // Invoices can be found by customer_phone + service_address + delivery_date
 
             if (invoice && booking.customer_phone) {
               const invoiceUrl = `${siteUrl}/invoice/${invoice.invoice_number}`;
