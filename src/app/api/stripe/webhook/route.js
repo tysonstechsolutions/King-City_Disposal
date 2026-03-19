@@ -146,10 +146,9 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
   // ⚠️ CRITICAL: Check if invoice already exists for this booking to prevent duplicates
-  // Check by customer_phone + service_address + delivery_date since booking_id type mismatch
   try {
     const checkResponse = await fetch(
-      `${supabaseUrl}/rest/v1/invoices?customer_phone=eq.${encodeURIComponent(booking.customer_phone)}&service_address=eq.${encodeURIComponent(booking.address)}&delivery_date=eq.${booking.delivery_date}&status=eq.paid`,
+      `${supabaseUrl}/rest/v1/invoices?booking_uuid=eq.${booking.id}`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -196,7 +195,7 @@ async function createInvoiceForBooking(booking, amountCents, metadata) {
 
   const invoiceData = {
     invoice_number: invoiceNumber,
-    // Note: booking_id omitted due to UUID/bigint type mismatch in schema
+    booking_uuid: booking.id,
     customer_id: booking.customer_id || null,
     customer_name: booking.customer_name,
     customer_phone: booking.customer_phone,

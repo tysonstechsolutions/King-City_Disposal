@@ -418,9 +418,10 @@ export default function AdminPage() {
           <FileText className="w-5 h-5 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
             <span className="text-sm text-dark-300">
-              {bookings.filter(b => !b.invoice_id && b.status !== 'cancelled').length > 0
-                ? <><span className="text-amber-400 font-semibold">{bookings.filter(b => !b.invoice_id && b.status !== 'cancelled').length}</span> booking{bookings.filter(b => !b.invoice_id && b.status !== 'cancelled').length !== 1 ? 's' : ''} without an invoice</>
-                : <span className="text-green-400">All active bookings are invoiced</span>
+              {/* Only flag unpaid, non-cancelled bookings - paid bookings have invoices created automatically */}
+              {bookings.filter(b => !b.paid && b.status !== 'cancelled' && b.status !== 'pending').length > 0
+                ? <><span className="text-amber-400 font-semibold">{bookings.filter(b => !b.paid && b.status !== 'cancelled' && b.status !== 'pending').length}</span> delivered booking{bookings.filter(b => !b.paid && b.status !== 'cancelled' && b.status !== 'pending').length !== 1 ? 's' : ''} awaiting payment</>
+                : <span className="text-green-400">All delivered bookings are paid</span>
               }
             </span>
           </div>
@@ -629,27 +630,27 @@ export default function AdminPage() {
                         {booking.placement_lat && (
                           <span className="text-green-400">📍 Has placement</span>
                         )}
-                        {/* Invoice status badge */}
-                        {booking.invoice_id ? (
+                        {/* Invoice status badge - paid bookings have auto-generated invoices */}
+                        {booking.paid ? (
                           <Link
-                            href={`/admin/invoices/${booking.invoice_id}`}
+                            href={`/admin/invoices?search=${encodeURIComponent(booking.customer_phone)}`}
                             onClick={(e) => e.stopPropagation()}
                             className="flex items-center gap-1 px-2 py-0.5 bg-green-500/15 text-green-400 border border-green-500/30 rounded text-xs hover:bg-green-500/25 transition-colors"
                           >
                             <FileText className="w-3 h-3" />
                             Invoiced
                           </Link>
-                        ) : booking.status !== 'cancelled' && (
+                        ) : booking.status !== 'cancelled' && booking.status !== 'pending' && (
                           <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded text-xs">
                             <AlertTriangle className="w-3 h-3" />
-                            No Invoice
+                            Awaiting Payment
                           </span>
                         )}
                       </div>
 
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        {/* Create Invoice shortcut */}
-                        {!booking.invoice_id && booking.status !== 'cancelled' && (
+                        {/* Create Invoice shortcut - only show for unpaid, non-cancelled bookings */}
+                        {!booking.paid && booking.status !== 'cancelled' && booking.status !== 'pending' && (
                           <Link
                             href={`/admin/invoices/create?booking=${booking.id}`}
                             onClick={(e) => e.stopPropagation()}
