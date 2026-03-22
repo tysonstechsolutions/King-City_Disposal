@@ -335,7 +335,73 @@ body {
 
 /* Print styles */
 @media print {
-  .no-print {
+  .no-print,
+  .print\\:hidden,
+  .chatbot-container,
+  .mobile-phone-sticky {
     display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset backgrounds for printing */
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Invoice-specific print styles */
+  .invoice-print-container {
+    width: 100% !important;
+    max-width: 8.5in !important;
+    margin: 0 auto !important;
+    padding: 0.5in !important;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure invoice fits on one page */
+  .invoice-content {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Hide navigation and other non-essential elements */
+  header,
+  nav,
+  footer,
+  .admin-nav,
+  button:not(.print-button),
+  .modal-overlay {
+    display: none !important;
+  }
+
+  /* Force single page layout */
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  /* Prevent page breaks inside elements */
+  table, tr, td, th,
+  .card, .section, .invoice-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Ensure readable text */
+  * {
+    color: black !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  /* Exception: Keep primary color for headers */
+  .invoice-header,
+  .print-header {
+    background: #f97316 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

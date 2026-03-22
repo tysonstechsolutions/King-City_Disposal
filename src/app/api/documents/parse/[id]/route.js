@@ -257,9 +257,11 @@ export async function POST(request, { params }) {
           line_items: JSON.stringify(lineItems || []),
           subtotal_cents: parsedInvoice.subtotal_cents || 0,
           tax_cents: parsedInvoice.tax_cents || 0,
+          cc_fee_cents: 0, // No CC fee for parsed/imported invoices
           discount_cents: parsedInvoice.discount_cents || 0,
           total_cents: parsedInvoice.total_cents || parsedInvoice.subtotal_cents || 0,
           amount_paid_cents: 0,
+          invoice_date: parsedInvoice.invoice_date || new Date().toISOString().split('T')[0],
           due_date: parsedInvoice.due_date || null,
           notes: `Created from parsed document #${parsedInvoice.document_id}`,
           status: 'draft',

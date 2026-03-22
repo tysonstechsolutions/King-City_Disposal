@@ -662,7 +662,7 @@ export default function ChatbotWidget() {
     : 'md:w-[360px] h-[450px] max-h-[450px]'
 
   return (
-    <div className="chatbot-container">
+    <div className="chatbot-container no-print print:hidden">
       {isOpen && (
         <div className={`fixed bottom-4 right-4 left-4 md:left-auto ${chatSize} bg-neutral-900 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-neutral-700`}>
 

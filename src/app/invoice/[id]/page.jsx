@@ -585,6 +585,16 @@ export default function CustomerInvoicePage() {
             box-shadow: none !important;
             text-shadow: none !important;
           }
+          /* Hide chatbot and other non-print elements */
+          .chatbot-container,
+          .no-print,
+          .print\\:hidden,
+          [class*="chatbot"],
+          button:not(.print-button),
+          .mobile-phone-sticky {
+            display: none !important;
+            visibility: hidden !important;
+          }
           /* Only allow the logo to keep its colors */
           img[alt="King City Disposal"] {
             -webkit-print-color-adjust: exact !important;
@@ -607,9 +617,20 @@ export default function CustomerInvoicePage() {
           .print\\:py-1\\.5 { padding-top: 0.2rem !important; padding-bottom: 0.2rem !important; }
           .print\\:pt-2 { padding-top: 0.3rem !important; }
           .print\\:pt-3 { padding-top: 0.4rem !important; }
-          /* Prevent page breaks */
-          .max-w-3xl { page-break-inside: avoid !important; }
-          table { page-break-inside: avoid !important; }
+          /* Prevent page breaks - force single page */
+          .max-w-3xl {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          table {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          /* Ensure entire invoice fits on one page */
+          .bg-dark-900.rounded-xl {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
         }
       `}</style>
     </div>
