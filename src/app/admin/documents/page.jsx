@@ -6,6 +6,7 @@ import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
 import { useToast } from '../../../components/Toast'
 import ParsedInvoiceReview from '../../../components/ParsedInvoiceReview'
+import ManualReceiptEntry from '../../../components/ManualReceiptEntry'
 import { DOCUMENT_CATEGORIES, formatCurrency, formatDate, formatWeight, getDocumentCategory, formatCategoryLabel } from '../../../lib/constants'
 import {
   FileText,
@@ -31,7 +32,8 @@ import {
   Receipt,
   Upload,
   Camera,
-  Plus
+  Plus,
+  PenLine
 } from 'lucide-react'
 
 export default function DocumentsPage() {
@@ -51,6 +53,7 @@ export default function DocumentsPage() {
 
   // Upload state
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showManualEntry, setShowManualEntry] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -146,26 +149,65 @@ export default function DocumentsPage() {
 
       if (response.ok) {
         const data = await response.json()
-        toast.success('Uploaded! AI is analyzing...')
         closeUploadModal()
 
-        // Fire-and-forget AI parsing
-        if (data.document?.id) {
-          fetch('/api/documents/parse', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ document_id: data.document.id }),
-          })
-            .then(parseResponse => {
-              if (parseResponse.ok) {
-                toast.success('Document analyzed!')
-              }
-              fetchDocuments()
-            })
-            .catch(console.error)
-        }
+        // If parsing was triggered by upload, poll for completion and auto-open review
+        if (data.parsing && data.document?.id) {
+          toast.success('Uploaded! AI is analyzing...')
+          const docId = data.document.id
+          setParsing(prev => ({ ...prev, [docId]: true }))
 
-        fetchDocuments()
+          // Poll for parsing completion
+          const pollForParsed = async (attempts = 0) => {
+            if (attempts > 30) { // Max 30 seconds
+              setParsing(prev => ({ ...prev, [docId]: false }))
+              toast.error('Parsing timed out. Click the document to retry.')
+              fetchDocuments()
+              return
+            }
+
+            try {
+              const checkResponse = await fetch(
+                `${config.supabase.url}/rest/v1/documents?id=eq.${docId}&select=id,parse_status,title,file_name,file_type,storage_path,category,amount_cents,weight_lbs,service_date,created_at`,
+                {
+                  headers: {
+                    'apikey': config.supabase.anonKey,
+                    'Authorization': `Bearer ${config.supabase.anonKey}`,
+                  },
+                }
+              )
+
+              if (checkResponse.ok) {
+                const [doc] = await checkResponse.json()
+                if (doc?.parse_status === 'parsed' || doc?.parse_status === 'confirmed') {
+                  // Parsing complete! Auto-open review modal
+                  setParsing(prev => ({ ...prev, [docId]: false }))
+                  toast.success('Document analyzed! Review the extracted data.')
+                  fetchDocuments()
+                  // Auto-open review modal
+                  openReview(doc)
+                  return
+                } else if (doc?.parse_status === 'failed') {
+                  setParsing(prev => ({ ...prev, [docId]: false }))
+                  toast.error('Parsing failed. Click to retry.')
+                  fetchDocuments()
+                  return
+                }
+              }
+            } catch (e) {
+              console.error('Poll error:', e)
+            }
+
+            // Keep polling
+            setTimeout(() => pollForParsed(attempts + 1), 1000)
+          }
+
+          fetchDocuments()
+          pollForParsed()
+        } else {
+          toast.success('Document uploaded!')
+          fetchDocuments()
+        }
       } else {
         const err = await response.json()
         toast.error(err.error || 'Upload failed')
@@ -407,6 +449,14 @@ export default function DocumentsPage() {
                 title="Refresh"
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => setShowManualEntry(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-dark-700 text-white rounded-lg font-medium hover:bg-dark-600 transition-colors border border-dark-600"
+                title="Enter receipt details manually"
+              >
+                <PenLine className="w-4 h-4" />
+                <span className="hidden sm:inline">Manual</span>
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -864,6 +914,17 @@ export default function DocumentsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Manual Receipt Entry Modal */}
+      {showManualEntry && (
+        <ManualReceiptEntry
+          onClose={() => setShowManualEntry(false)}
+          onSuccess={() => {
+            toast.success('Receipt saved successfully!')
+            fetchDocuments()
+          }}
+        />
       )}
     </div>
   )

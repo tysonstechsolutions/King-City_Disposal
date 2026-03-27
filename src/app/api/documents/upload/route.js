@@ -221,7 +221,13 @@ export async function POST(request) {
     }
 
     // Auto-parse documents with AI based on category
-    const shouldParse = ['invoice', 'weight_ticket', 'fuel_receipt'].includes(category);
+    // Parse all expense-related documents - AI will extract amounts, dates, vendors
+    const parsableCategories = [
+      'invoice', 'weight_ticket', 'fuel_receipt', 'fuel', 'disposal',
+      'truck_maintenance', 'maintenance', 'office_supplies', 'cleaning_supplies',
+      'meals', 'advertising', 'misc', 'other'
+    ];
+    const shouldParse = parsableCategories.includes(category);
     if (shouldParse && process.env.ANTHROPIC_API_KEY) {
       try {
         // Trigger async parsing (don't wait for it)
@@ -247,7 +253,7 @@ export async function POST(request) {
       success: true,
       document,
       storage_path: storagePath,
-      parsing: category === 'invoice' && process.env.ANTHROPIC_API_KEY ? true : false,
+      parsing: shouldParse && process.env.ANTHROPIC_API_KEY ? true : false,
     });
 
   } catch (error) {
