@@ -378,6 +378,17 @@ export function invoiceEmail(invoice) {
     ? lineItems.map(item => `  ${item.description}: ${formatCurrency(item.amount_cents || item.total_cents || 0)}`).join('\n') + `\n  ─────────────────────\n  Total: ${amount}`
     : `Amount Due: ${amount}`;
 
+  const businessAddressLine = config.address
+    ? `${config.address.street}, ${config.address.city}, ${config.address.state} ${config.address.zip}`
+    : '';
+
+  const billToHtml = (invoice.customer_name || invoice.customer_address) ? `
+    <div style="margin: 15px 0; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 6px;">
+      <p style="margin: 0 0 4px 0; font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Bill To</p>
+      ${invoice.customer_name ? `<p style="margin: 0; font-weight: 600;">${escapeHtml(invoice.customer_name)}</p>` : ''}
+      ${invoice.customer_address ? `<p style="margin: 0; color: #555;">${escapeHtml(invoice.customer_address)}</p>` : ''}
+    </div>` : '';
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -387,19 +398,26 @@ export function invoiceEmail(invoice) {
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
     .header { background: #3d8b64; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+    .header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.9; }
     .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; }
     .btn { display: inline-block; background: #3d8b64; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; }
     .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+    .footer p { margin: 2px 0; }
   </style>
 </head>
 <body>
   <div class="header">
     <h1 style="margin: 0;">Invoice ${escapeHtml(invoice.invoice_number)}</h1>
+    <p>${escapeHtml(config.businessName)}</p>
+    ${businessAddressLine ? `<p>${escapeHtml(businessAddressLine)}</p>` : ''}
+    <p>${escapeHtml(config.phone)}</p>
   </div>
 
   <div class="content">
     <p>Hi ${escapeHtml(invoice.customer_name?.split(' ')[0]) || 'there'},</p>
     <p>Here's your invoice from ${escapeHtml(config.businessName)}:</p>
+
+    ${billToHtml}
 
     ${lineItemsHtml}
 
@@ -414,16 +432,24 @@ export function invoiceEmail(invoice) {
 
   <div class="footer">
     <p>${escapeHtml(config.businessName)}</p>
+    ${businessAddressLine ? `<p>${escapeHtml(businessAddressLine)}</p>` : ''}
+    <p>${escapeHtml(config.phone)}</p>
   </div>
 </body>
 </html>
 `;
 
+  const billToText = (invoice.customer_name || invoice.customer_address)
+    ? `\nBill To:\n${invoice.customer_name || ''}${invoice.customer_address ? `\n${invoice.customer_address}` : ''}\n`
+    : '';
+
   const text = `
 Invoice ${invoice.invoice_number}
+From: ${config.businessName}${businessAddressLine ? `\n${businessAddressLine}` : ''}
+${config.phone}
 
 Hi ${invoice.customer_name?.split(' ')[0] || 'there'},
-
+${billToText}
 ${lineItemsText}
 ${invoice.due_date ? `\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}` : ''}
 
@@ -431,7 +457,7 @@ View Invoice: ${invoiceUrl}
 
 Questions? Call ${config.phone}
 
-${config.businessName}
+${config.businessName}${businessAddressLine ? `\n${businessAddressLine}` : ''}
 `;
 
   return { html, text };

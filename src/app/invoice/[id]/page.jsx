@@ -242,6 +242,11 @@ export default function CustomerInvoicePage() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold print:text-xl">{config.businessName}</h1>
+                  {config.address && (
+                    <p className="text-white/80 print:text-gray-600 text-sm">
+                      {config.address.street}, {config.address.city}, {config.address.state} {config.address.zip}
+                    </p>
+                  )}
                   <p className="text-white/80 print:text-gray-600 text-sm">{config.phone}</p>
                   {config.email && <p className="text-white/80 print:text-gray-600 text-sm">{config.email}</p>}
                 </div>
