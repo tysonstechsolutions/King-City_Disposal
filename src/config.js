@@ -49,7 +49,10 @@ export const config = {
   //   8. Deploy your site, then click "Verify" in Search Console
   //
   // Example: googleSiteVerification: "abc123XYZ_your-verification-code",
-  googleSiteVerification: "", // ← PASTE YOUR VERIFICATION CODE HERE
+  // Reads GOOGLE_SITE_VERIFICATION env var first so you can set it in Vercel
+  // without having to commit changes to this file. Hard-coded value here is
+  // a fallback for local dev.
+  googleSiteVerification: process.env.GOOGLE_SITE_VERIFICATION || "", // ← Or paste it here
 
   address: {
     street: "16544 East Knox Road", // Internal use only - not displayed publicly

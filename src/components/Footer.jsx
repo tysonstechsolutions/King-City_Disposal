@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { config } from '../config'
+import { services } from '../lib/services'
 import { Phone, Mail, MapPin } from 'lucide-react'
 
 export default function Footer() {
@@ -9,7 +10,7 @@ export default function Footer() {
   return (
     <footer className="bg-neutral-900 text-white" role="contentinfo">
       <div className="container-custom py-12 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10">
 
           {/* Company Info */}
           <div className="lg:col-span-1">
@@ -43,6 +44,11 @@ export default function Footer() {
             <h3 className="font-semibold text-white mb-4">Quick Links</h3>
             <ul className="space-y-2" role="list">
               <li>
+                <Link href="/services" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
+                  Services
+                </Link>
+              </li>
+              <li>
                 <Link href="/dumpsters" className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
                   Dumpster Sizes
                 </Link>
@@ -72,6 +78,26 @@ export default function Footer() {
                   My Rentals
                 </Link>
               </li>
+            </ul>
+          </nav>
+
+          {/* Service-specific landing pages — every link here is an SEO
+              entry point for a different search intent (residential,
+              construction, roofing, etc.). Internal links from the footer
+              also flow PageRank to the service pages. */}
+          <nav aria-label="Service-specific landing pages">
+            <h3 className="font-semibold text-white mb-4">Project Type</h3>
+            <ul className="space-y-2" role="list">
+              {services.map(s => (
+                <li key={s.slug}>
+                  <Link
+                    href={`/services/${s.slug}`}
+                    className="text-neutral-400 hover:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 rounded"
+                  >
+                    {s.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
 

@@ -3,6 +3,7 @@ import { config } from '../config'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import ChatbotWidget from '../components/ChatbotWidget'
+import Analytics from '../components/Analytics'
 import Script from 'next/script'
 
 // ============================================
@@ -221,22 +222,28 @@ function OrganizationSchema() {
 }
 
 // ============================================
-// WEBSITE SCHEMA - For sitelinks search box
+// WEBSITE SCHEMA
 // ============================================
+// Note: previously declared a SearchAction pointing at /search?q=, but that
+// route doesn't exist — Google ignores SearchAction claims that don't work
+// and small sites don't really benefit from the sitelinks searchbox anyway.
+// Removing the false claim avoids any "structured data error" warnings in
+// Search Console.
 function WebsiteSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": config.businessName,
     "url": config.websiteUrl,
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": {
-        "@type": "EntryPoint",
-        "urlTemplate": `${config.websiteUrl}/search?q={search_term_string}`
+    "publisher": {
+      "@type": "Organization",
+      "name": config.businessName,
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${config.websiteUrl}/images/logo.png`,
       },
-      "query-input": "required name=search_term_string"
-    }
+    },
+    "inLanguage": "en-US",
   }
 
   return (
@@ -432,7 +439,19 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://api.mapbox.com" />
-        
+        {/* dns-prefetch tells the browser to start the DNS lookup for these
+            third-party origins early. Trims a few hundred ms off the first
+            paint that uses them — meaningful for Stripe (booking flow) and
+            Twilio (none of the public pages, but covered for safety). The
+            actual TCP/TLS handshake still happens on demand, so this is
+            a free win. */}
+        <link rel="dns-prefetch" href="//js.stripe.com" />
+        <link rel="dns-prefetch" href="//hooks.stripe.com" />
+        <link rel="dns-prefetch" href="//www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="//www.clarity.ms" />
+        <link rel="dns-prefetch" href="//connect.facebook.net" />
+        <link rel="dns-prefetch" href="//www.google-analytics.com" />
+
         {/* Preload critical fonts */}
         <link
           rel="preload"
@@ -464,17 +483,37 @@ export default function RootLayout({ children }) {
         </main>
         <Footer />
         <ChatbotWidget />
+        {/* Analytics: GA4, Microsoft Clarity, Meta Pixel — env-gated, plus
+            a global delegated listener that auto-tracks every tel:/sms: click
+            on the site so you can see in your dashboard which CTAs drive calls. */}
+        <Analytics />
 
-        {/* Mobile Sticky Phone Button */}
-        <a
-          href={`tel:${config.phoneRaw}`}
-          className="mobile-phone-sticky md:hidden"
-          aria-label="Call us now"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-        </a>
+        {/* Mobile Sticky CTA Stack: Call + Text. Some customers can't talk
+            (at work, screening calls, etc.) but will text — both buttons
+            convert. The global Analytics listener auto-tracks the clicks
+            with source="mobile_sticky" via data-track-source. */}
+        <div className="mobile-cta-stack md:hidden">
+          <a
+            href={`sms:${config.phoneRaw}?&body=${encodeURIComponent('Hi! Interested in a dumpster rental.')}`}
+            className="mobile-text-sticky"
+            data-track-source="mobile_sticky_text"
+            aria-label="Text us"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </a>
+          <a
+            href={`tel:${config.phoneRaw}`}
+            className="mobile-phone-sticky"
+            data-track-source="mobile_sticky_call"
+            aria-label="Call us now"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </a>
+        </div>
       </body>
     </html>
   )

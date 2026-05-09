@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Script from 'next/script'
 import { config } from '../../config'
 import {
   Truck,
@@ -9,17 +10,48 @@ import {
   Info
 } from 'lucide-react'
 
+// Breadcrumb schema lets Google show "Home > Pricing" under the snippet
+// instead of the bare URL. Lifts CTR on competitive queries.
+function PricingBreadcrumbSchema() {
+  const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home",    "item": baseUrl },
+      { "@type": "ListItem", "position": 2, "name": "Pricing", "item": `${baseUrl}/pricing` },
+    ],
+  }
+  return (
+    <Script id="pricing-breadcrumb" type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+  )
+}
+
 export const metadata = {
-  title: `Dumpster Rental Pricing | ${config.businessName}`,
-  description: `Transparent dumpster rental pricing in ${config.address.city}, IL. 20 and 30 yard dumpsters starting at $475 for 10 days. No hidden fees.`,
+  // Title under 60 chars, includes city + price for higher SERP CTR.
+  title: `Dumpster Rental Prices in ${config.address.city}, IL from $475`,
+  // Description ~155 chars with a clear CTA so the snippet is fully shown
+  // and the searcher knows exactly what to do.
+  description: `Honest pricing for 20- and 30-yard dumpster rentals in ${config.address.city}, IL. From $475 for 10 days, all-in. No hidden fees. Book online or call ${config.phone}.`,
   alternates: {
     canonical: `${config.websiteUrl}/pricing`,
+  },
+  openGraph: {
+    title: `Dumpster Rental Prices in ${config.address.city}, IL from $475`,
+    description: `20 and 30 yard dumpster rentals from $475 for 10 days. No hidden fees. Same-day delivery in southern Illinois.`,
+    url: `${config.websiteUrl}/pricing`,
+    siteName: config.businessName,
+    locale: 'en_US',
+    type: 'website',
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: `${config.businessName} pricing` }],
   },
 }
 
 export default function PricingPage() {
   return (
     <>
+      <PricingBreadcrumbSchema />
       {/* Hero */}
       <section className="bg-primary-700 text-white py-16">
         <div className="container-custom text-center">

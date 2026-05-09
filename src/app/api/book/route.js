@@ -390,6 +390,52 @@ export async function POST(request) {
       date: deliveryDate,
     });
 
+    // Persist UTM/referrer attribution as a best-effort follow-up PATCH.
+    // This is wrapped in try/catch and ignores 4xx errors so the booking
+    // still saves cleanly if the bookings table doesn't yet have these
+    // optional columns. Run the migration in docs/migrations/add-attribution-to-bookings.sql
+    // to start capturing this data.
+    const attribution = body.attribution || {};
+    const attributionFields = {
+      utm_source: attribution.utm_source || null,
+      utm_medium: attribution.utm_medium || null,
+      utm_campaign: attribution.utm_campaign || null,
+      utm_term: attribution.utm_term || null,
+      utm_content: attribution.utm_content || null,
+      gclid: attribution.gclid || null,
+      fbclid: attribution.fbclid || null,
+      referrer: attribution.referrer || null,
+      landing_page: attribution.landing_page || null,
+    };
+    const hasAttribution = Object.values(attributionFields).some(v => v != null);
+    if (hasAttribution && savedBooking[0]?.id) {
+      try {
+        const patchRes = await fetch(
+          `${supabaseUrl}/rest/v1/bookings?id=eq.${savedBooking[0].id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': getSupabaseKey(),
+              'Authorization': `Bearer ${getSupabaseKey()}`,
+            },
+            body: JSON.stringify(attributionFields),
+          }
+        );
+        if (!patchRes.ok) {
+          // Most likely cause: attribution columns don't exist in schema yet.
+          // Don't fail the booking — log and move on.
+          const patchErr = await patchRes.text().catch(() => '');
+          logger.info('Attribution columns not available on bookings table', {
+            status: patchRes.status,
+            error: patchErr.substring(0, 150),
+          });
+        }
+      } catch (e) {
+        logger.warn('Attribution save failed', { message: e?.message });
+      }
+    }
+
     // ============================================
     // 3. NOTIFY TEAM (PENDING PAYMENT)
     // ============================================
@@ -461,7 +507,7 @@ export async function POST(request) {
           'line_items[2][price_data][unit_amount]': stripeFee.toString(),
           'line_items[2][quantity]': '1',
           'mode': 'payment',
-          'success_url': `${siteUrl}/payment-success?booking=${bookingId || ''}&session_id={CHECKOUT_SESSION_ID}`,
+          'success_url': `${siteUrl}/payment-success?booking=${bookingId || ''}&amount=${priceCents + taxCents + stripeFee}&session_id={CHECKOUT_SESSION_ID}`,
           'cancel_url': `${siteUrl}/book?canceled=true`,
           'metadata[type]': 'booking',
           'metadata[booking_id]': bookingId?.toString() || '',

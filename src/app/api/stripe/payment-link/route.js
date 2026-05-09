@@ -168,7 +168,7 @@ export async function POST(request) {
       'line_items[0][price_data][unit_amount]': unitAmount.toString(),
       'line_items[0][quantity]': '1',
       'mode': 'payment',
-      'success_url': `${siteUrl}/payment-success?booking=${bookingId || ''}&session_id={CHECKOUT_SESSION_ID}`,
+      'success_url': `${siteUrl}/payment-success?booking=${bookingId || ''}&amount=${unitAmount}&session_id={CHECKOUT_SESSION_ID}`,
       'cancel_url': `${siteUrl}/book?canceled=true`,
       'metadata[type]': metadata.type,
       'metadata[booking_id]': metadata.booking_id || '',

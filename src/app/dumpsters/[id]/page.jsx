@@ -32,9 +32,13 @@ export async function generateMetadata({ params }) {
 
   const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
 
+  // Keep titles under ~60 chars so they don't truncate in SERPs.
+  // Drop the price from the title — it's already in the description and on
+  // the page, and including it pushed the string past Google's display limit
+  // (e.g. "30 Yard Dumpster Rental - $575 for 10 Days | King City Disposal" = 67 chars).
   return {
-    title: `${dumpster.name} Rental - $${dumpster.pricing['10-day']} for 10 Days | ${config.businessName}`,
-    description: `Rent a ${dumpster.name.toLowerCase()} in ${config.address.city}, IL. ${dumpster.description} ${dumpster.weightIncluded} included. Same-day delivery available. Call ${config.phone}!`,
+    title: `${dumpster.name} Rental in ${config.address.city}, IL`,
+    description: `Rent a ${dumpster.name.toLowerCase()} from $${dumpster.pricing['10-day']} for 10 days. ${dumpster.weightIncluded} included. Same-day delivery in ${config.address.city}. Call ${config.phone}.`,
     alternates: {
       canonical: `${baseUrl}/dumpsters/${dumpster.id}`,
     },
@@ -44,62 +48,111 @@ export async function generateMetadata({ params }) {
       url: `${baseUrl}/dumpsters/${dumpster.id}`,
       siteName: config.businessName,
       locale: 'en_US',
+      // Use 'website' instead of 'product.item' — Next 14 doesn't yet have
+      // typed support for the product OG namespace, so emit the OG product
+      // tags directly via metadata.other below.
       type: 'website',
+      images: [
+        { url: '/og-image.jpg', width: 1200, height: 630, alt: `${dumpster.name} Rental - ${config.businessName}` },
+      ],
+    },
+    // Emit OG product extension manually so Pinterest/Slack/Discord render
+    // the size page as a product card with price + availability.
+    other: {
+      'og:type': 'product',
+      'product:price:amount': String(dumpster.pricing['10-day']),
+      'product:price:currency': 'USD',
+      'product:availability': 'in stock',
     },
   }
 }
 
-// Product schema for rich snippets
+// Product schema for rich snippets — adds price, ratings, and breadcrumbs
+// so the dumpster size pages can show stars + price in Google search results.
 function DumpsterSchema({ dumpster }) {
   const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
+
+  // Build a price *range* across all available rental durations so search
+  // results can display "Starting at $X" rather than locking to 10-day only.
+  const prices = Object.values(dumpster.pricing || {}).filter(p => typeof p === 'number')
+  const minPrice = prices.length ? Math.min(...prices) : dumpster.pricing?.['10-day']
 
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": `${dumpster.name} Dumpster Rental`,
     "description": dumpster.description,
+    "image": [`${baseUrl}/og-image.jpg`],
     "brand": {
       "@type": "Brand",
       "name": config.businessName
     },
     "offers": {
       "@type": "Offer",
-      "price": dumpster.pricing['10-day'],
+      "price": minPrice,
       "priceCurrency": "USD",
       "priceValidUntil": new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
       "availability": "https://schema.org/InStock",
       "url": `${baseUrl}/dumpsters/${dumpster.id}`,
+      "areaServed": {
+        "@type": "GeoCircle",
+        "geoMidpoint": {
+          "@type": "GeoCoordinates",
+          "latitude": config.coordinates?.lat,
+          "longitude": config.coordinates?.lng,
+        },
+        "geoRadius": "80000",
+      },
       "seller": {
         "@type": "LocalBusiness",
+        "@id": `${config.websiteUrl}/#localbusiness`,
         "name": config.businessName,
         "telephone": config.phoneRaw
       }
     },
-    "additionalProperty": [
-      {
-        "@type": "PropertyValue",
-        "name": "Dimensions",
-        "value": dumpster.dimensions.display
-      },
-      {
-        "@type": "PropertyValue",
-        "name": "Capacity",
-        "value": dumpster.capacity
-      },
-      {
-        "@type": "PropertyValue",
-        "name": "Weight Included",
-        "value": dumpster.weightIncluded
+    // AggregateRating only emits when reviews are configured. Star
+    // ratings in search results lift CTR by 20-30%.
+    ...(config.reviews?.count > 0 ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": config.reviews.rating || "5.0",
+        "reviewCount": config.reviews.count,
+        "bestRating": "5",
+        "worstRating": "1",
       }
+    } : {}),
+    "additionalProperty": [
+      { "@type": "PropertyValue", "name": "Dimensions",      "value": dumpster.dimensions.display },
+      { "@type": "PropertyValue", "name": "Capacity",        "value": dumpster.capacity },
+      { "@type": "PropertyValue", "name": "Weight Included", "value": dumpster.weightIncluded },
     ]
   }
 
+  // Breadcrumb schema — Google uses this to render the "Home > Dumpsters >
+  // 30 Yard" trail under the result instead of the bare URL.
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home",      "item": baseUrl },
+      { "@type": "ListItem", "position": 2, "name": "Dumpsters", "item": `${baseUrl}/dumpsters` },
+      { "@type": "ListItem", "position": 3, "name": dumpster.name, "item": `${baseUrl}/dumpsters/${dumpster.id}` },
+    ],
+  }
+
   return (
-    <Script
-      id={`dumpster-schema-${dumpster.id}`}
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
+    <>
+      <Script
+        id={`dumpster-schema-${dumpster.id}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+      <Script
+        id={`dumpster-breadcrumb-${dumpster.id}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+    </>
   )
 }
 

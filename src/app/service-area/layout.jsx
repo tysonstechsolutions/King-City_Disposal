@@ -1,10 +1,23 @@
 import { config } from '../../config'
 
 export const metadata = {
-  title: `Service Area - ${config.serviceRadius} Mile Delivery Radius | ${config.businessName}`,
-  description: `${config.businessName} delivers dumpsters within a ${config.serviceRadius}-mile radius of ${config.address.city}, IL. View our service area map and list of cities we serve.`,
-  alternates: {
-    canonical: `${config.websiteUrl}/service-area`,
+  // Title under 60 chars and front-loaded with the keyword + region. The
+  // service-radius factoid was eating SERP real estate without helping
+  // ranking.
+  title: 'Dumpster Rental Service Area in Southern IL',
+  description: `${config.businessName} delivers dumpsters across ${config.serviceTowns.length}+ towns in Southern Illinois — ${config.serviceTowns.slice(0, 5).join(', ')}, and more. Same-day delivery from $475. Call ${config.phone}.`,
+  // Surface every served town as a keyword so the page can pick up the
+  // long-tail "[town] IL dumpster rental" queries.
+  keywords: config.serviceTowns.slice(0, 30).map(t => `dumpster rental ${t} IL`),
+  alternates: { canonical: `${config.websiteUrl}/service-area` },
+  openGraph: {
+    title: 'Dumpster Rental Service Area in Southern IL',
+    description: `${config.serviceTowns.length}+ towns served. Same-day delivery, locally owned.`,
+    url: `${config.websiteUrl}/service-area`,
+    siteName: config.businessName,
+    locale: 'en_US',
+    type: 'website',
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: `${config.businessName} service area` }],
   },
 }
 

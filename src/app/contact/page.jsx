@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { config } from '../../config'
+import { track } from '../../lib/analytics'
 import {
   Phone,
   Mail,
@@ -38,6 +39,7 @@ export default function ContactPage() {
       const data = await response.json().catch(() => ({}))
 
       if (response.ok) {
+        track('contact_submit', { has_phone: !!formData.phone, has_email: !!formData.email })
         setSubmitted(true)
       } else {
         setError(data.error || 'Could not send message. Please call us instead.')

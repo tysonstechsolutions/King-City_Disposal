@@ -308,22 +308,37 @@ body {
   );
 }
 
-/* Mobile sticky phone button */
+/* Mobile sticky CTA buttons (Call + Text). The text companion button
+   captures the segment of customers who screen calls or are at work and
+   can't talk — they convert via SMS. Keeping both on the same row with
+   the same z-index so neither covers the other. */
 @media (max-width: 768px) {
-  .mobile-phone-sticky {
+  .mobile-cta-stack {
     position: fixed;
     bottom: 20px;
     right: 20px;
     z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .mobile-phone-sticky,
+  .mobile-text-sticky {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: #dc2626;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  .mobile-phone-sticky {
+    background: #dc2626;
     box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
     animation: pulse-glow 2s infinite;
+  }
+  .mobile-text-sticky {
+    background: #2563eb;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.35);
   }
 }
 

@@ -13,7 +13,8 @@ export default function Header() {
 
   const navigation = [
     { name: 'Home', href: '/' },
-    { name: 'Dumpster Sizes', href: '/dumpsters' },
+    { name: 'Services', href: '/services' },
+    { name: 'Sizes', href: '/dumpsters' },
     { name: 'Pricing', href: '/pricing' },
     { name: 'Service Area', href: '/service-area' },
     { name: 'FAQ', href: '/faq' },

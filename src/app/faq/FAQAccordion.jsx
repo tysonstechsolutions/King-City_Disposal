@@ -11,8 +11,12 @@ export default function FAQAccordion({ question, answer }) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-50 transition-colors"
+        aria-expanded={isOpen}
       >
-        <h3 className="font-semibold text-neutral-900 pr-4">{question}</h3>
+        {/* faq-question class is referenced by SpeakableSpecification in
+            FAQ schema — keep it on the visible question element so Google
+            Assistant can read it aloud for voice queries. */}
+        <h3 className="faq-question font-semibold text-neutral-900 pr-4">{question}</h3>
         <ChevronDown
           className={`w-5 h-5 text-primary-600 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
@@ -20,7 +24,8 @@ export default function FAQAccordion({ question, answer }) {
 
       {isOpen && (
         <div className="px-6 pb-6 border-t border-neutral-100">
-          <p className="text-neutral-600 leading-relaxed pt-4">{answer}</p>
+          {/* faq-answer matches the speakable selector */}
+          <p className="faq-answer text-neutral-600 leading-relaxed pt-4">{answer}</p>
         </div>
       )}
     </div>

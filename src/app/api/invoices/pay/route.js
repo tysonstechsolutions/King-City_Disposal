@@ -88,7 +88,7 @@ export async function POST(request) {
       'metadata[customer_name]': invoice.customer_name || '',
       'metadata[customer_phone]': invoice.customer_phone || '',
       'metadata[customer_email]': invoice.customer_email || '',
-      'success_url': `${siteUrl}/payment-success?invoice=${invoice.invoice_number}&session_id={CHECKOUT_SESSION_ID}`,
+      'success_url': `${siteUrl}/payment-success?invoice=${invoice.invoice_number}&amount=${amountDue}&session_id={CHECKOUT_SESSION_ID}`,
       'cancel_url': `${siteUrl}/invoice/${invoice.invoice_number}?canceled=true`,
       'phone_number_collection[enabled]': 'true',
     });

@@ -153,12 +153,23 @@ const faqCategories = [
 const allQuestions = faqCategories.flatMap(cat => cat.questions)
 
 // ============================================
-// FAQ SCHEMA - For Google rich results
+// FAQ SCHEMA - For Google rich results + voice search
 // ============================================
+// Adds:
+//  - FAQPage with each Q/A pair (drives the accordion-style rich result)
+//  - SpeakableSpecification so Google Assistant / smart-home devices can
+//    read the answers out when someone asks the question by voice
+//  - BreadcrumbList for the "Home > FAQ" trail under the search result
 function FAQSchema() {
-  const schema = {
+  const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
+
+  const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    "speakable": {
+      "@type": "SpeakableSpecification",
+      "cssSelector": [".faq-question", ".faq-answer"],
+    },
     "mainEntity": allQuestions.map(faq => ({
       "@type": "Question",
       "name": faq.q.replace('${config.address.city}', config.address.city),
@@ -171,12 +182,22 @@ function FAQSchema() {
     }))
   }
 
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+      { "@type": "ListItem", "position": 2, "name": "FAQ",  "item": `${baseUrl}/faq` },
+    ],
+  }
+
   return (
-    <Script
-      id="faq-schema"
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
+    <>
+      <Script id="faq-schema" type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <Script id="faq-breadcrumb" type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+    </>
   )
 }
 

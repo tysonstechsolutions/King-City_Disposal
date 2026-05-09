@@ -1,10 +1,11 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle, Phone, Home, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { config } from '../../config'
+import { trackPurchase } from '../../lib/analytics'
 
 // Loading fallback component
 function LoadingFallback() {
@@ -22,6 +23,28 @@ function LoadingFallback() {
 function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const bookingId = searchParams.get('booking')
+  const sessionId = searchParams.get('session_id')
+  const fired = useRef(false)
+
+  // Fire the purchase event exactly once when this page loads. This is the
+  // single most important conversion event — it tells the owner (and any
+  // ad platform CAPI) that a customer actually paid. The dollar amount comes
+  // from the `amount` query param that the Stripe success_url passes through
+  // so we don't need a server lookup or expose data via an API.
+  useEffect(() => {
+    if (fired.current) return
+    if (!bookingId && !sessionId) return
+    fired.current = true
+
+    const amountParam = searchParams.get('amount')
+    const valueDollars = amountParam ? Number(amountParam) / 100 : undefined
+
+    trackPurchase({
+      transactionId: bookingId || sessionId,
+      valueDollars: Number.isFinite(valueDollars) ? valueDollars : undefined,
+      currency: 'USD',
+    })
+  }, [bookingId, sessionId, searchParams])
 
   return (
     <div className="min-h-screen bg-dark-800 flex items-center justify-center p-4">

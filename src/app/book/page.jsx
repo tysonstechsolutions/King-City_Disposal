@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { config } from '../../config'
+import { track, getAttribution, captureAttribution } from '../../lib/analytics'
 import {
   Truck,
   MapPin,
@@ -503,6 +504,17 @@ function BookingPageContent() {
 
     try {
       const totalPrice = getPrice() + getSurchargeTotal()
+      const attribution = (typeof window !== 'undefined') ? getAttribution() : {}
+
+      // Fire conversion event before redirecting to Stripe — by the time the
+      // user lands back on payment-success the GA session may have rotated,
+      // so capture the funnel step here too.
+      track('booking_submitted', {
+        value: totalPrice,
+        currency: 'USD',
+        dumpster_size: formData.dumpsterSize,
+        rental_duration: formData.rentalDuration,
+      })
 
       const response = await fetch('/api/book', {
         method: 'POST',
@@ -521,6 +533,9 @@ function BookingPageContent() {
           priceCents: totalPrice * 100,
           projectType: formData.projectType,
           surcharges: formData.surcharges,
+          // Attribution: which ad/campaign/page brought the customer here.
+          // The booking API persists these so the owner can attribute revenue.
+          attribution,
         }),
       })
 
