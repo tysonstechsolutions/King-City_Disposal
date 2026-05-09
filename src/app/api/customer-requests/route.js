@@ -11,6 +11,18 @@ const supabase = createClient(
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
+// Escape user-controlled values before embedding in HTML email — prevents
+// XSS-via-email when the admin opens the notification.
+function escapeHtml(str) {
+  if (str == null) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function POST(request) {
   try {
     const body = await request.json()
@@ -29,6 +41,36 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      )
+    }
+
+    // Length caps prevent unbounded payloads from spamming SMS/email or
+    // bloating the database. Real names/messages are well under these limits.
+    if (
+      String(customer_name).length > 200 ||
+      String(invoice_number).length > 50 ||
+      (message && String(message).length > 2000)
+    ) {
+      return NextResponse.json(
+        { error: 'Field too long' },
+        { status: 400 }
+      )
+    }
+
+    // Verify the invoice actually exists before processing — without this,
+    // anyone can spam this endpoint and trigger SMS/email/booking creation
+    // for arbitrary invoice numbers, eating Twilio + Resend budget.
+    const { data: invoiceCheck } = await supabase
+      .from('invoices')
+      .select('id, invoice_number')
+      .eq('invoice_number', invoice_number)
+      .limit(1)
+      .maybeSingle()
+
+    if (!invoiceCheck) {
+      return NextResponse.json(
+        { error: 'Invoice not found' },
+        { status: 404 }
       )
     }
 
@@ -133,42 +175,42 @@ Check admin panel for details!`
         await resend.emails.send({
           from: `${config.businessName} <${process.env.RESEND_FROM_EMAIL || 'noreply@resend.dev'}>`,
           to: config.billingEmail,
-          subject: `🔔 ${readableType} Request - ${customer_name}`,
+          subject: `🔔 ${escapeHtml(readableType)} Request - ${escapeHtml(customer_name)}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: #1a1a2e; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0; font-size: 24px;">📋 ${readableType} Request</h1>
+                <h1 style="margin: 0; font-size: 24px;">📋 ${escapeHtml(readableType)} Request</h1>
               </div>
               <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
                 <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; width: 120px;">Customer:</td>
-                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${customer_name}</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${escapeHtml(customer_name)}</td>
                   </tr>
                   <tr>
                     <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Invoice #:</td>
-                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${invoice_number}</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${escapeHtml(invoice_number)}</td>
                   </tr>
                   <tr>
                     <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Phone:</td>
-                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${customer_phone || 'Not provided'}</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${escapeHtml(customer_phone) || 'Not provided'}</td>
                   </tr>
                   <tr>
                     <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Email:</td>
-                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${customer_email || 'Not provided'}</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">${escapeHtml(customer_email) || 'Not provided'}</td>
                   </tr>
                   <tr>
                     <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Request Type:</td>
                     <td style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">
                       <span style="background: #007bff; color: white; padding: 4px 12px; border-radius: 4px; font-size: 14px;">
-                        ${readableType}
+                        ${escapeHtml(readableType)}
                       </span>
                     </td>
                   </tr>
                   ${message ? `
                   <tr>
                     <td style="padding: 10px 0; font-weight: bold; vertical-align: top;">Details:</td>
-                    <td style="padding: 10px 0;">${message}</td>
+                    <td style="padding: 10px 0;">${escapeHtml(message)}</td>
                   </tr>
                   ` : ''}
                 </table>
@@ -177,13 +219,13 @@ Check admin panel for details!`
                 <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 6px; margin-top: 20px;">
                   <strong style="color: #155724;">✅ Booking #${bookingId} Created</strong>
                   <p style="margin: 5px 0 0 0; color: #155724;">
-                    A new "${serviceType}" booking has been automatically created. Check the admin panel to schedule it.
+                    A new "${escapeHtml(serviceType)}" booking has been automatically created. Check the admin panel to schedule it.
                   </p>
                 </div>
                 ` : ''}
               </div>
               <div style="background: #1a1a2e; color: #aaa; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px;">
-                ${config.businessName} - Admin Notification
+                ${escapeHtml(config.businessName)} - Admin Notification
               </div>
             </div>
           `

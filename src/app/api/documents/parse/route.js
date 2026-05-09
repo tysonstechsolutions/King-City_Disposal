@@ -40,36 +40,57 @@ async function getVendorCorrections() {
   return [];
 }
 
-// Apply vendor corrections to parsed data
+// Normalize a vendor name for comparison: lowercase, drop punctuation/whitespace,
+// strip common business suffixes. Used to compare AI-parsed vendors against
+// stored corrections without bleeding across unrelated brands.
+function normalizeVendor(name) {
+  return (name || '')
+    .toLowerCase()
+    .replace(/[.,'"&]/g, '')
+    .replace(/\b(inc|llc|ltd|corp|co|company|station|stores?|gas)\b\.?/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Apply vendor corrections to parsed data.
+// Match strategy: exact normalized match first, then word-boundary substring,
+// but ONLY if the correction's vendor key is at least 4 characters long. This
+// prevents short keys like "BP" from corrupting unrelated invoices ("ABP", "BPS").
 function applyVendorCorrections(parsedData, corrections) {
   if (!parsedData.from?.name || corrections.length === 0) {
     return parsedData;
   }
 
-  const vendorName = parsedData.from.name.toLowerCase();
+  const vendorNorm = normalizeVendor(parsedData.from.name);
+  if (!vendorNorm) return parsedData;
 
-  for (const correction of corrections) {
-    const correctionVendor = (correction.vendor_name || '').toLowerCase();
+  // Pass 1: exact normalized match
+  let match = corrections.find(c => normalizeVendor(c.vendor_name) === vendorNorm);
 
-    // Match by partial vendor name (either contains the other)
-    if (vendorName.includes(correctionVendor) || correctionVendor.includes(vendorName)) {
-      logger.debug('Applying vendor correction', { from: parsedData.from.name, to: correction.corrected_name });
+  // Pass 2: word-boundary substring match, only for keys >= 4 chars
+  if (!match) {
+    match = corrections.find(c => {
+      const correctionNorm = normalizeVendor(c.vendor_name);
+      if (!correctionNorm || correctionNorm.length < 4) return false;
+      const wordBoundary = new RegExp(`(^|\\s)${correctionNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`);
+      return wordBoundary.test(vendorNorm);
+    });
+  }
 
-      // Apply corrections
-      if (correction.corrected_name) {
-        parsedData.from.name = correction.corrected_name;
-      }
-      if (correction.corrected_phone) {
-        parsedData.from.phone = correction.corrected_phone;
-      }
-      if (correction.corrected_address) {
-        parsedData.from.address = correction.corrected_address;
-      }
-      if (correction.default_category) {
-        parsedData.expense_category = correction.default_category;
-      }
+  if (match) {
+    logger.debug('Applying vendor correction', { from: parsedData.from.name, to: match.corrected_name });
 
-      break; // Use first matching correction
+    if (match.corrected_name) {
+      parsedData.from.name = match.corrected_name;
+    }
+    if (match.corrected_phone) {
+      parsedData.from.phone = match.corrected_phone;
+    }
+    if (match.corrected_address) {
+      parsedData.from.address = match.corrected_address;
+    }
+    if (match.default_category) {
+      parsedData.expense_category = match.default_category;
     }
   }
 
@@ -249,9 +270,13 @@ Return ONLY the JSON object, no other text.`;
 // POST - Parse an invoice document
 // ============================================
 export async function POST(request) {
-  // Allow internal calls from upload route via internal secret
+  // Allow internal calls from upload route via internal secret.
+  // Accept either CRON_SECRET or SUPABASE_SERVICE_ROLE_KEY so this works
+  // even when CRON_SECRET isn't configured in the deployment env.
   const internalSecret = request.headers.get('x-internal-secret');
-  const isInternalCall = internalSecret && internalSecret === process.env.CRON_SECRET;
+  const validInternalSecrets = [process.env.CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY]
+    .filter(Boolean);
+  const isInternalCall = internalSecret && validInternalSecrets.includes(internalSecret);
 
   if (!isInternalCall) {
     const auth = await requireAdminAuth(request);
@@ -307,6 +332,23 @@ export async function POST(request) {
     const document = documents[0];
     const docCategory = category || document.category || 'invoice';
 
+    // Concurrent-parse guard: if another worker is already parsing this same
+    // document (parse_status === 'parsing'), don't start a second one — both
+    // would race to insert into parsed_invoices and orphan one of the rows.
+    // Allow restart only when the prior 'parsing' is older than 5 minutes
+    // (Vercel function max), which means it definitely crashed/timed out.
+    if (document.parse_status === 'parsing') {
+      const startedAt = document.parse_started_at ? new Date(document.parse_started_at).getTime() : 0;
+      const stalenessMs = Date.now() - startedAt;
+      if (startedAt && stalenessMs < 5 * 60 * 1000) {
+        return NextResponse.json(
+          { error: 'Document is already being parsed; please wait a moment and refresh.' },
+          { status: 409 }
+        );
+      }
+      // else: fall through and reclaim the stuck job.
+    }
+
     // Delete any existing parsed_invoice for this document (for re-parsing)
     if (document.parsed_invoice_id) {
       await fetch(
@@ -322,7 +364,9 @@ export async function POST(request) {
       logger.info('Deleted existing parsed invoice for re-parsing', { document_id });
     }
 
-    // Update document status to 'parsing'
+    // Mark document as parsing. parse_started_at is best-effort — if the
+    // column doesn't exist in the schema yet, Supabase silently ignores it
+    // and we lose the staleness check, which is OK (just less precise).
     await fetch(
       `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}`,
       {
@@ -332,7 +376,11 @@ export async function POST(request) {
           'apikey': getSupabaseKey(),
           'Authorization': `Bearer ${getSupabaseKey()}`,
         },
-        body: JSON.stringify({ parse_status: 'parsing', parsed_invoice_id: null }),
+        body: JSON.stringify({
+          parse_status: 'parsing',
+          parsed_invoice_id: null,
+          parse_started_at: new Date().toISOString(),
+        }),
       }
     );
 
@@ -494,9 +542,13 @@ export async function POST(request) {
     const formattedInvoiceDate = formatDate(parsedData.invoice_date);
     const formattedDueDate = formatDate(parsedData.due_date);
 
+    // Tax year MUST come from the invoice date — defaulting to "today's year"
+    // silently mis-buckets historical receipts (a 2024 fuel receipt parsed in
+    // 2026 would be tagged tax_year 2026 and break tax reconciliation).
+    // Leave it null when the date is missing so admin can fix it on review.
     const taxYear = formattedInvoiceDate
       ? new Date(formattedInvoiceDate).getFullYear()
-      : new Date().getFullYear();
+      : null;
 
     const parsedInvoiceData = {
       document_id: parseInt(document_id),

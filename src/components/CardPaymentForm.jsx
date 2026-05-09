@@ -134,9 +134,15 @@ export default function CardPaymentForm({
     // Create PaymentIntent when component mounts
     const createPaymentIntent = async () => {
       try {
+        const adminToken = typeof window !== 'undefined'
+          ? sessionStorage.getItem('adminToken')
+          : null
         const response = await fetch('/api/stripe/charge', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+          },
           body: JSON.stringify({
             amount_cents: amountCents,
             customer_name: customerName,

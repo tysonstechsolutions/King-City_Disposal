@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../../config';
+import { requireAdminAuth } from '../../../../../lib/adminAuth';
 
 // Force dynamic rendering (not static)
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,11 @@ const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.sup
 // GET - Fetch single parsed invoice
 // ============================================
 export async function GET(request, { params }) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   const { id } = await params;
 
   try {
@@ -63,6 +69,11 @@ export async function GET(request, { params }) {
 // PATCH - Update parsed invoice (edit fields)
 // ============================================
 export async function PATCH(request, { params }) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   const { id } = await params;
 
   try {
@@ -155,6 +166,11 @@ async function generateInvoiceNumber() {
 // POST - Confirm parsed invoice
 // ============================================
 export async function POST(request, { params }) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   const { id } = await params;
 
   try {
@@ -363,6 +379,11 @@ export async function POST(request, { params }) {
 // DELETE - Delete parsed invoice
 // ============================================
 export async function DELETE(request, { params }) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   const { id } = await params;
 
   try {

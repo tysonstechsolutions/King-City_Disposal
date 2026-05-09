@@ -20,12 +20,33 @@ export default function ContactPage() {
     message: ''
   })
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // In production, this would send to your API/email service
-    console.log('Form submitted:', formData)
-    setSubmitted(true)
+    if (submitting) return
+    setSubmitting(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (response.ok) {
+        setSubmitted(true)
+      } else {
+        setError(data.error || 'Could not send message. Please call us instead.')
+      }
+    } catch (err) {
+      setError('Network error. Please try again or call us.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -219,12 +240,19 @@ export default function ContactPage() {
                       />
                     </div>
 
+                    {error && (
+                      <div className="p-3 bg-red-900/30 border border-red-700 text-red-300 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
+
                     <button
                       type="submit"
-                      className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      disabled={submitting}
+                      className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <Send className="w-5 h-5" />
-                      Send Message
+                      {submitting ? 'Sending…' : 'Send Message'}
                     </button>
                   </div>
                 </form>

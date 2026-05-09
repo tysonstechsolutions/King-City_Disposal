@@ -15,6 +15,7 @@
 // ============================================
 
 import { NextResponse } from 'next/server';
+import twilio from 'twilio';
 
 // TwiML response helper
 function twiml(content) {
@@ -23,11 +24,38 @@ function twiml(content) {
   });
 }
 
+// Verify the inbound call is actually from Twilio.
+async function verifyTwilioSignature(request, formData) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!authToken) {
+    if (process.env.NODE_ENV === 'production') return false;
+    return true;
+  }
+  const signature = request.headers.get('x-twilio-signature');
+  if (!signature) return false;
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  const path = new URL(request.url).pathname;
+  const fullUrl = `${baseUrl.replace(/\/$/, '')}${path}`;
+
+  const params = {};
+  for (const [k, v] of formData.entries()) {
+    params[k] = v;
+  }
+  return twilio.validateRequest(authToken, signature, fullUrl, params);
+}
+
 // ============================================
 // INCOMING CALL - Ring then voicemail
 // ============================================
 export async function POST(request) {
   const formData = await request.formData();
+
+  if (!(await verifyTwilioSignature(request, formData))) {
+    console.warn('Twilio voice webhook rejected: invalid signature');
+    return new NextResponse('Forbidden', { status: 403 });
+  }
+
   const callStatus = formData.get('CallStatus');
   const from = formData.get('From');
 

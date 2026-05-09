@@ -26,7 +26,7 @@ export async function POST(request) {
   }
 
   try {
-    const { amount_cents, customer_name, customer_email, invoice_id, description } = await request.json()
+    const { amount_cents, customer_name, customer_email, invoice_id, description, idempotency_key } = await request.json()
 
     if (!amount_cents || amount_cents < 50) {
       return NextResponse.json(
@@ -34,22 +34,40 @@ export async function POST(request) {
         { status: 400 }
       )
     }
+    // Cap to a sane max so a tampered admin request can't accidentally charge
+    // a card $1M. Real invoices are well under this.
+    if (amount_cents > 1_000_000) {
+      return NextResponse.json(
+        { error: 'Amount exceeds maximum of $10,000' },
+        { status: 400 }
+      )
+    }
+
+    // Idempotency key prevents Stripe from creating duplicate PaymentIntents
+    // when the network retries this request. Frontend can pass one (e.g., a
+    // stable hash of invoice_id+amount); otherwise we synthesize one from
+    // the invoice and amount so retries within a few seconds collapse safely.
+    const stableKey = idempotency_key
+      || (invoice_id ? `inv_${invoice_id}_${amount_cents}_${Date.now() - (Date.now() % 60000)}` : undefined)
 
     // Create a PaymentIntent
-    const paymentIntent = await getStripe().paymentIntents.create({
-      amount: amount_cents,
-      currency: 'usd',
-      description: description || `Invoice payment - ${config.businessName}`,
-      metadata: {
-        invoice_id: invoice_id || '',
-        customer_name: customer_name || '',
-        source: 'admin_manual_charge',
+    const paymentIntent = await getStripe().paymentIntents.create(
+      {
+        amount: amount_cents,
+        currency: 'usd',
+        description: description || `Invoice payment - ${config.businessName}`,
+        metadata: {
+          invoice_id: invoice_id || '',
+          customer_name: customer_name || '',
+          source: 'admin_manual_charge',
+        },
+        receipt_email: customer_email || undefined,
+        automatic_payment_methods: {
+          enabled: true,
+        },
       },
-      receipt_email: customer_email || undefined,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    })
+      stableKey ? { idempotencyKey: stableKey } : undefined
+    )
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,

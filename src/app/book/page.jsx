@@ -147,11 +147,14 @@ function BookingPageContent() {
     return total
   }
 
-  // Calculate pickup date
+  // Calculate pickup date based on the customer's actual rental duration
+  // (not the hardcoded 10-day default — that lied to anyone choosing 5-day
+  // or 14-day rentals).
   const getPickupDate = () => {
     if (!formData.deliveryDate) return null
     const delivery = new Date(formData.deliveryDate + 'T12:00:00')
-    const days = 10 // Standard 10-day rental
+    const durationMatch = (formData.rentalDuration || '').match(/(\d+)-day/i)
+    const days = durationMatch ? parseInt(durationMatch[1], 10) : 10
     const pickup = new Date(delivery)
     pickup.setDate(pickup.getDate() + days)
     return pickup.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })

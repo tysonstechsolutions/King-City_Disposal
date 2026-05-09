@@ -231,13 +231,46 @@ export async function POST(request) {
       dumpsterSize,
       rentalDuration,
       deliveryDate,
-      priceCents,
+      priceCents: clientPriceCents,
       projectType,
     } = validation.data;
 
     // Extract city and zip (not in Zod schema, just pass through)
     const city = body.city || null;
     const zip = body.zip || null;
+
+    // Server-side price validation. The client sends priceCents, but we MUST
+    // recompute it from the canonical config to prevent a tampered request
+    // from charging the customer (or us) a different amount than what's
+    // actually due. We allow a small tolerance (50¢) for legitimate rounding
+    // but reject anything outside that window.
+    const dumpsterDef = config.dumpsters.find(d => d.id === dumpsterSize);
+    if (!dumpsterDef) {
+      return NextResponse.json(
+        { error: 'Invalid dumpster size' },
+        { status: 400 }
+      );
+    }
+    const expectedDollars = dumpsterDef.pricing?.[rentalDuration];
+    if (typeof expectedDollars !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid rental duration for selected dumpster size' },
+        { status: 400 }
+      );
+    }
+    const expectedPriceCents = expectedDollars * 100;
+    const priceDelta = Math.abs((clientPriceCents || 0) - expectedPriceCents);
+    if (priceDelta > 50) {
+      logger.warn('Booking price mismatch — using server-computed price', {
+        customerName,
+        clientPriceCents,
+        expectedPriceCents,
+        dumpsterSize,
+        rentalDuration,
+      });
+    }
+    // Always trust the server-computed price, ignore the client value entirely.
+    const priceCents = expectedPriceCents;
 
     // ============================================
     // SERVICE AREA VALIDATION

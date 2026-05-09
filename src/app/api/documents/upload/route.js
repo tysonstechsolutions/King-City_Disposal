@@ -6,6 +6,10 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
+import { requireAdminAuth } from '../../../../lib/adminAuth';
+
+// Allow up to 60s so the awaited Claude parse call doesn't time out on large images/PDFs.
+export const maxDuration = 60;
 
 // Get Supabase credentials at runtime (not module init) for serverless compatibility
 const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL || config.supabase.url;
@@ -34,6 +38,11 @@ const ALLOWED_TYPES = [
 ];
 
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file');
@@ -228,20 +237,34 @@ export async function POST(request) {
       'meals', 'advertising', 'misc', 'other'
     ];
     const shouldParse = parsableCategories.includes(category);
+    let parseTriggered = false;
     if (shouldParse && process.env.ANTHROPIC_API_KEY) {
+      // Await the parse call. Fire-and-forget doesn't reliably complete in
+      // serverless functions — the instance can be terminated before the inner
+      // request fires, leaving documents stuck in pending forever.
+      // Falls back to SUPABASE_SERVICE_ROLE_KEY if CRON_SECRET isn't configured.
+      const internalSecret = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+      const parseUrl = new URL('/api/documents/parse', request.url);
       try {
-        // Trigger async parsing (don't wait for it)
-        const parseUrl = new URL('/api/documents/parse', request.url);
-        fetch(parseUrl.toString(), {
+        const parseResponse = await fetch(parseUrl.toString(), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-internal-secret': process.env.CRON_SECRET || '',
+            'x-internal-secret': internalSecret,
           },
           body: JSON.stringify({ document_id: document.id, category }),
-        }).catch(err => logger.error('Background parse error', err));
-
-        logger.info('Document parsing triggered', { category, document_id: document.id });
+        });
+        if (parseResponse.ok) {
+          parseTriggered = true;
+          logger.info('Document parsing completed', { category, document_id: document.id });
+        } else {
+          const errorText = await parseResponse.text().catch(() => '');
+          logger.error('Document parsing failed', null, {
+            document_id: document.id,
+            status: parseResponse.status,
+            error: errorText.substring(0, 500),
+          });
+        }
       } catch (parseError) {
         logger.error('Failed to trigger document parsing', parseError);
       }
@@ -253,7 +276,7 @@ export async function POST(request) {
       success: true,
       document,
       storage_path: storagePath,
-      parsing: shouldParse && process.env.ANTHROPIC_API_KEY ? true : false,
+      parsing: parseTriggered,
     });
 
   } catch (error) {
@@ -269,6 +292,11 @@ export async function POST(request) {
 // GET DOCUMENTS
 // ============================================
 export async function GET(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const bookingId = searchParams.get('booking_id');
   const customerId = searchParams.get('customer_id');

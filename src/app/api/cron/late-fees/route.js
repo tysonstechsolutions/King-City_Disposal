@@ -116,11 +116,18 @@ export async function GET(request) {
 
         results.overdue++;
 
-        // Calculate days overdue and fees
-        const daysOverdue = Math.floor((today - endDate) / (1000 * 60 * 60 * 24));
+        // Calculate days overdue and fees.
+        // Cap the late fee at 14 days' worth — past that the dumpster is being
+        // ignored and we should switch to phone calls / recovery, not keep
+        // letting the bill balloon. Avoids handing customers a $5,000 SMS
+        // surprise and the disputes/chargebacks that come with it.
+        const LATE_FEE_DAY_CAP = 14;
+        const rawDaysOverdue = Math.floor((today - endDate) / (1000 * 60 * 60 * 24));
+        const daysOverdue = rawDaysOverdue;
+        const cappedDays = Math.min(rawDaysOverdue, LATE_FEE_DAY_CAP);
         const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
         const dailyRate = dumpster?.dailyExtension || 25;
-        const totalLateFee = daysOverdue * dailyRate;
+        const totalLateFee = cappedDays * dailyRate;
 
         // Check if we already notified today
         const lastNotified = booking.late_fee_notified_at 

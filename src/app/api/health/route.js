@@ -11,9 +11,10 @@ import { callClaudeWithFallback, getBestClaudeModel } from '../../../lib/claudeM
 export async function GET() {
   const startTime = Date.now();
 
-  // Debug: log first 25 chars of API key
+  // Don't log API key contents — even a 25-char prefix can leak the project ID
+  // and enough entropy to identify the account. Just confirm presence.
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  console.log('[Health] API key prefix:', apiKey?.substring(0, 25) || 'NOT SET');
+  console.log('[Health] ANTHROPIC_API_KEY:', apiKey ? 'set' : 'NOT SET');
 
   const checks = {
     timestamp: new Date().toISOString(),

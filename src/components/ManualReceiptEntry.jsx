@@ -118,6 +118,7 @@ export default function ManualReceiptEntry({ onClose, onSuccess }) {
 
         const uploadResponse = await fetch('/api/documents/upload', {
           method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
           body: uploadFormData,
         })
 

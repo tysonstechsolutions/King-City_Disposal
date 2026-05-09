@@ -155,9 +155,15 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
     setError(null)
 
     try {
+      const adminToken = typeof window !== 'undefined'
+        ? sessionStorage.getItem('adminToken')
+        : null
       const response = await fetch(`/api/documents/parse/${parsedInvoice.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+        },
         body: JSON.stringify(formData),
       })
 
@@ -196,9 +202,15 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
       // Use the original (AI-parsed) vendor name as the key
       const vendorKey = originalData.from_name || formData.from_name
 
+      const adminToken = typeof window !== 'undefined'
+        ? sessionStorage.getItem('adminToken')
+        : null
       await fetch('/api/vendor-corrections', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+        },
         body: JSON.stringify({
           vendor_name: vendorKey,
           corrected_name: formData.from_name !== originalData.from_name ? formData.from_name : null,
@@ -220,6 +232,11 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
     setError(null)
 
     try {
+      const adminToken = typeof window !== 'undefined'
+        ? sessionStorage.getItem('adminToken')
+        : null
+      const authHeaders = adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}
+
       // Save any pending changes first
       if (editing) {
         await handleSave()
@@ -229,7 +246,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
       if (formData.customer_id !== parsedInvoice.customer_id) {
         await fetch(`/api/documents/parse/${parsedInvoice.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ customer_id: formData.customer_id }),
         })
       }
@@ -239,7 +256,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
 
       const response = await fetch(`/api/documents/parse/${parsedInvoice.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ action: 'confirm' }),
       })
 
@@ -260,9 +277,15 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
   const handleReject = async () => {
     setLoading(true)
     try {
+      const adminToken = typeof window !== 'undefined'
+        ? sessionStorage.getItem('adminToken')
+        : null
       const response = await fetch(`/api/documents/parse/${parsedInvoice.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+        },
         body: JSON.stringify({ action: 'reject' }),
       })
 

@@ -88,12 +88,45 @@ async function getBooking(id) {
 async function createTransaction(data) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kingcitydisposal.com';
 
+  // Idempotency: Stripe retries webhooks. If we already created a transaction
+  // for this Stripe session, return it instead of inserting a duplicate.
+  if (data.stripe_session_id) {
+    try {
+      const supabaseUrl = config.supabase.url;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+      const existingRes = await fetch(
+        `${supabaseUrl}/rest/v1/transactions?stripe_session_id=eq.${encodeURIComponent(data.stripe_session_id)}&select=id,receipt_number`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+        }
+      );
+      if (existingRes.ok) {
+        const existing = await existingRes.json();
+        if (existing.length > 0) {
+          console.log(`Transaction already exists for session ${data.stripe_session_id} - skipping duplicate`);
+          return { transaction: existing[0], receipt_number: existing[0].receipt_number, already_existed: true };
+        }
+      }
+    } catch (e) {
+      // Don't block on the dedup check — proceed with creation; worst case
+      // is the transactions endpoint itself catches the duplicate via DB constraint.
+      console.error('Transaction dedup check failed:', e?.message || e);
+    }
+  }
+
+  // Use the SUPABASE service role key as fallback internal secret in case
+  // CRON_SECRET isn't configured — same pattern as docs upload route.
+  const internalSecret = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
   try {
     const response = await fetch(`${siteUrl}/api/transactions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-internal-secret': process.env.CRON_SECRET || '',
+        'x-internal-secret': internalSecret,
       },
       body: JSON.stringify(data),
     });

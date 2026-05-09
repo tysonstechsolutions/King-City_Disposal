@@ -38,9 +38,15 @@ export default function RecordPaymentModal({ booking, onClose, onSuccess }) {
     setError(null)
 
     try {
+      const adminToken = typeof window !== 'undefined'
+        ? sessionStorage.getItem('adminToken')
+        : null
       const response = await fetch('/api/transactions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+        },
         body: JSON.stringify({
           booking_id: booking?.id || null,
           customer_name: formData.customer_name,
@@ -66,7 +72,10 @@ export default function RecordPaymentModal({ booking, onClose, onSuccess }) {
         if (booking?.id) {
           await fetch(`/api/admin/bookings/${booking.id}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+            },
             body: JSON.stringify({ status: 'confirmed' }),
           })
         }

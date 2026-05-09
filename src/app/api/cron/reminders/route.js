@@ -108,7 +108,7 @@ export async function GET(request) {
         const phone = booking.customer_phone;
         const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
 
-        const message = `Hi ${booking.customer_name.split(' ')[0]}! 🚛
+        const message = `Hi ${(booking.customer_name || '').split(' ')[0] || 'there'}! 🚛
 
 Your ${dumpster?.name || 'dumpster'} arrives TOMORROW between 8am-12pm.
 
@@ -157,7 +157,7 @@ Questions? Reply to this text or call ${config.phone}
         const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
         const dailyRate = dumpster?.dailyExtension || 20;
 
-        const message = `Hi ${booking.customer_name.split(' ')[0]}! ⏰
+        const message = `Hi ${(booking.customer_name || '').split(' ')[0] || 'there'}! ⏰
 
 Your rental ends TOMORROW. We'll pick up your ${dumpster?.name || 'dumpster'} between 8am-5pm.
 
@@ -195,7 +195,7 @@ All done? Make sure nothing is blocking the dumpster!
         if (daysSinceCompletion < 2) continue;
 
         const phone = booking.customer_phone;
-        const firstName = booking.customer_name.split(' ')[0];
+        const firstName = (booking.customer_name || '').split(' ')[0] || 'there';
 
         // Use Google Business Profile link if available
         const reviewLink = config.social?.google ||

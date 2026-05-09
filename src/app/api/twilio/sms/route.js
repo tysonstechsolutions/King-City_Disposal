@@ -20,10 +20,40 @@
 // ============================================
 
 import { NextResponse } from 'next/server';
+import twilio from 'twilio';
 import { config } from '../../../../config';
 import Anthropic from '@anthropic-ai/sdk';
 
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+// Verify the incoming request was actually sent by Twilio. Without this,
+// anyone can POST fake SMS to this endpoint and trigger owner commands
+// (DELIVERED, WEIGHT, etc.) by spoofing the `From` field as OWNER_PHONE.
+async function verifyTwilioSignature(request, formData) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!authToken) {
+    // Dev mode without Twilio creds — still verify in production.
+    if (process.env.NODE_ENV === 'production') return false;
+    return true;
+  }
+
+  const signature = request.headers.get('x-twilio-signature');
+  if (!signature) return false;
+
+  // Twilio signs the full request URL it sent the webhook to. NEXT_PUBLIC_SITE_URL
+  // gives us the canonical public URL even when Vercel's internal request.url
+  // points at the deployment hostname (which Twilio didn't sign).
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  const path = new URL(request.url).pathname;
+  const fullUrl = `${baseUrl.replace(/\/$/, '')}${path}`;
+
+  const params = {};
+  for (const [k, v] of formData.entries()) {
+    params[k] = v;
+  }
+
+  return twilio.validateRequest(authToken, signature, fullUrl, params);
+}
 
 // Escape user content for TwiML XML to prevent injection
 function escapeXml(str) {
@@ -524,6 +554,15 @@ async function handleSend() {
 export async function POST(request) {
   try {
     const formData = await request.formData();
+
+    // Reject anything not signed by Twilio. Returning 403 instead of TwiML
+    // because if it isn't from Twilio there's nobody to receive a TwiML reply.
+    const verified = await verifyTwilioSignature(request, formData);
+    if (!verified) {
+      console.warn('Twilio webhook rejected: invalid signature');
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
     const body = formData.get('Body')?.trim() || '';
     const from = formData.get('From');
     const upper = body.toUpperCase();

@@ -142,8 +142,10 @@ export default function DocumentsPage() {
       formData.append('category', uploadCategory)
       if (uploadServiceDate) formData.append('service_date', uploadServiceDate)
 
+      const token = sessionStorage.getItem('adminToken')
       const response = await fetch('/api/documents/upload', {
         method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       })
 
@@ -281,6 +283,53 @@ export default function DocumentsPage() {
       toast.error('Failed to parse document')
     }
     setParsing(prev => ({ ...prev, [docId]: false }))
+  }
+
+  // Re-parse every document still in pending. Runs sequentially so we don't
+  // hammer the parse endpoint (each call hits Claude vision and Supabase).
+  const [reparsingAll, setReparsingAll] = useState(false)
+  const parseAllPending = async () => {
+    const pendingDocs = documents.filter(d => !d.parse_status || d.parse_status === 'pending')
+    if (pendingDocs.length === 0) {
+      toast.info('No pending documents to parse')
+      return
+    }
+    if (!confirm(`Re-parse ${pendingDocs.length} pending document${pendingDocs.length === 1 ? '' : 's'}? This may take a few minutes.`)) {
+      return
+    }
+    setReparsingAll(true)
+    const token = sessionStorage.getItem('adminToken')
+    let success = 0
+    let failed = 0
+    for (const doc of pendingDocs) {
+      setParsing(prev => ({ ...prev, [doc.id]: true }))
+      try {
+        const response = await fetch('/api/documents/parse', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ document_id: doc.id }),
+        })
+        if (response.ok) {
+          success++
+        } else {
+          failed++
+        }
+      } catch (err) {
+        console.error('Re-parse error for doc', doc.id, err)
+        failed++
+      }
+      setParsing(prev => ({ ...prev, [doc.id]: false }))
+    }
+    setReparsingAll(false)
+    fetchDocuments()
+    if (failed === 0) {
+      toast.success(`Parsed ${success} document${success === 1 ? '' : 's'}`)
+    } else {
+      toast.warning(`Parsed ${success}, ${failed} failed`)
+    }
   }
 
   // Open review modal for a parsed document
@@ -450,6 +499,23 @@ export default function DocumentsPage() {
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
+              {stats.pending > 0 && (
+                <button
+                  onClick={parseAllPending}
+                  disabled={reparsingAll}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+                  title={`Re-parse all ${stats.pending} pending documents`}
+                >
+                  {reparsingAll ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {reparsingAll ? 'Parsing…' : `Parse Pending (${stats.pending})`}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => setShowManualEntry(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-dark-700 text-white rounded-lg font-medium hover:bg-dark-600 transition-colors border border-dark-600"

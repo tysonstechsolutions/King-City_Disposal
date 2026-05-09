@@ -113,8 +113,12 @@ export default function DocumentUpload({
       if (customerId) formData.append('customer_id', customerId)
       if (invoiceId) formData.append('invoice_id', invoiceId)
 
+      const adminToken = typeof window !== 'undefined'
+        ? sessionStorage.getItem('adminToken')
+        : null
       const response = await fetch('/api/documents/upload', {
         method: 'POST',
+        headers: adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {},
         body: formData,
       })
 

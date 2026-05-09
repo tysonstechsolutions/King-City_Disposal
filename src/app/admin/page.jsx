@@ -773,7 +773,7 @@ export default function AdminPage() {
                                 className={`text-xs px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${getStatusColor(b.status)}`}
                                 title={`${b.customer_name} - ${getDumpsterName(b.dumpster_size)}`}
                               >
-                                {b.customer_name.split(' ')[0]}
+                                {(b.customer_name || '').split(' ')[0] || 'Unknown'}
                               </div>
                             ))}
                             {dayBookings.length > 2 && (

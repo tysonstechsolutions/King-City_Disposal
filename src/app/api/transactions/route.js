@@ -92,9 +92,13 @@ Thank you!
 // CREATE TRANSACTION
 // ============================================
 export async function POST(request) {
-  // Allow internal calls from webhook via internal secret, otherwise require admin auth
+  // Allow internal calls from webhook via internal secret, otherwise require admin auth.
+  // Accept either CRON_SECRET or SUPABASE_SERVICE_ROLE_KEY so webhook calls work
+  // even when CRON_SECRET isn't configured in the deployment env.
   const internalSecret = request.headers.get('x-internal-secret');
-  const isInternalCall = internalSecret && internalSecret === process.env.CRON_SECRET;
+  const validInternalSecrets = [process.env.CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY]
+    .filter(Boolean);
+  const isInternalCall = internalSecret && validInternalSecrets.includes(internalSecret);
   if (!isInternalCall) {
     const auth = await requireAdminAuth(request);
     if (!auth.authorized) {

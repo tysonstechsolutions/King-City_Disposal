@@ -60,8 +60,11 @@ export default function AdminPaymentsPage() {
   const fetchTransactions = async () => {
     setLoading(true)
     try {
-      // Build query
-      let query = `order=created_at.desc&limit=${perPage}&offset=${(currentPage - 1) * perPage}`
+      // Order by paid_at so manually-recorded historical payments slot in by
+      // their actual payment date, not the date they were entered into the system.
+      // Fall back to created_at via paid_at being null on transactions that
+      // haven't been paid yet (rare — most have status='completed' with paid_at set).
+      let query = `order=paid_at.desc.nullslast&limit=${perPage}&offset=${(currentPage - 1) * perPage}`
 
       if (typeFilter !== 'all') {
         query += `&type=eq.${typeFilter}`
@@ -85,7 +88,8 @@ export default function AdminPaymentsPage() {
         }
 
         if (startDate) {
-          query += `&created_at=gte.${startDate.toISOString()}`
+          // Filter on paid_at — that's the date that matters for tax/financial reporting.
+          query += `&paid_at=gte.${startDate.toISOString()}`
         }
       }
 
@@ -129,9 +133,11 @@ export default function AdminPaymentsPage() {
       const now = new Date()
       const yearStart = new Date(now.getFullYear(), 0, 1).toISOString()
 
-      // Fetch all transactions for the year to calculate stats
+      // Fetch all transactions paid this year (paid_at, not created_at) so
+      // historical/backfilled payments are bucketed by when the customer
+      // actually paid, not when the row was entered.
       const response = await fetch(
-        `${config.supabase.url}/rest/v1/transactions?created_at=gte.${yearStart}&status=eq.completed&select=amount_cents,created_at`,
+        `${config.supabase.url}/rest/v1/transactions?paid_at=gte.${yearStart}&status=eq.completed&select=amount_cents,paid_at,created_at`,
         {
           headers: {
             'apikey': config.supabase.anonKey,
@@ -154,7 +160,7 @@ export default function AdminPaymentsPage() {
 
         data.forEach(t => {
           const amount = t.amount_cents
-          const date = new Date(t.created_at)
+          const date = new Date(t.paid_at || t.created_at)
 
           thisYear += amount
 
@@ -238,7 +244,7 @@ export default function AdminPaymentsPage() {
     const headers = ['Receipt #', 'Date', 'Customer', 'Type', 'Description', 'Amount', 'Payment Method', 'Status']
     const rows = transactions.map(t => [
       t.receipt_number,
-      formatDate(t.created_at),
+      formatDate(t.paid_at || t.created_at),
       t.customer_name,
       getTypeLabel(t.type),
       t.description || '',
@@ -247,13 +253,28 @@ export default function AdminPaymentsPage() {
       t.status
     ])
 
-    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
+    // Escape per RFC 4180: double internal quotes, wrap in quotes.
+    // Also prefix any cell that starts with =, +, -, @, tab, or CR with a single
+    // quote so Excel/Sheets treats it as text and not a formula (CSV injection).
+    const escapeCell = (val) => {
+      const str = val == null ? '' : String(val)
+      const needsFormulaGuard = /^[=+\-@\t\r]/.test(str)
+      const guarded = needsFormulaGuard ? `'${str}` : str
+      return `"${guarded.replace(/"/g, '""')}"`
+    }
+
+    // Add UTF-8 BOM so Excel detects encoding correctly for non-ASCII customer names.
+    const csv = '﻿' + [headers, ...rows]
+      .map(row => row.map(escapeCell).join(','))
+      .join('\r\n')
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
+    URL.revokeObjectURL(url)
   }
 
   // Get unique customers for filter dropdown

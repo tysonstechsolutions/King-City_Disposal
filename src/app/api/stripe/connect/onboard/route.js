@@ -15,8 +15,14 @@
 // ============================================
 
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '../../../../../lib/adminAuth';
 
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const { email, businessName, returnUrl } = await request.json();
 

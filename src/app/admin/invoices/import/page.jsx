@@ -121,9 +121,13 @@ export default function ImportInvoicesPage() {
     setError('');
 
     try {
+      const token = sessionStorage.getItem('adminToken');
       const response = await fetch('/api/invoices/import-reviewed', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ invoices: editedInvoices }),
       });
 

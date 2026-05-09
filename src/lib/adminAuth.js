@@ -66,16 +66,29 @@ export async function validateSession(token) {
       }
     )
 
-    if (!response.ok) {
-      // Table might not exist - validate using HMAC fallback
+    if (response.ok) {
+      const sessions = await response.json()
+      return sessions.length > 0
+    }
+
+    // Only fall back when the table genuinely doesn't exist (initial setup).
+    // Don't fall back on auth/network/server errors — those should fail closed,
+    // otherwise an attacker can force a temporary backend outage to bypass auth.
+    const errorText = await response.text().catch(() => '')
+    if (
+      errorText.includes('does not exist') ||
+      errorText.includes('relation') ||
+      response.status === 404
+    ) {
       return validateTokenFallback(token)
     }
 
-    const sessions = await response.json()
-    return sessions.length > 0
-  } catch {
-    // On error, use fallback validation
-    return validateTokenFallback(token)
+    console.error('Session validation failed:', response.status, errorText.substring(0, 200))
+    return false
+  } catch (err) {
+    // Network errors fail closed — DO NOT bypass auth on connectivity issues.
+    console.error('Session validation error:', err?.message || err)
+    return false
   }
 }
 

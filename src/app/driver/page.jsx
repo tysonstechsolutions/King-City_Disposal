@@ -25,13 +25,16 @@ export default function DriverChecklistPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
 
-  // Check authentication on mount
+  // Check authentication on mount. The admin login stores the cryptographic
+  // session token under 'adminToken' — the old 'adminAuth=true' check never
+  // matched, so the driver page always redirected. Use the same token key as
+  // every other admin page.
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (sessionStorage.getItem('adminAuth') === 'true') {
+      const token = sessionStorage.getItem('adminToken')
+      if (token) {
         setIsAuthenticated(true)
       } else {
-        // Redirect to admin login
         router.push('/admin')
       }
     }

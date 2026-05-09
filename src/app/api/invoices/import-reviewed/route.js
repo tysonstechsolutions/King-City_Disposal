@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
+import { requireAdminAuth } from '../../../../lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,6 +148,11 @@ async function invoiceExists(invoiceNumber) {
 // POST - Save reviewed invoices
 // ============================================
 export async function POST(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const { invoices } = await request.json();
 

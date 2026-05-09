@@ -367,6 +367,38 @@ export default function InvoiceDetailPage() {
       })
 
       if (response.ok) {
+        // Also create a transaction record so this payment shows up on the
+        // Payments page (which reads from the transactions table, not invoices).
+        try {
+          await fetch('/api/transactions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              invoice_id: invoice.id,
+              booking_id: invoice.booking_id || null,
+              customer_name: invoice.customer_name,
+              customer_phone: invoice.customer_phone,
+              customer_email: invoice.customer_email,
+              amount_cents: totalAmountCents,
+              description: `Invoice ${invoice.invoice_number}`,
+              type: 'invoice',
+              service_address: invoice.service_address || null,
+              dumpster_size: invoice.dumpster_size || null,
+              rental_duration: invoice.rental_duration || null,
+              delivery_date: invoice.delivery_date || null,
+              payment_method: paymentMethod,
+              send_sms: false, // invoice flow handles its own customer notification
+            }),
+          })
+        } catch (txErr) {
+          // Don't fail the whole payment recording if transaction insert fails;
+          // the invoice is already marked paid and backfill can recover later.
+          console.error('Failed to create transaction record:', txErr)
+        }
+
         setShowPaymentModal(false)
         setPaymentAmount('')
         setPaymentNotes('')
@@ -1057,9 +1089,9 @@ export default function InvoiceDetailPage() {
                   <ExternalLink className="w-4 h-4" />
                   View as Customer
                 </a>
-                {invoice.booking_id && (
+                {(invoice.booking_uuid || invoice.booking_id) && (
                   <Link
-                    href={`/admin/booking/${invoice.booking_id}`}
+                    href={`/admin/booking/${invoice.booking_uuid || invoice.booking_id}`}
                     className="w-full px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600 flex items-center gap-2 justify-center"
                   >
                     <Truck className="w-4 h-4" />
@@ -1155,6 +1187,38 @@ export default function InvoiceDetailPage() {
                       },
                       body: JSON.stringify(cardUpdateData),
                     })
+
+                    // Create a transaction so this payment shows on the Payments page.
+                    // PaymentIntent flow doesn't trigger checkout.session.completed,
+                    // so the Stripe webhook won't create one for us.
+                    try {
+                      await fetch('/api/transactions', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                          invoice_id: invoice.id,
+                          booking_id: invoice.booking_id || null,
+                          customer_name: invoice.customer_name,
+                          customer_phone: invoice.customer_phone,
+                          customer_email: invoice.customer_email,
+                          amount_cents: totalAmountCents,
+                          description: `Invoice ${invoice.invoice_number}`,
+                          type: 'invoice',
+                          service_address: invoice.service_address || null,
+                          dumpster_size: invoice.dumpster_size || null,
+                          rental_duration: invoice.rental_duration || null,
+                          delivery_date: invoice.delivery_date || null,
+                          stripe_payment_intent: paymentIntent?.id || null,
+                          payment_method: 'card',
+                          send_sms: false,
+                        }),
+                      })
+                    } catch (txErr) {
+                      console.error('Failed to create transaction record:', txErr)
+                    }
 
                     setShowPaymentModal(false)
                     setShowCardForm(false)

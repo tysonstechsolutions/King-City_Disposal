@@ -11,10 +11,16 @@
 // ============================================
 
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '../../../../../lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
