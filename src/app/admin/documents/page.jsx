@@ -287,9 +287,18 @@ export default function DocumentsPage() {
 
   // Re-parse every document still in pending. Runs sequentially so we don't
   // hammer the parse endpoint (each call hits Claude vision and Supabase).
+  // Also reclaims docs stuck in 'parsing' for >5 min — those are leftovers
+  // from a previous serverless timeout and will never finish on their own.
   const [reparsingAll, setReparsingAll] = useState(false)
+  const isStuckParsing = (d) => {
+    if (d.parse_status !== 'parsing') return false
+    const startedAt = d.parse_started_at ? new Date(d.parse_started_at).getTime() : 0
+    return !startedAt || (Date.now() - startedAt) > 5 * 60 * 1000
+  }
   const parseAllPending = async () => {
-    const pendingDocs = documents.filter(d => !d.parse_status || d.parse_status === 'pending')
+    const pendingDocs = documents.filter(d =>
+      !d.parse_status || d.parse_status === 'pending' || isStuckParsing(d)
+    )
     if (pendingDocs.length === 0) {
       toast.info('No pending documents to parse')
       return
@@ -380,10 +389,12 @@ export default function DocumentsPage() {
   }
 
   // Stats calculations
+  // Pending counts docs that haven't parsed yet OR got stuck in 'parsing'
+  // from a prior serverless timeout — those need the user to re-trigger.
   const stats = useMemo(() => ({
     total: documents.length,
     parsed: documents.filter(d => d.parse_status === 'parsed' || d.parse_status === 'confirmed').length,
-    pending: documents.filter(d => !d.parse_status || d.parse_status === 'pending').length,
+    pending: documents.filter(d => !d.parse_status || d.parse_status === 'pending' || isStuckParsing(d)).length,
     failed: documents.filter(d => d.parse_status === 'failed').length,
     totalWeight: documents.reduce((sum, d) => sum + (d.weight_lbs || 0), 0),
     totalAmount: documents.reduce((sum, d) => sum + (d.amount_cents || 0), 0),
@@ -414,8 +425,9 @@ export default function DocumentsPage() {
         // Status filter
         if (filterStatus !== 'all') {
           if (filterStatus === 'pending') {
-            // Pending includes docs with no parse_status or parse_status === 'pending'
-            if (doc.parse_status && doc.parse_status !== 'pending') return false
+            // Pending includes docs with no parse_status, 'pending', or stuck 'parsing'
+            const isPending = !doc.parse_status || doc.parse_status === 'pending' || isStuckParsing(doc)
+            if (!isPending) return false
           } else {
             if (doc.parse_status !== filterStatus) return false
           }
@@ -758,10 +770,18 @@ export default function DocumentsPage() {
                       {/* Quick Actions */}
                       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                         {/* Parse/Review/Reparse buttons */}
-                        {doc.parse_status === 'parsing' || parsing[doc.id] ? (
+                        {parsing[doc.id] || (doc.parse_status === 'parsing' && !isStuckParsing(doc)) ? (
                           <div className="px-3 py-2 text-amber-400 flex items-center gap-2">
                             <Loader2 className="w-4 h-4 animate-spin" />
                           </div>
+                        ) : isStuckParsing(doc) ? (
+                          <button
+                            onClick={(e) => parseDocument(e, doc.id)}
+                            className="p-2 text-amber-400 hover:text-amber-300 hover:bg-dark-700 rounded-lg transition-colors"
+                            title="Parse timed out — click to retry"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
                         ) : doc.parse_status === 'parsed' || doc.parse_status === 'confirmed' ? (
                           <>
                             <button

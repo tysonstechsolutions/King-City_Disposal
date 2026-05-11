@@ -13,6 +13,11 @@ import * as XLSX from 'xlsx';
 // Force dynamic rendering (not static)
 export const dynamic = 'force-dynamic';
 
+// Claude vision on a receipt image regularly takes 15-40s. Without this the
+// function dies at Vercel's default ~10s timeout and the document is left
+// stuck in 'parsing' status forever (the row update to 'parsed' never runs).
+export const maxDuration = 60;
+
 // Get Supabase credentials at runtime (not module init) for serverless compatibility
 const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL || config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -364,10 +369,12 @@ export async function POST(request) {
       logger.info('Deleted existing parsed invoice for re-parsing', { document_id });
     }
 
-    // Mark document as parsing. parse_started_at is best-effort — if the
-    // column doesn't exist in the schema yet, Supabase silently ignores it
-    // and we lose the staleness check, which is OK (just less precise).
-    await fetch(
+    // Mark document as parsing. PostgREST rejects the *entire* row when an
+    // unknown column appears in the body (PGRST204), so we must NOT send
+    // parse_started_at unconditionally — if the column doesn't exist yet,
+    // the status never advances and the doc looks stuck at 'pending'.
+    // Try the richer update first, fall back to the minimal one on failure.
+    const markParsingFull = await fetch(
       `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}`,
       {
         method: 'PATCH',
@@ -383,6 +390,26 @@ export async function POST(request) {
         }),
       }
     );
+
+    if (!markParsingFull.ok) {
+      // parse_started_at column likely doesn't exist — retry without it so
+      // at least parse_status advances and the UI shows "Parsing" not "Pending".
+      await fetch(
+        `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+          body: JSON.stringify({
+            parse_status: 'parsing',
+            parsed_invoice_id: null,
+          }),
+        }
+      );
+    }
 
     // 2. Fetch the file from Supabase Storage
     const fileUrl = `${getSupabaseUrl()}/storage/v1/object/authenticated/documents/${document.storage_path}`;
@@ -681,7 +708,7 @@ export async function POST(request) {
       }
     });
 
-    await fetch(
+    const writeDocUpdate = (payload) => fetch(
       `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}`,
       {
         method: 'PATCH',
@@ -690,9 +717,40 @@ export async function POST(request) {
           'apikey': getSupabaseKey(),
           'Authorization': `Bearer ${getSupabaseKey()}`,
         },
-        body: JSON.stringify(documentUpdate),
+        body: JSON.stringify(payload),
       }
     );
+
+    // Try the full update first. If PostgREST rejects it (PGRST204 — column
+    // missing), strip optional fields and retry so the document at least
+    // advances to 'parsed' and shows up as completed in the UI. Without this
+    // fallback, a single missing column (e.g. `vendor`) wedges the doc at
+    // 'parsing' forever even after Claude finished successfully.
+    let finalUpdate = await writeDocUpdate(documentUpdate);
+    if (!finalUpdate.ok) {
+      const errorText = await finalUpdate.text().catch(() => '');
+      logger.warn('Full document update failed, falling back to minimal', {
+        document_id,
+        error: errorText.substring(0, 200),
+      });
+      const minimalUpdate = {
+        parse_status: 'parsed',
+        parsed_invoice_id: parsedInvoice.id,
+      };
+      if (documentUpdate.amount_cents != null) minimalUpdate.amount_cents = documentUpdate.amount_cents;
+      if (documentUpdate.weight_lbs != null) minimalUpdate.weight_lbs = documentUpdate.weight_lbs;
+      if (documentUpdate.service_date) minimalUpdate.service_date = documentUpdate.service_date;
+      if (documentUpdate.title) minimalUpdate.title = documentUpdate.title;
+      if (documentUpdate.category) minimalUpdate.category = documentUpdate.category;
+      finalUpdate = await writeDocUpdate(minimalUpdate);
+      if (!finalUpdate.ok) {
+        // Last resort: just flip parse_status so it doesn't stay 'parsing'.
+        await writeDocUpdate({
+          parse_status: 'parsed',
+          parsed_invoice_id: parsedInvoice.id,
+        });
+      }
+    }
 
     // 8. Update customer stats if we linked one
     if (customer?.id && parsedInvoiceData.total_cents) {
