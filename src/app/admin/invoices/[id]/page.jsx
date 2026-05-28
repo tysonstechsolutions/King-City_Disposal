@@ -211,10 +211,11 @@ export default function InvoiceDetailPage() {
     setSaving(true)
     try {
       const subtotal = calculateSubtotal(editedInvoice.line_items)
+      const tax = editedInvoice.tax_cents || 0
       const lateFee = editedInvoice.late_fee_cents || 0
       const ccFee = editedInvoice.cc_fee_cents || 0
       const discount = editedInvoice.discount_cents || 0
-      const total = subtotal + lateFee + ccFee - discount
+      const total = subtotal + tax + lateFee + ccFee - discount
 
       const token = sessionStorage.getItem('adminToken')
       const response = await fetch(`/api/invoices/update?id=${params.id}`, {
@@ -234,6 +235,7 @@ export default function InvoiceDetailPage() {
           weight_included_lbs: editedInvoice.weight_included_lbs,
           line_items: editedInvoice.line_items,
           subtotal_cents: subtotal,
+          tax_cents: tax,
           late_fee_cents: lateFee,
           cc_fee_cents: ccFee,
           discount_cents: discount,
@@ -805,8 +807,22 @@ export default function InvoiceDetailPage() {
                     Add Line Item
                   </button>
 
-                  {/* Late Fee and CC Fee fields */}
+                  {/* Tax, Late Fee and CC Fee fields */}
                   <div className="mt-4 pt-4 border-t border-dark-700 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm text-dark-400">Sales Tax</label>
+                      <div className="relative w-32">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editedInvoice.tax_cents ? (editedInvoice.tax_cents / 100).toFixed(2) : ''}
+                          onChange={(e) => setEditedInvoice({ ...editedInvoice, tax_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
+                          placeholder="0.00"
+                          className="w-full pl-7 pr-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        />
+                      </div>
+                    </div>
                     <div className="flex justify-between items-center">
                       <label className="text-sm text-dark-400">Late Fee</label>
                       <div className="relative w-32">
@@ -854,6 +870,7 @@ export default function InvoiceDetailPage() {
                       <span className="text-2xl font-bold">
                         {formatCurrency(
                           calculateSubtotal(editedInvoice.line_items) +
+                          (editedInvoice.tax_cents || 0) +
                           (editedInvoice.late_fee_cents || 0) +
                           (editedInvoice.cc_fee_cents || 0) -
                           (editedInvoice.discount_cents || 0)
