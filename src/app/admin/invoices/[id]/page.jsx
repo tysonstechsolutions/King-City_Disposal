@@ -816,10 +816,11 @@ export default function InvoiceDetailPage() {
                         <input
                           type="number"
                           step="0.01"
-                          value={editedInvoice.tax_cents ? (editedInvoice.tax_cents / 100).toFixed(2) : ''}
-                          onChange={(e) => setEditedInvoice({ ...editedInvoice, tax_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
+                          defaultValue={editedInvoice.tax_cents ? (editedInvoice.tax_cents / 100).toFixed(2) : ''}
+                          onBlur={(e) => setEditedInvoice({ ...editedInvoice, tax_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
                           placeholder="0.00"
                           className="w-full pl-7 pr-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                          key={`tax-${editedInvoice.tax_cents}`}
                         />
                       </div>
                     </div>
