@@ -78,12 +78,21 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://js.stripe.com https://*.supabase.co",
+              // Stripe Payment Element loads chunked scripts from m.stripe.network
+              // in addition to js.stripe.com. Without m.stripe.network in script-src
+              // and frame-src, the card form hangs on "Loading payment form..."
+              // and the api.stripe.com/v1/elements calls cascade-fail with 401
+              // (the iframe handshake never completes so the elements session
+              // can't authenticate). Same for connect-src for the postMessage
+              // back-channel between the parent and the Stripe iframe.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://js.stripe.com https://m.stripe.network https://*.supabase.co",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.supabase.co",
-              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://maps.googleapis.com https://api.twilio.com https://api.resend.com wss://*.supabase.co",
-              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+              // *.stripe.com lets the Payment Element render card-brand logos
+              // (Visa, Mastercard, etc.) inside the iframe.
+              "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.supabase.co https://*.stripe.com",
+              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://api.twilio.com https://api.resend.com wss://*.supabase.co",
+              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://m.stripe.network",
               "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",

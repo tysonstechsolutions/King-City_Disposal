@@ -22,6 +22,18 @@ function CheckoutForm({ amountCents, onSuccess, onError, customerName, customerE
   const [isProcessing, setIsProcessing] = useState(false)
   const [message, setMessage] = useState('')
   const [elementReady, setElementReady] = useState(false)
+  // If the Stripe iframe never loads (CSP block, ad-blocker, browser
+  // Tracking Prevention, network issue), the form previously just spun
+  // forever. This timeout surfaces an actionable error after 15 seconds
+  // so the admin knows what's wrong and can switch browser or whitelist
+  // the site instead of staring at a spinner.
+  const [loadTimedOut, setLoadTimedOut] = useState(false)
+
+  useEffect(() => {
+    if (elementReady) return
+    const t = setTimeout(() => setLoadTimedOut(true), 15000)
+    return () => clearTimeout(t)
+  }, [elementReady])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -61,10 +73,26 @@ function CheckoutForm({ amountCents, onSuccess, onError, customerName, customerE
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {!elementReady && (
+      {!elementReady && !loadTimedOut && (
         <div className="flex items-center justify-center py-4">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
           <span className="text-dark-300">Loading payment form...</span>
+        </div>
+      )}
+      {!elementReady && loadTimedOut && (
+        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm space-y-2">
+          <div className="flex items-center gap-2 font-medium text-red-200">
+            <AlertCircle className="w-4 h-4" />
+            Payment form didn&apos;t load
+          </div>
+          <p>
+            This is almost always one of three things:
+          </p>
+          <ul className="list-disc list-inside space-y-1 text-xs">
+            <li>Browser <strong>Tracking Prevention</strong> blocking <code>m.stripe.network</code> — try Microsoft Edge with tracking prevention set to &ldquo;Basic,&rdquo; or use Chrome.</li>
+            <li>An <strong>ad-blocker / privacy extension</strong> blocking Stripe — disable it for this site.</li>
+            <li>A flaky network — refresh and try again.</li>
+          </ul>
         </div>
       )}
       <div className={elementReady ? '' : 'opacity-0 h-0 overflow-hidden'}>

@@ -9,10 +9,16 @@ import { requireAdminAuth } from '../../../../lib/adminAuth'
 
 export const dynamic = 'force-dynamic'
 
-// Initialize Stripe lazily to avoid build-time crash when env var is missing
+// Initialize Stripe lazily to avoid build-time crash when env var is missing.
+// Explicit guard so a missing key surfaces as an actionable error in the
+// admin UI ("Stripe is not configured on the server") instead of a generic
+// "Cannot read property" SDK crash.
 let _stripe;
 function getStripe() {
   if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY not set on the server. Add it to Vercel environment variables.');
+    }
     _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   }
   return _stripe;
