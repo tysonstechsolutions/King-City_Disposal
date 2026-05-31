@@ -538,14 +538,14 @@ export default function CustomerInvoicePage() {
                 <div className="print:flex print:justify-center print:gap-8">
                   <div>
                     <p className="text-dark-300 print:text-gray-600 print:text-xs">Operations</p>
-                    <a href="tel:6182318481" className="text-primary font-bold text-xl hover:text-primary/80 transition-colors print:text-black print:text-sm print:no-underline">
-                      (618) 231-8481
+                    <a href={`tel:${config.phoneRaw}`} className="text-primary font-bold text-xl hover:text-primary/80 transition-colors print:text-black print:text-sm print:no-underline">
+                      {config.phone}
                     </a>
                   </div>
                   <div>
                     <p className="text-dark-300 print:text-gray-600 print:text-xs">Billing</p>
-                    <a href="tel:6182318380" className="text-primary font-bold text-xl hover:text-primary/80 transition-colors print:text-black print:text-sm print:no-underline">
-                      (618) 231-8380
+                    <a href={`tel:${config.billingPhoneRaw}`} className="text-primary font-bold text-xl hover:text-primary/80 transition-colors print:text-black print:text-sm print:no-underline">
+                      {config.billingPhone}
                     </a>
                   </div>
                 </div>
@@ -563,7 +563,7 @@ export default function CustomerInvoicePage() {
         {/* Questions - Hidden on print */}
         <div className="mt-6 text-center text-dark-300 print:hidden">
           <p>Questions about this invoice?</p>
-          <a href={`tel:${config.billingPhone}`} className="text-primary font-medium hover:underline">
+          <a href={`tel:${config.billingPhoneRaw}`} className="text-primary font-medium hover:underline">
             Call {config.billingPhone}
           </a>
         </div>

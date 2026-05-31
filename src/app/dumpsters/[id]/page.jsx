@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { config, getDumpsterById } from '../../../config'
+import { getAggregateRating } from '../../../lib/reviews'
 import { notFound } from 'next/navigation'
 import Script from 'next/script'
 import {
@@ -87,21 +88,29 @@ function DumpsterSchema({ dumpster }) {
       "@type": "Brand",
       "name": config.businessName
     },
+    "sku": dumpster.id,
+    "category": "Dumpster Rental",
+    // Use AggregateOffer when there's a range (rental + overage + extension);
+    // even when only a single base price is shown today, this future-proofs
+    // for multi-duration pricing without breaking schema consumers.
     "offers": {
-      "@type": "Offer",
-      "price": minPrice,
+      "@type": "AggregateOffer",
       "priceCurrency": "USD",
-      "priceValidUntil": new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+      "lowPrice": minPrice,
+      "highPrice": minPrice + dumpster.extensionRate * 4, // up to 4 weeks of extension
+      "offerCount": prices.length || 1,
       "availability": "https://schema.org/InStock",
       "url": `${baseUrl}/dumpsters/${dumpster.id}`,
+      "priceValidUntil": `${new Date().getFullYear() + 1}-12-31`,
       "areaServed": {
         "@type": "GeoCircle",
         "geoMidpoint": {
           "@type": "GeoCoordinates",
-          "latitude": config.coordinates?.lat,
-          "longitude": config.coordinates?.lng,
+          "latitude": config.serviceAreaCenter.lat,
+          "longitude": config.serviceAreaCenter.lng,
         },
-        "geoRadius": "80000",
+        // schema.org expects geoRadius in meters; serviceRadius is miles (1 mi ≈ 1609 m)
+        "geoRadius": String(Math.round(config.serviceRadius * 1609)),
       },
       "seller": {
         "@type": "LocalBusiness",
@@ -110,21 +119,25 @@ function DumpsterSchema({ dumpster }) {
         "telephone": config.phoneRaw
       }
     },
-    // AggregateRating only emits when reviews are configured. Star
-    // ratings in search results lift CTR by 20-30%.
-    ...(config.reviews?.count > 0 ? {
+    // AggregateRating + Review entries together drive star snippets in
+    // Google search results (~20-30% CTR lift vs blue links).
+    ...(getAggregateRating() ? {
       "aggregateRating": {
         "@type": "AggregateRating",
-        "ratingValue": config.reviews.rating || "5.0",
-        "reviewCount": config.reviews.count,
+        "ratingValue": getAggregateRating().rating,
+        "reviewCount": getAggregateRating().count,
         "bestRating": "5",
         "worstRating": "1",
       }
     } : {}),
     "additionalProperty": [
       { "@type": "PropertyValue", "name": "Dimensions",      "value": dumpster.dimensions.display },
+      { "@type": "PropertyValue", "name": "Length",          "value": `${dumpster.dimensions.length} ft` },
+      { "@type": "PropertyValue", "name": "Width",           "value": `${dumpster.dimensions.width} ft` },
+      { "@type": "PropertyValue", "name": "Height",          "value": `${dumpster.dimensions.height} ft` },
       { "@type": "PropertyValue", "name": "Capacity",        "value": dumpster.capacity },
       { "@type": "PropertyValue", "name": "Weight Included", "value": dumpster.weightIncluded },
+      { "@type": "PropertyValue", "name": "Rental Period",   "value": "10 days" },
     ]
   }
 

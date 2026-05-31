@@ -703,7 +703,7 @@ export default function ChatbotWidget() {
                 Call {config.phone}
               </a>
               <p className="text-dark-500 text-sm mt-4">
-                We're available Mon-Sat, 7am-6pm
+                We&apos;re available Mon-Fri 7am-5pm, Sat 8am-12pm
               </p>
             </div>
           ) : (
@@ -711,7 +711,7 @@ export default function ChatbotWidget() {
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={msg.id || idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                   msg.type === 'user'
                     ? 'bg-primary text-white rounded-br-md'
@@ -1129,7 +1129,7 @@ export default function ChatbotWidget() {
                       className="mt-0.5 w-4 h-4 rounded border-dark-500 bg-dark-700 text-primary focus:ring-primary"
                     />
                     <span className="text-xs text-dark-300">
-                      I agree to receive SMS from {config.businessName} for booking updates, delivery notifications, and invoices. Msg & data rates apply. Reply STOP to opt out. <a href="/sms-terms" target="_blank" className="text-primary hover:underline">SMS Terms</a>
+                      I agree to receive SMS from {config.businessName} for booking updates, delivery notifications, and invoices. Msg & data rates apply. Reply STOP to opt out. <a href="/sms-terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">SMS Terms</a>
                     </span>
                   </label>
                   <button

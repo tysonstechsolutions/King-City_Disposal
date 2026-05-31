@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { config } from '../../config'
 import {
@@ -31,6 +31,32 @@ export default function MyRentalsPage() {
   const [requestLoading, setRequestLoading] = useState(false)
   const [requestSuccess, setRequestSuccess] = useState('')
 
+  // Escape-to-close on the request modal so keyboard users aren't trapped.
+  useEffect(() => {
+    if (!requestModal) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setRequestModal(null)
+        setRequestNotes('')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [requestModal])
+
+  // Restore the phone from a prior visit so repeat customers can hit the
+  // page and immediately tap Submit. We persist on successful lookup, not
+  // on every keystroke, to avoid storing typos.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage?.getItem('kcd:my-rentals-phone')
+      if (saved) setPhone(saved)
+    } catch {
+      // localStorage can throw in private mode / when disabled — silent
+      // fallback is fine, user just types their phone.
+    }
+  }, [])
+
   const handleLookup = async (e) => {
     e.preventDefault()
     setError('')
@@ -53,6 +79,13 @@ export default function MyRentalsPage() {
       if (result.bookings.length === 0) {
         setError('No rentals found for this phone number')
         return
+      }
+
+      // Lookup succeeded — remember the phone for next visit.
+      try {
+        window.localStorage?.setItem('kcd:my-rentals-phone', phone)
+      } catch {
+        // Ignore — feature degrades gracefully.
       }
 
       setData(result)
@@ -152,12 +185,13 @@ export default function MyRentalsPage() {
 
           <form onSubmit={handleLookup} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">
+              <label htmlFor="my-rentals-phone" className="block text-sm font-medium text-dark-300 mb-2">
                 Phone Number
               </label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" aria-hidden="true" />
                 <input
+                  id="my-rentals-phone"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -199,7 +233,7 @@ export default function MyRentalsPage() {
 
           <p className="text-center text-dark-500 text-sm mt-8">
             Questions? Call us at{' '}
-            <a href={`tel:${config.phone}`} className="text-primary-400 hover:underline">
+            <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:underline">
               {config.phone}
             </a>
           </p>
@@ -368,7 +402,7 @@ export default function MyRentalsPage() {
         <div className="mt-8 text-center">
           <p className="text-dark-400 text-sm">
             Need help? Call{' '}
-            <a href={`tel:${config.phone}`} className="text-primary-400 hover:underline">
+            <a href={`tel:${config.phoneRaw}`} className="text-primary-400 hover:underline">
               {config.phone}
             </a>
           </p>
@@ -377,9 +411,20 @@ export default function MyRentalsPage() {
 
       {/* Request Modal */}
       {requestModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="request-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setRequestModal(null)
+              setRequestNotes('')
+            }
+          }}
+        >
           <div className="bg-dark-800 rounded-2xl max-w-md w-full p-6 border border-dark-700">
-            <h3 className="text-xl font-bold text-white mb-2">
+            <h3 id="request-modal-title" className="text-xl font-bold text-white mb-2">
               {requestModal.type === 'pickup' && 'Request Pickup'}
               {requestModal.type === 'extension' && 'Extend Rental'}
               {requestModal.type === 'issue' && 'Report an Issue'}

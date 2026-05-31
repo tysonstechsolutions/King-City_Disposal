@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Script from 'next/script'
 import { config } from '../../../config'
+import RelatedLinks from '../../../components/RelatedLinks'
 import {
   CheckCircle,
   XCircle,
@@ -66,15 +67,35 @@ function ArticleSchema() {
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": `${config.websiteUrl}/guides/what-can-go-in-dumpster`
-    }
+    },
+    "datePublished": "2026-03-01",
+    "dateModified": "2026-05-30",
+    "image": `${config.websiteUrl}/og-image.jpg`,
+  }
+
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home",   "item": config.websiteUrl },
+      { "@type": "ListItem", "position": 2, "name": "Guides", "item": `${config.websiteUrl}/guides/what-can-go-in-dumpster` },
+      { "@type": "ListItem", "position": 3, "name": "What Can Go in a Dumpster", "item": `${config.websiteUrl}/guides/what-can-go-in-dumpster` },
+    ],
   }
 
   return (
-    <Script
-      id="article-schema"
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
+    <>
+      <Script
+        id="article-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+      <Script
+        id="article-breadcrumb"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+    </>
   )
 }
 
@@ -449,6 +470,16 @@ export default function WhatCanGoInDumpsterGuide() {
           </div>
         </div>
       </section>
+
+      <RelatedLinks
+        heading="Keep reading"
+        items={[
+          { href: '/guides/dumpster-sizes', title: 'What size dumpster do I need?', description: 'Project-by-project size recommendations for cleanouts, renovations, and roofing.' },
+          { href: '/guides/dumpster-rental-cost', title: 'How much does a dumpster rental cost?', description: 'Real pricing, what drives it up, how to avoid surprise fees.' },
+          { href: '/pricing', title: 'See our pricing', description: 'Transparent pricing for every dumpster size — no hidden fees.' },
+          { href: '/faq', title: 'Frequently asked questions', description: 'Detailed answers about weight limits, extensions, prohibited items, and more.' },
+        ]}
+      />
     </>
   )
 }

@@ -266,7 +266,7 @@ export default function ReceiptPage() {
         {/* Questions Section - Hidden on print */}
         <div className="mt-6 text-center text-dark-300 print:hidden">
           <p>Questions about your receipt?</p>
-          <a href={`tel:${config.phone}`} className="text-primary font-medium hover:underline">
+          <a href={`tel:${config.phoneRaw}`} className="text-primary font-medium hover:underline">
             Call {config.phone}
           </a>
         </div>

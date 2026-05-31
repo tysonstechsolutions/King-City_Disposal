@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Script from 'next/script'
 import { config } from '../../../config'
+import RelatedLinks from '../../../components/RelatedLinks'
 import {
   Ruler,
   Home,
@@ -63,15 +64,37 @@ function ArticleSchema() {
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": `${config.websiteUrl}/guides/dumpster-sizes`
-    }
+    },
+    // datePublished helps Google understand article freshness for "topical
+    // authority" ranking. Update when you materially rewrite the guide.
+    "datePublished": "2026-03-01",
+    "dateModified": "2026-05-30",
+    "image": `${config.websiteUrl}/og-image.jpg`,
+  }
+
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home",   "item": config.websiteUrl },
+      { "@type": "ListItem", "position": 2, "name": "Guides", "item": `${config.websiteUrl}/guides/dumpster-sizes` },
+      { "@type": "ListItem", "position": 3, "name": "Dumpster Sizes", "item": `${config.websiteUrl}/guides/dumpster-sizes` },
+    ],
   }
 
   return (
-    <Script
-      id="article-schema"
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
+    <>
+      <Script
+        id="article-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+      <Script
+        id="article-breadcrumb"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+    </>
   )
 }
 
@@ -422,6 +445,16 @@ export default function DumpsterSizesGuide() {
           </div>
         </div>
       </section>
+
+      <RelatedLinks
+        heading="Keep reading"
+        items={[
+          { href: '/guides/dumpster-rental-cost', title: 'How much does a dumpster rental cost?', description: 'Real numbers, what drives price up, how to avoid surprise fees.' },
+          { href: '/guides/what-can-go-in-dumpster', title: 'What can (and can\'t) go in a dumpster', description: 'Accepted items, prohibited materials, and surcharge items in Illinois.' },
+          { href: '/pricing', title: 'See our pricing', description: 'Transparent pricing for every dumpster size — no hidden fees.' },
+          { href: '/book', title: 'Book a dumpster', description: 'Reserve in under 2 minutes with map placement and same-day delivery.' },
+        ]}
+      />
     </>
   )
 }

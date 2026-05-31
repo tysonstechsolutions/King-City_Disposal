@@ -1,9 +1,17 @@
+import Link from 'next/link'
+import { config } from '../../config'
+
+// White-on-light styling here is intentional: this page exists for Twilio's
+// toll-free SMS verification reviewers, who expect a plain factual document
+// distinct from the marketing site.
 export default function SMSOptInPage() {
+  const websiteHost = (config.websiteUrl || '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+
   return (
     <div className="min-h-screen bg-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">
-          SMS Opt-In Process - King City Disposal
+          SMS Opt-In Process - {config.businessName}
         </h1>
 
         <div className="prose prose-lg">
@@ -13,9 +21,9 @@ export default function SMSOptInPage() {
 
           <p className="text-gray-700 mb-4">
             Customers provide explicit consent to receive SMS notifications during our online booking process at{' '}
-            <a href="https://www.kingcitydisposal.com/book" className="text-orange-600 hover:underline">
-              kingcitydisposal.com/book
-            </a>
+            <Link href="/book" className="text-orange-600 hover:underline">
+              {websiteHost}/book
+            </Link>
           </p>
 
           <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-3">
@@ -46,15 +54,15 @@ export default function SMSOptInPage() {
               <strong>Consent Notice (displayed directly below phone input):</strong>
             </p>
             <p className="text-gray-800 italic">
-              "By providing your phone number, you agree to receive booking confirmations and invoice
-              notifications via text. Msg &amp; data rates may apply. Reply STOP to opt out."
+              &ldquo;By providing your phone number, you agree to receive booking confirmations and invoice
+              notifications via text. Msg &amp; data rates may apply. Reply STOP to opt out.&rdquo;
             </p>
 
             <p className="text-sm text-gray-600 mt-4 mb-2">
               <strong>Action Required:</strong>
             </p>
             <p className="text-gray-800">
-              Customer must click "Continue" button to proceed, indicating acceptance of SMS notifications.
+              Customer must click &ldquo;Continue&rdquo; button to proceed, indicating acceptance of SMS notifications.
             </p>
           </div>
 
@@ -88,8 +96,8 @@ export default function SMSOptInPage() {
 
           <p className="text-gray-700">
             Customers can reply <strong>HELP</strong> for assistance or call us at{' '}
-            <a href="tel:+16182318481" className="text-orange-600 hover:underline">
-              (618) 231-8481
+            <a href={`tel:${config.phoneRaw}`} className="text-orange-600 hover:underline">
+              {config.phone}
             </a>
           </p>
 
@@ -98,25 +106,25 @@ export default function SMSOptInPage() {
               For Verification Purposes
             </h4>
             <p className="text-blue-800">
-              This page documents King City Disposal's SMS opt-in process for toll-free number verification.
+              This page documents {config.businessName}&apos;s SMS opt-in process for toll-free number verification.
               All information accurately reflects our actual business practices.
             </p>
             <p className="text-blue-800 mt-2">
-              <strong>Business:</strong> King City Disposal<br />
-              <strong>Toll-Free Number:</strong> (Your toll-free number)<br />
+              <strong>Business:</strong> {config.businessName}<br />
+              <strong>Toll-Free Number:</strong> {config.phone}<br />
               <strong>Service Area:</strong> Southern Illinois<br />
               <strong>Website:</strong>{' '}
-              <a href="https://www.kingcitydisposal.com" className="text-blue-600 hover:underline">
-                kingcitydisposal.com
-              </a>
+              <Link href="/" className="text-blue-600 hover:underline">
+                {websiteHost}
+              </Link>
             </p>
           </div>
 
           <div className="mt-12 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-500">
               Last Updated: March 5, 2026<br />
-              Contact: <a href="mailto:kingcitydisposal@gmail.com" className="text-orange-600 hover:underline">
-                kingcitydisposal@gmail.com
+              Contact: <a href={`mailto:${config.email}`} className="text-orange-600 hover:underline">
+                {config.email}
               </a>
             </p>
           </div>

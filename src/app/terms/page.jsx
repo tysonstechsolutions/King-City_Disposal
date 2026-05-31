@@ -16,7 +16,7 @@ export default function TermsPage() {
 
         <div className="prose prose-neutral prose-lg max-w-none">
           <p className="text-dark-400 mb-6">
-            Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            Last updated: March 5, 2026
           </p>
 
           <section className="mb-8">

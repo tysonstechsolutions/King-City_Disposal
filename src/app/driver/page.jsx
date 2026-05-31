@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { config } from '../../config'
+import { logger } from '../../lib/logger'
 import {
   Truck,
   MapPin,
@@ -128,34 +129,29 @@ export default function DriverChecklistPage() {
         }
       )
 
-      // Notify customer if delivered
-      if (newStatus === 'delivered') {
-        const stop = stops.find(s => s.id === id)
-        if (stop?.customer_phone) {
-          // This would normally go through your SMS API
-          console.log(`Would notify ${stop.customer_phone} of delivery`)
-        }
-      }
+      // Customer delivery SMS is sent by the server-side booking webhook,
+      // not from this driver client (which only has the anon key). Nothing
+      // to do here — fetchStops() will reflect the new status.
 
       fetchStops()
     } catch (error) {
-      console.error('Error updating:', error)
+      logger.error('Driver stop update failed', error, { stopId: id, newStatus })
     }
     setUpdating(null)
   }
 
   const openMaps = (stop) => {
     if (stop.placement_lat && stop.placement_lng) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${stop.placement_lat},${stop.placement_lng}`, '_blank')
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${stop.placement_lat},${stop.placement_lng}`, '_blank', 'noopener,noreferrer')
     } else {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`, '_blank')
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`, '_blank', 'noopener,noreferrer')
     }
   }
 
   const openAllInMaps = () => {
     if (stops.length === 0) return
     const addresses = stops.map(s => encodeURIComponent(s.address)).join('/')
-    window.open(`https://www.google.com/maps/dir/${addresses}`, '_blank')
+    window.open(`https://www.google.com/maps/dir/${addresses}`, '_blank', 'noopener,noreferrer')
   }
 
   const getDumpster = (sizeId) => {
@@ -192,18 +188,22 @@ export default function DriverChecklistPage() {
             
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={fetchStops}
                 disabled={loading}
                 className="p-3 bg-dark-700 rounded-xl"
+                aria-label="Refresh stops"
               >
-                <RefreshCw className={`w-5 h-5 text-dark-300 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-5 h-5 text-dark-300 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
               </button>
               {stops.length > 0 && (
                 <button
+                  type="button"
                   onClick={openAllInMaps}
                   className="p-3 bg-primary/20 rounded-xl"
+                  aria-label="Open all stops in Maps"
                 >
-                  <Navigation className="w-5 h-5 text-primary-400" />
+                  <Navigation className="w-5 h-5 text-primary-400" aria-hidden="true" />
                 </button>
               )}
             </div>

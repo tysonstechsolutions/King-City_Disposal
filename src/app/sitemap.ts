@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { config } from '../config'
 import { services } from '../lib/services'
+import { cityHooks } from '../lib/cityHooks'
 
 // Helper to create URL-friendly slug from town name
 function slugify(town: string): string {
@@ -47,15 +48,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/guides/dumpster-sizes`,            lastModified: LAST_MOD.guides,      changeFrequency: 'monthly' as const, priority: 0.6 },
     { url: `${baseUrl}/guides/dumpster-rental-cost`,      lastModified: LAST_MOD.guides,      changeFrequency: 'monthly' as const, priority: 0.6 },
     { url: `${baseUrl}/guides/what-can-go-in-dumpster`,   lastModified: LAST_MOD.guides,      changeFrequency: 'monthly' as const, priority: 0.6 },
+    { url: `${baseUrl}/guides/20-yard-vs-30-yard-dumpster`, lastModified: LAST_MOD.guides,    changeFrequency: 'monthly' as const, priority: 0.7 },
+    { url: `${baseUrl}/reviews`,                          lastModified: LAST_MOD.faq,         changeFrequency: 'monthly' as const, priority: 0.7 },
     { url: `${baseUrl}/privacy`,                          lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.3 },
     { url: `${baseUrl}/terms`,                            lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.3 },
+    { url: `${baseUrl}/sms-terms`,                        lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.2 },
+    { url: `${baseUrl}/sms-opt-in`,                       lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.2 },
   ]
 
+  // City pages: cities we've written unique copy for (see lib/cityHooks)
+  // get bumped priority since they have real differentiated content.
   const cityPages = config.serviceTowns.map((town: string) => ({
     url: `${baseUrl}/dumpster-rental/${slugify(town)}-il`,
     lastModified: LAST_MOD.cityPage,
     changeFrequency: 'monthly' as const,
-    priority: 0.7,
+    priority: cityHooks[town] ? 0.8 : 0.6,
   }))
 
   const dumpsterPages = config.dumpsters.map((dumpster: { id: string }) => ({

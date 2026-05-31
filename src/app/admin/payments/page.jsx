@@ -662,6 +662,7 @@ export default function AdminPaymentsPage() {
                           <Link
                             href={`/receipt/${t.receipt_number}`}
                             target="_blank"
+                            rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm"
                           >
                             View
@@ -699,6 +700,7 @@ export default function AdminPaymentsPage() {
                     <Link
                       href={`/receipt/${t.receipt_number}`}
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary-600 text-sm"
                     >
                       View Receipt <ExternalLink className="w-3 h-3" />

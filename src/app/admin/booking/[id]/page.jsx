@@ -477,6 +477,7 @@ export default function BookingDetailPage() {
                       <a
                         href={`/invoice/${invoiceCreated.invoice_number}`}
                         target="_blank"
+                        rel="noopener noreferrer"
                         className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2"
                       >
                         <ExternalLink className="w-4 h-4" />

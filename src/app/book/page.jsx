@@ -575,7 +575,18 @@ function BookingPageContent() {
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-8">
+        <div className="mb-8" role="progressbar" aria-valuenow={currentStep} aria-valuemin={1} aria-valuemax={STEPS.length} aria-label={`Booking step ${currentStep} of ${STEPS.length}`}>
+          {/* Mobile-visible step counter — step name labels below are
+              hidden on small screens, so this gives the user clear
+              "where am I" context on phones (where most book). */}
+          <div className="sm:hidden flex items-center justify-between mb-3 text-sm">
+            <span className="text-primary font-semibold">
+              Step {currentStep} of {STEPS.length}
+            </span>
+            <span className="text-dark-300">
+              {STEPS.find(s => s.id === currentStep)?.name}
+            </span>
+          </div>
           <div className="flex justify-between relative">
             {/* Progress line background */}
             <div className="absolute top-5 left-0 right-0 h-0.5 bg-dark-700" />
@@ -1015,7 +1026,7 @@ function BookingPageContent() {
                       By checking this box, you consent to receive SMS messages from King City Disposal including booking confirmations, delivery updates, pickup reminders, and invoice notifications. Message frequency varies. Message and data rates may apply.
                     </p>
                     <p className="text-dark-400 mt-2">
-                      Reply STOP to opt out at any time. Reply HELP for assistance. View our <a href="/sms-terms" target="_blank" className="text-primary hover:underline">SMS Terms</a> and <a href="/privacy" target="_blank" className="text-primary hover:underline">Privacy Policy</a>.
+                      Reply STOP to opt out at any time. Reply HELP for assistance. View our <a href="/sms-terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">SMS Terms</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</a>.
                     </p>
                   </div>
                 </label>

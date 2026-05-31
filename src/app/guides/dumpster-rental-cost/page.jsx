@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Script from 'next/script'
 import { config } from '../../../config'
+import RelatedLinks from '../../../components/RelatedLinks'
 import {
   DollarSign,
   Calculator,
@@ -63,15 +64,35 @@ function ArticleSchema() {
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": `${config.websiteUrl}/guides/dumpster-rental-cost`
-    }
+    },
+    "datePublished": "2026-03-01",
+    "dateModified": "2026-05-30",
+    "image": `${config.websiteUrl}/og-image.jpg`,
+  }
+
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home",   "item": config.websiteUrl },
+      { "@type": "ListItem", "position": 2, "name": "Guides", "item": `${config.websiteUrl}/guides/dumpster-rental-cost` },
+      { "@type": "ListItem", "position": 3, "name": "Dumpster Rental Cost", "item": `${config.websiteUrl}/guides/dumpster-rental-cost` },
+    ],
   }
 
   return (
-    <Script
-      id="article-schema"
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
+    <>
+      <Script
+        id="article-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+      <Script
+        id="article-breadcrumb"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+    </>
   )
 }
 
@@ -387,6 +408,16 @@ export default function DumpsterCostGuide() {
           </div>
         </div>
       </section>
+
+      <RelatedLinks
+        heading="Keep reading"
+        items={[
+          { href: '/guides/dumpster-sizes', title: 'What size dumpster do I need?', description: 'Choose between a 20-yard and 30-yard with project-by-project examples.' },
+          { href: '/guides/what-can-go-in-dumpster', title: 'What can (and can\'t) go in a dumpster', description: 'Accepted items, prohibited materials, and surcharge items.' },
+          { href: '/pricing', title: 'See our actual pricing', description: 'Transparent, no-surprise pricing for every dumpster size.' },
+          { href: '/book', title: 'Book a dumpster now', description: 'Reserve in under 2 minutes with same-day delivery.' },
+        ]}
+      />
     </>
   )
 }

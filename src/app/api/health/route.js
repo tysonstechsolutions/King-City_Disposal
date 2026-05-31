@@ -6,15 +6,16 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../config';
-import { callClaudeWithFallback, getBestClaudeModel } from '../../../lib/claudeModels';
+import { callClaudeWithFallback } from '../../../lib/claudeModels';
+
+// Force dynamic — this hits live services and must NOT prerender at build time
+// (otherwise the build log gets polluted with "service not configured" messages
+// and stale data may be served as static HTML).
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   const startTime = Date.now();
-
-  // Don't log API key contents — even a 25-char prefix can leak the project ID
-  // and enough entropy to identify the account. Just confirm presence.
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  console.log('[Health] ANTHROPIC_API_KEY:', apiKey ? 'set' : 'NOT SET');
 
   const checks = {
     timestamp: new Date().toISOString(),

@@ -193,7 +193,7 @@ export default function SMSTermsPage() {
 
           {/* Last Updated */}
           <p className="text-dark-500 text-sm text-center pt-4 border-t border-dark-600">
-            Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            Last updated: March 5, 2026
           </p>
         </div>
       </div>

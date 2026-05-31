@@ -12,6 +12,7 @@
 
 import Link from 'next/link'
 import { config } from '../../../config'
+import { getCityHook, getNearbyCities } from '../../../lib/cityHooks'
 import { notFound } from 'next/navigation'
 import Script from 'next/script'
 import {
@@ -92,7 +93,7 @@ export async function generateMetadata({ params }) {
 // ============================================
 // CITY-SPECIFIC SCHEMA MARKUP
 // ============================================
-function CitySchema({ townName }) {
+function CitySchema({ townName, hook }) {
   const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
 
   const serviceSchema = {
@@ -163,6 +164,21 @@ function CitySchema({ townName }) {
     ]
   }
 
+  // City-specific FAQ schema — when present, makes the page eligible for
+  // the "People also ask" Google feature for queries like
+  // "dumpster permit Mount Vernon IL".
+  const faqSchema = hook?.faq ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": hook.faq.q,
+        "acceptedAnswer": { "@type": "Answer", "text": hook.faq.a },
+      },
+    ],
+  } : null
+
   return (
     <>
       <Script
@@ -175,6 +191,13 @@ function CitySchema({ townName }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
+      {faqSchema && (
+        <Script
+          id={`faq-schema-${slugify(townName)}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
     </>
   )
 }
@@ -200,11 +223,10 @@ function getDistance(town) {
   return distances[town] || Math.floor(15 + (town.length % 10) * 2)
 }
 
-// Get nearby towns for internal linking
+// Get nearby towns for internal linking. Delegates to getNearbyCities()
+// which prefers curated geographic neighbors when available.
 function getNearbyTowns(currentTown, count = 6) {
-  return config.serviceTowns
-    .filter(t => t !== currentTown)
-    .slice(0, count)
+  return getNearbyCities(currentTown, config.serviceTowns, count)
 }
 
 // ============================================
@@ -220,10 +242,11 @@ export default function CityPage({ params }) {
   const distance = getDistance(townName)
   const nearbyTowns = getNearbyTowns(townName)
   const isBaseCity = townName === config.address.city
+  const hook = getCityHook(townName)
 
   return (
     <>
-      <CitySchema townName={townName} />
+      <CitySchema townName={townName} hook={hook} />
 
       {/* Hero Section */}
       <section className="bg-primary-700 text-white py-16">
@@ -301,6 +324,40 @@ export default function CityPage({ params }) {
           </div>
         </div>
       </section>
+
+      {/* City-specific hook — only renders for towns we've written
+          unique copy for (see src/lib/cityHooks.js). Pure SEO win:
+          breaks the duplicate-content pattern across city pages and
+          gives each page a chunk of locally-relevant text Google rewards. */}
+      {hook?.hook && (
+        <section className="bg-dark-950 border-y border-dark-800">
+          <div className="container-custom py-8">
+            <div className="max-w-3xl mx-auto">
+              <p className="text-lg text-dark-200 leading-relaxed">
+                {hook.hook}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* City-specific FAQ — also drives FAQ schema (eligible for
+          "People also ask" placements in Google) */}
+      {hook?.faq && (
+        <section className="section bg-dark-900">
+          <div className="container-custom">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-2xl font-bold text-white mb-4">
+                {townName} Dumpster Rental FAQ
+              </h2>
+              <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
+                <h3 className="text-lg font-semibold text-white mb-2">{hook.faq.q}</h3>
+                <p className="text-dark-300 leading-relaxed">{hook.faq.a}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Dumpster Sizes Available */}
       <section className="section bg-dark-800">

@@ -1102,6 +1102,7 @@ export default function InvoiceDetailPage() {
                 <a
                   href={`/invoice/${invoice.invoice_number}`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="w-full px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600 flex items-center gap-2 justify-center"
                 >
                   <ExternalLink className="w-4 h-4" />

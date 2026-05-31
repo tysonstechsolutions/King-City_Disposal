@@ -1,0 +1,56 @@
+# King City Disposal
+
+> Family-owned roll-off dumpster rental serving Mount Vernon, Fairfield, and 35+ towns across Southern Illinois. Same-day delivery, transparent pricing (from $475 for a 20-yard / 10-day rental), no hidden fees.
+
+Phone: (618) 231-8481
+Email: kingcitydisposal@gmail.com
+Service area: 35-mile radius centered on Fairfield, IL
+Fleet: 10× 20-yard dumpsters, 15× 30-yard dumpsters
+
+## Core pages
+
+- [Homepage](https://www.kingcitydisposal.com/): Overview, pricing snapshot, testimonials
+- [Book a dumpster](https://www.kingcitydisposal.com/book): Multi-step booking form with map placement and Stripe payment
+- [Pricing](https://www.kingcitydisposal.com/pricing): 20-yard $475 / 30-yard $575, 10-day rentals, $100/week extensions, $105/ton weight overage
+- [Dumpster sizes](https://www.kingcitydisposal.com/dumpsters): Side-by-side comparison of 20yd vs 30yd
+- [Service area](https://www.kingcitydisposal.com/service-area): Interactive map and list of 35+ towns served
+- [FAQ](https://www.kingcitydisposal.com/faq): Common questions about pricing, sizes, prohibited items, weight limits
+- [Contact](https://www.kingcitydisposal.com/contact): Phone, email, hours, contact form
+
+## Service offerings
+
+- [Residential dumpster rental](https://www.kingcitydisposal.com/services/residential)
+- [Construction debris dumpsters](https://www.kingcitydisposal.com/services/construction)
+- [Roofing tear-off dumpsters](https://www.kingcitydisposal.com/services/roofing)
+- [Junk removal](https://www.kingcitydisposal.com/services/junk-removal)
+- [Yard waste](https://www.kingcitydisposal.com/services/yard-waste)
+
+## Guides
+
+- [Dumpster size guide](https://www.kingcitydisposal.com/guides/dumpster-sizes)
+- [Dumpster rental cost guide](https://www.kingcitydisposal.com/guides/dumpster-rental-cost)
+- [What can go in a dumpster](https://www.kingcitydisposal.com/guides/what-can-go-in-dumpster)
+
+## Top city landing pages
+
+- [Mount Vernon, IL](https://www.kingcitydisposal.com/dumpster-rental/mount-vernon-il)
+- [Fairfield, IL](https://www.kingcitydisposal.com/dumpster-rental/fairfield-il)
+- [Centralia, IL](https://www.kingcitydisposal.com/dumpster-rental/centralia-il)
+- [Salem, IL](https://www.kingcitydisposal.com/dumpster-rental/salem-il)
+- [Carmi, IL](https://www.kingcitydisposal.com/dumpster-rental/carmi-il)
+- [McLeansboro, IL](https://www.kingcitydisposal.com/dumpster-rental/mcleansboro-il)
+- [West Frankfort, IL](https://www.kingcitydisposal.com/dumpster-rental/west-frankfort-il)
+- [Benton, IL](https://www.kingcitydisposal.com/dumpster-rental/benton-il)
+
+## Hours
+
+- Monday–Friday: 7:00 AM – 5:00 PM
+- Saturday: 8:00 AM – 12:00 PM
+- Sunday: Closed
+
+## Optional
+
+- [About us](https://www.kingcitydisposal.com/about): Locally owned, Southern Illinois roots
+- [Privacy policy](https://www.kingcitydisposal.com/privacy)
+- [Terms of service](https://www.kingcitydisposal.com/terms)
+- [SMS terms](https://www.kingcitydisposal.com/sms-terms)

@@ -187,10 +187,11 @@ export default function ContactPage() {
                 <form onSubmit={handleSubmit} className="bg-dark-900 rounded-xl border border-dark-700 p-6 md:p-8">
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-dark-200 mb-2">
+                      <label htmlFor="contact-name" className="block text-sm font-medium text-dark-200 mb-2">
                         Your Name *
                       </label>
                       <input
+                        id="contact-name"
                         type="text"
                         required
                         value={formData.name}
@@ -202,10 +203,11 @@ export default function ContactPage() {
 
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-dark-200 mb-2">
+                        <label htmlFor="contact-phone" className="block text-sm font-medium text-dark-200 mb-2">
                           Phone Number *
                         </label>
                         <input
+                          id="contact-phone"
                           type="tel"
                           required
                           value={formData.phone}
@@ -215,10 +217,11 @@ export default function ContactPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-dark-200 mb-2">
+                        <label htmlFor="contact-email" className="block text-sm font-medium text-dark-200 mb-2">
                           Email (Optional)
                         </label>
                         <input
+                          id="contact-email"
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -229,10 +232,11 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-dark-200 mb-2">
+                      <label htmlFor="contact-message" className="block text-sm font-medium text-dark-200 mb-2">
                         Message *
                       </label>
                       <textarea
+                        id="contact-message"
                         required
                         rows={5}
                         value={formData.message}

@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { config } from '../config'
+import { reviews as testimonials } from '../lib/reviews'
 import {
   Phone,
   CheckCircle,
   ArrowRight,
   Star,
   MapPin,
-  Clock,
   Shield,
   Sofa,
   Hammer,
@@ -19,32 +19,8 @@ import {
   Truck,
   Calendar,
   DollarSign,
-  Users,
   ThumbsUp,
-  Zap
 } from 'lucide-react'
-
-// Testimonials data
-const testimonials = [
-  {
-    name: "Mike Johnson",
-    location: "Mount Vernon, IL",
-    text: "Fast delivery, fair pricing, and they picked it up right on time. Exactly what I needed for my garage cleanout.",
-    rating: 5
-  },
-  {
-    name: "Sarah Williams",
-    location: "Centralia, IL",
-    text: "Used them for a roofing project. The dumpster was there when they said it would be, and pickup was hassle-free.",
-    rating: 5
-  },
-  {
-    name: "Tom Baker",
-    location: "Salem, IL",
-    text: "Great local company. Called them in the morning, had a dumpster by afternoon. Can't beat that service.",
-    rating: 5
-  }
-]
 
 // What we haul items
 const haulItems = [
@@ -74,10 +50,14 @@ export default function HomePage() {
                   height={450}
                   className="w-full h-auto object-cover"
                   priority
+                  // 50vw on desktop (right column of 2-col hero), 100vw mobile.
+                  // Lets next/image serve a sized variant rather than the
+                  // full 600x450 to every viewport.
+                  sizes="(min-width: 1024px) 50vw, 100vw"
                 />
                 {/* Overlay badge */}
                 <div className="absolute bottom-4 left-4 bg-primary-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
-                  <span className="text-2xl">$475</span>
+                  <span className="text-2xl">${config.dumpsters[0].pricing['10-day']}</span>
                   <span className="text-sm ml-1">Starting Price</span>
                 </div>
               </div>
@@ -177,7 +157,7 @@ export default function HomePage() {
               <div className="text-accent-300 text-sm">Delivery Available</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-primary-400">30 Mile</div>
+              <div className="text-3xl font-bold text-primary-400">{config.serviceRadius} Mile</div>
               <div className="text-accent-300 text-sm">Service Radius</div>
             </div>
           </div>
@@ -292,7 +272,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex justify-between py-2">
                       <span className="text-accent-400">Best For</span>
-                      <span className="font-medium text-white">{dumpster.id === '20-yard' ? 'Home Cleanouts' : 'Big Projects'}</span>
+                      <span className="font-medium text-white">{dumpster.id === '20yd' ? 'Home Cleanouts' : 'Big Projects'}</span>
                     </div>
                   </div>
 
@@ -424,15 +404,15 @@ export default function HomePage() {
                 </div>
                 <ul className="space-y-4">
                   <li className="text-accent-300">
-                    <span className="font-semibold text-white">Weight overage:</span> $105/ton over 3 tons
+                    <span className="font-semibold text-white">Weight overage:</span> ${config.dumpsters[0].weightOverage}/ton over {config.dumpsters[0].weightIncluded}
                     <p className="text-sm text-accent-400 mt-1">Most cleanouts stay under. Heavy stuff like concrete adds up.</p>
                   </li>
                   <li className="text-accent-300">
-                    <span className="font-semibold text-white">Extra time:</span> $25/day after 10 days
+                    <span className="font-semibold text-white">Extra time:</span> ${config.dumpsters[0].extensionRate}/week after 10 days
                     <p className="text-sm text-accent-400 mt-1">Need more time? No problem, just let us know.</p>
                   </li>
                   <li className="text-accent-300">
-                    <span className="font-semibold text-white">Mattresses:</span> $40 each
+                    <span className="font-semibold text-white">Mattresses:</span> ${config.surchargeItems.find(s => s.item === 'Mattress')?.fee || 40} each
                     <p className="text-sm text-accent-400 mt-1">Special disposal required by law.</p>
                   </li>
                 </ul>
@@ -459,9 +439,9 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {testimonials.map((testimonial, index) => (
+            {testimonials.map((testimonial) => (
               <div
-                key={index}
+                key={testimonial.author + testimonial.datePublished}
                 className="bg-accent-800 rounded-2xl p-6 border border-accent-700"
               >
                 {/* Stars */}
@@ -474,11 +454,11 @@ export default function HomePage() {
                 <Quote className="w-8 h-8 text-accent-600 mb-3" />
 
                 <p className="text-white/90 mb-4 leading-relaxed">
-                  &ldquo;{testimonial.text}&rdquo;
+                  &ldquo;{testimonial.body}&rdquo;
                 </p>
 
                 <div>
-                  <p className="font-semibold text-white">{testimonial.name}</p>
+                  <p className="font-semibold text-white">{testimonial.author}</p>
                   <p className="text-sm text-accent-400">{testimonial.location}</p>
                 </div>
               </div>
@@ -559,7 +539,7 @@ export default function HomePage() {
           </div>
 
           <p className="text-white/70 text-sm mt-6">
-            Mon-Fri 7am-6pm • Sat 8am-2pm • Same-day delivery available
+            Mon-Fri 7am-5pm • Sat 8am-12pm • Same-day delivery available
           </p>
         </div>
       </section>

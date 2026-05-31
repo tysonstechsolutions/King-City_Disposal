@@ -1,8 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Static assets get long-cache headers from next/image. AVIF + WebP saves
+  // 30-60% over JPEG on the hero + dumpster photos with no quality loss.
   images: {
-    domains: ['api.mapbox.com'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'api.mapbox.com' },
+    ],
+    formats: ['image/avif', 'image/webp'],
+    // Cache optimized images at the CDN edge for ~1 year. Filenames are
+    // content-hashed so this is safe.
+    minimumCacheTTL: 31536000,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
   },
+  // Compress responses (HTML/CSS/JSON) at the edge. Default true on Vercel,
+  // explicit for self-hosted deployments.
+  compress: true,
+  // Strip the X-Powered-By: Next.js header — small but harmless.
+  poweredByHeader: false,
   // Enforce trailing slash consistency (no trailing slashes)
   trailingSlash: false,
   // Redirect duplicate pages to canonical URLs

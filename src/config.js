@@ -27,6 +27,9 @@ export const config = {
   billingPhone: "(618) 231-8380",    // Billing line
   billingPhoneRaw: "6182318380",
   email: "Kingcitydisposal@gmail.com",
+  // Billing/payment notification email — referenced by contact and customer-request API routes.
+  // Kept at top level so callers can write config.billingEmail without drilling into notifications.
+  billingEmail: "Kingcitydisposal@gmail.com",
   websiteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.kingcitydisposal.com",
 
   // ============================================

@@ -13,18 +13,21 @@ import {
   TreeDeciduous,
   Box,
 } from 'lucide-react'
+import BreadcrumbSchema from '../../components/BreadcrumbSchema'
 
 const ICONS = { Home, Hammer, Building, Trash2, Layers, TreeDeciduous, Box }
 
 const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
 
+const startingPrice = config.dumpsters[0].pricing['10-day']
+
 export const metadata = {
   title: `Dumpster Rental Services in ${config.address.city}, IL`,
-  description: `${services.length} dumpster rental services in ${config.address.city}, IL: residential, construction, roofing, junk removal, yard waste, and more. Same-day delivery from $475. Call ${config.phone}.`,
+  description: `${services.length} dumpster rental services in ${config.address.city}, IL: residential, construction, roofing, junk removal, yard waste, and more. Same-day delivery from $${startingPrice}. Call ${config.phone}.`,
   alternates: { canonical: `${baseUrl}/services` },
   openGraph: {
     title: `Dumpster Rental Services in ${config.address.city}, IL`,
-    description: 'Residential, construction, roofing, junk removal, concrete, yard waste, estate cleanout. Same-day delivery from $475.',
+    description: `Residential, construction, roofing, junk removal, concrete, yard waste, estate cleanout. Same-day delivery from $${startingPrice}.`,
     url: `${baseUrl}/services`,
     siteName: config.businessName,
     locale: 'en_US',
@@ -68,6 +71,7 @@ export default function ServicesPage() {
   return (
     <>
       <ServicesIndexSchema />
+      <BreadcrumbSchema items={[{ name: 'Services', path: '/services' }]} />
 
       <section className="bg-primary-700 text-white py-16">
         <div className="container-custom text-center">

@@ -1,6 +1,8 @@
 import { config } from '../../config'
 import Script from 'next/script'
 import Link from 'next/link'
+import BreadcrumbSchema from '../../components/BreadcrumbSchema'
+import Breadcrumbs from '../../components/Breadcrumbs'
 import {
   AlertTriangle,
   Phone,
@@ -39,7 +41,7 @@ const faqCategories = [
       },
       {
         q: 'What if I go over the weight limit?',
-        a: `We'll weigh the dumpster at the dump. If you're over your included tonnage, we charge the overage rate per ton. For example, our 20-yard dumpster includes ${config.dumpsters[0]?.weightIncluded || '3 tons'}. Go over by 1 ton, and you pay an extra $${config.dumpsters[0]?.overageRate || '70'}. We always let you know before charging.`
+        a: `We'll weigh the dumpster at the dump. If you're over your included tonnage, we charge the overage rate per ton. For example, our 20-yard dumpster includes ${config.dumpsters[0]?.weightIncluded || '3 tons'}. Go over by 1 ton, and you pay an extra $${config.dumpsters[0]?.overageRate || 105}. We always let you know before charging.`
       },
       {
         q: 'Do you require a deposit?',
@@ -50,7 +52,7 @@ const faqCategories = [
         a: `We accept all major credit cards, debit cards, and cash. Card payments are due at booking. Cash payments are due upon delivery.`
       },
       {
-        q: 'How much does a dumpster cost in ${config.address.city}?',
+        q: `How much does a dumpster cost in ${config.address.city}?`,
         a: `Our dumpster rentals start at $${config.dumpsters[0]?.pricing['10-day'] || '475'} for a 10-day rental. Price includes delivery, pickup, and disposal up to the included weight limit. Check our pricing page for current rates on all sizes.`
       },
     ]
@@ -172,7 +174,7 @@ function FAQSchema() {
     },
     "mainEntity": allQuestions.map(faq => ({
       "@type": "Question",
-      "name": faq.q.replace('${config.address.city}', config.address.city),
+      "name": faq.q,
       "acceptedAnswer": {
         "@type": "Answer",
         "text": faq.a
@@ -207,12 +209,14 @@ function FAQSchema() {
 export default function FAQPage() {
   return (
     <>
+      <BreadcrumbSchema items={[{ name: 'FAQ', path: '/faq' }]} />
       <FAQSchema />
 
       {/* Hero */}
       <section className="bg-primary-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-3xl">
+            <Breadcrumbs items={[{ name: 'FAQ', path: '/faq' }]} className="mb-6" />
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Frequently Asked Questions
             </h1>
@@ -244,7 +248,7 @@ export default function FAQPage() {
                   {category.questions.map((faq, faqIndex) => (
                     <FAQAccordion
                       key={faqIndex}
-                      question={faq.q.replace('${config.address.city}', config.address.city)}
+                      question={faq.q}
                       answer={faq.a}
                     />
                   ))}

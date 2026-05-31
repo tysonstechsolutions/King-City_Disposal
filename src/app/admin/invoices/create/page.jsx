@@ -693,8 +693,11 @@ function CreateInvoiceContent() {
                       className="w-48 px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     >
                       <option value="custom">Custom...</option>
-                      <option value="30yd">30yd Dumpster ($575)</option>
-                      <option value="20yd">20yd Dumpster ($475)</option>
+                      {config.dumpsters.slice().reverse().map(d => (
+                        <option key={d.id} value={d.id}>
+                          {d.shortName} Dumpster (${d.pricing['10-day']})
+                        </option>
+                      ))}
                       <option value="compactor">Self-Contained Compactor</option>
                       <option value="extended">Extended Use Charge ($50)</option>
                       <option value="monthly">Monthly Fee</option>

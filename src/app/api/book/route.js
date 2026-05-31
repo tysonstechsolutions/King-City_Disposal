@@ -132,12 +132,6 @@ async function findOrCreateCustomer({ name, phone, email, address, city, zip }) 
     error: errorText,
     customerData: { name, phone, email, address, city, zip }
   });
-  console.error('Customer creation failed:', {
-    status: createResponse.status,
-    error: errorText,
-    name,
-    phone
-  });
   return null;
 }
 
@@ -375,7 +369,6 @@ export async function POST(request) {
     if (!dbResponse.ok) {
       const errorText = await dbResponse.text();
       logger.error('Supabase booking save error', null, { error: errorText });
-      console.error('Supabase booking error:', errorText);
       return NextResponse.json(
         { error: `Failed to save booking: ${errorText}` },
         { status: 500 }
