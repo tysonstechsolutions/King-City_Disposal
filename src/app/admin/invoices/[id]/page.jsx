@@ -244,6 +244,7 @@ export default function InvoiceDetailPage() {
           invoice_date: editedInvoice.invoice_date,
           due_date: editedInvoice.due_date,
           date_set: editedInvoice.date_set,
+          sent_at: editedInvoice.sent_at,
         }),
       })
 
@@ -688,7 +689,7 @@ export default function InvoiceDetailPage() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-dark-700">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-dark-700">
                     <div>
                       <label className="block text-sm font-medium text-dark-200 mb-1">Invoice Date</label>
                       <input
@@ -716,6 +717,19 @@ export default function InvoiceDetailPage() {
                         className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       />
                       <p className="text-xs text-dark-500 mt-1">Late fees start 30 days after</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1">Sent Date</label>
+                      <input
+                        type="date"
+                        value={editedInvoice.sent_at ? editedInvoice.sent_at.split('T')[0] : ''}
+                        onChange={(e) => setEditedInvoice({
+                          ...editedInvoice,
+                          sent_at: e.target.value ? new Date(e.target.value + 'T12:00:00Z').toISOString() : null,
+                        })}
+                        className="w-full px-3 py-2 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                      <p className="text-xs text-dark-500 mt-1">Shows in customer timeline</p>
                     </div>
                   </div>
                 </div>
