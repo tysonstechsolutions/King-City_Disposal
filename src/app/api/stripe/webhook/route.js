@@ -676,6 +676,167 @@ export async function POST(request) {
       }
 
       // ========================================
+      // INVOICE BATCH PAYMENT (pay multiple invoices at once)
+      // ========================================
+      else if (type === 'invoice_batch') {
+        const batchToken = metadata.batch_token;
+        const supabaseUrl = config.supabase.url;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+
+        let invoiceIds = [];
+        try {
+          invoiceIds = JSON.parse(metadata.invoice_ids || '[]');
+        } catch (e) {
+          invoiceIds = [];
+        }
+
+        try {
+          // Load the batch (for contact info + idempotency)
+          let batch = null;
+          if (batchToken) {
+            const bRes = await fetch(
+              `${supabaseUrl}/rest/v1/payment_batches?token=eq.${encodeURIComponent(batchToken)}`,
+              {
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+              }
+            );
+            if (bRes.ok) {
+              [batch] = await bRes.json();
+            }
+          }
+
+          // Idempotency: Stripe retries webhooks. If already paid, stop.
+          if (batch && batch.status === 'paid') {
+            console.log(`Batch ${batchToken} already paid - skipping duplicate`);
+            return NextResponse.json({ received: true });
+          }
+
+          const paidInvoices = [];
+
+          for (const invId of invoiceIds) {
+            const invRes = await fetch(
+              `${supabaseUrl}/rest/v1/invoices?id=eq.${invId}`,
+              {
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+              }
+            );
+            if (!invRes.ok) continue;
+            const [inv] = await invRes.json();
+            if (!inv) continue;
+
+            // Already paid (e.g. separately) — record it but don't double-charge/receipt
+            if (inv.status === 'paid') {
+              paidInvoices.push(inv);
+              continue;
+            }
+
+            const balance = Math.max(0, (inv.total_cents || 0) - (inv.amount_paid_cents || 0));
+
+            // Mark this invoice paid
+            await fetch(
+              `${supabaseUrl}/rest/v1/invoices?id=eq.${invId}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  status: 'paid',
+                  paid_at: new Date().toISOString(),
+                  amount_paid_cents: inv.total_cents,
+                  payment_method: 'stripe',
+                  stripe_payment_intent_id: session.payment_intent,
+                }),
+              }
+            );
+
+            // One receipt per invoice. Composite session id keeps the webhook
+            // dedup working per-invoice (one real Stripe session, many invoices).
+            await createTransaction({
+              invoice_id: inv.id,
+              booking_id: inv.booking_id || null,
+              customer_name: inv.customer_name,
+              customer_phone: inv.customer_phone,
+              customer_email: inv.customer_email,
+              amount_cents: balance,
+              description: `Invoice ${inv.invoice_number}`,
+              type: 'invoice',
+              service_address: inv.service_address || '',
+              stripe_session_id: `${session.id}:${inv.id}`,
+              stripe_payment_intent: session.payment_intent,
+              payment_method: 'card',
+              send_sms: false, // one combined confirmation sent below
+            });
+
+            paidInvoices.push(inv);
+          }
+
+          // Mark the batch paid
+          if (batchToken) {
+            await fetch(
+              `${supabaseUrl}/rest/v1/payment_batches?token=eq.${encodeURIComponent(batchToken)}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  status: 'paid',
+                  paid_at: new Date().toISOString(),
+                  stripe_session_id: session.id,
+                }),
+              }
+            );
+          }
+
+          const priceDisplay = `$${(session.amount_total / 100).toFixed(2)}`;
+          const customerName = session.customer_details?.name || metadata.customer_name || batch?.customer_name || 'Customer';
+          const customerPhone = metadata.customer_phone || batch?.customer_phone;
+          const customerEmail = session.customer_details?.email || metadata.customer_email || batch?.customer_email;
+          const numbers = paidInvoices.map((i) => i.invoice_number).join(', ');
+
+          console.log(`Batch ${batchToken} paid: ${numbers} (${priceDisplay})`);
+
+          // Notify owner
+          try {
+            await notifyOwner(
+              `💰 BATCH PAYMENT RECEIVED!\n\nCustomer: ${customerName}\nInvoices (${paidInvoices.length}): ${numbers}\nAmount: ${priceDisplay}`
+            );
+          } catch (e) {
+            console.error('Team notification failed:', e);
+          }
+
+          // One combined confirmation to the customer
+          if (customerEmail || customerPhone) {
+            try {
+              await notifyCustomer({
+                phone: customerPhone,
+                email: customerEmail,
+                subject: `Payment Received - ${config.businessName}`,
+                smsMessage: `✅ Payment received!\n\nInvoices: ${numbers}\nAmount: ${priceDisplay}\n\nThank you for your business!\n\n${config.businessName}\n${config.billingPhone}`,
+                emailHtml: `<p>Thank you for your payment of ${priceDisplay}.</p><p>The following invoices are now paid: ${numbers}.</p><p>${config.businessName}<br>${config.billingPhone}</p>`,
+                emailText: `Thank you for your payment of ${priceDisplay}.\n\nThe following invoices are now paid: ${numbers}.\n\n${config.businessName}\n${config.billingPhone}`,
+              });
+            } catch (e) {
+              console.error('Customer confirmation failed:', e);
+            }
+          }
+        } catch (e) {
+          console.error('Batch payment processing error:', e);
+        }
+      }
+
+      // ========================================
       // CUSTOM PAYMENT (no booking)
       // ========================================
       else if (type === 'custom') {

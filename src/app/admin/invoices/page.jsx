@@ -23,7 +23,11 @@ import {
   ChevronDown,
   X,
   Filter,
-  ExternalLink
+  ExternalLink,
+  CheckSquare,
+  Square,
+  Copy,
+  Link2
 } from 'lucide-react'
 
 export default function InvoicesPage() {
@@ -37,6 +41,12 @@ export default function InvoicesPage() {
   const [sortBy, setSortBy] = useState('date')
   const [showActions, setShowActions] = useState(null)
   const [sendingId, setSendingId] = useState(null)
+  // Batch ("pay all") selection
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [creatingBatch, setCreatingBatch] = useState(false)
+  const [batchResult, setBatchResult] = useState(null)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
@@ -217,9 +227,88 @@ export default function InvoicesPage() {
       return 0
     })
 
-  // Navigate to invoice detail
-  const handleRowClick = (invoiceId) => {
-    router.push(`/admin/invoices/${invoiceId}`)
+  // ============================================
+  // BATCH ("pay all") SELECTION
+  // ============================================
+  const balanceOf = (inv) =>
+    Math.max(0, (inv.total_cents || 0) - (inv.amount_paid_cents || 0))
+
+  // One batch = one customer (one phone to text, one name on the receipt)
+  const customerKey = (inv) =>
+    inv.customer_id != null
+      ? `id:${inv.customer_id}`
+      : `name:${(inv.customer_name || '').trim().toLowerCase()}`
+
+  const selectedInvoices = invoices.filter((i) => selectedIds.includes(i.id))
+  const selectedCustomerKey = selectedInvoices.length > 0 ? customerKey(selectedInvoices[0]) : null
+  const selectedTotal = selectedInvoices.reduce((sum, i) => sum + balanceOf(i), 0)
+
+  // Selectable: unpaid, has a balance, and same customer as anything already picked
+  const isSelectable = (inv) => {
+    if (inv.status === 'paid' || inv.status === 'void' || balanceOf(inv) <= 0) return false
+    if (selectedCustomerKey && customerKey(inv) !== selectedCustomerKey) return false
+    return true
+  }
+
+  const toggleSelect = (inv) => {
+    setSelectedIds((prev) =>
+      prev.includes(inv.id) ? prev.filter((id) => id !== inv.id) : [...prev, inv.id]
+    )
+  }
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedIds([])
+  }
+
+  const createBatchLink = async () => {
+    if (selectedIds.length < 2) {
+      toast.error('Select at least two invoices')
+      return
+    }
+    setCreatingBatch(true)
+    try {
+      const response = await fetch('/api/invoices/batch-pay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
+        body: JSON.stringify({ invoice_ids: selectedIds }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (response.ok) {
+        setBatchResult(result)
+        setLinkCopied(false)
+        exitSelectMode()
+      } else {
+        toast.error(result.error || 'Failed to create payment link')
+      }
+    } catch (err) {
+      console.error('Error creating batch link:', err)
+      toast.error('Failed to create payment link')
+    }
+    setCreatingBatch(false)
+  }
+
+  const copyBatchLink = async () => {
+    if (!batchResult?.pay_url) return
+    try {
+      await navigator.clipboard.writeText(batchResult.pay_url)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      toast.error('Could not copy — select and copy the link manually')
+    }
+  }
+
+  // Navigate to invoice detail (or toggle selection in select mode)
+  const handleRowClick = (invoice) => {
+    if (selectMode) {
+      if (isSelectable(invoice)) toggleSelect(invoice)
+      return
+    }
+    router.push(`/admin/invoices/${invoice.id}`)
   }
 
   // Clear all filters
@@ -257,6 +346,18 @@ export default function InvoicesPage() {
                 title="Refresh"
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                className={`hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors border ${
+                  selectMode
+                    ? 'bg-primary/10 text-primary border-primary/40'
+                    : 'bg-dark-700 text-white border-dark-600 hover:bg-dark-600'
+                }`}
+                title="Select multiple invoices to send one payment link"
+              >
+                <CheckSquare className="w-4 h-4" />
+                {selectMode ? 'Cancel' : 'Pay All'}
               </button>
               <Link
                 href="/admin/invoices/import"
@@ -444,10 +545,25 @@ export default function InvoicesPage() {
               {filteredInvoices.map((invoice) => (
                 <div
                   key={invoice.id}
-                  onClick={() => handleRowClick(invoice.id)}
-                  className="p-4 hover:bg-dark-750 transition-colors cursor-pointer group"
+                  onClick={() => handleRowClick(invoice)}
+                  className={`p-4 transition-colors group ${
+                    selectMode && !isSelectable(invoice) && !selectedIds.includes(invoice.id)
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'hover:bg-dark-750 cursor-pointer'
+                  } ${selectedIds.includes(invoice.id) ? 'bg-primary/5 ring-1 ring-inset ring-primary/30' : ''}`}
                 >
                   <div className="flex items-center gap-4">
+                    {/* Selection checkbox */}
+                    {selectMode && (
+                      <div className="shrink-0">
+                        {selectedIds.includes(invoice.id) ? (
+                          <CheckSquare className="w-5 h-5 text-primary" />
+                        ) : (
+                          <Square className={`w-5 h-5 ${isSelectable(invoice) ? 'text-dark-400' : 'text-dark-600'}`} />
+                        )}
+                      </div>
+                    )}
+
                     {/* Invoice Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1.5">
@@ -481,6 +597,7 @@ export default function InvoicesPage() {
                     </div>
 
                     {/* Quick Actions */}
+                    {!selectMode && (
                     <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                       {invoice.status !== 'paid' && (
                         <button
@@ -506,6 +623,7 @@ export default function InvoicesPage() {
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -520,6 +638,102 @@ export default function InvoicesPage() {
           </p>
         )}
       </main>
+
+      {/* Floating "Pay All" action bar */}
+      {selectMode && selectedIds.length > 0 && (
+        <div className="fixed bottom-4 inset-x-0 px-4 z-40">
+          <div className="max-w-2xl mx-auto bg-dark-800 border border-primary/40 rounded-xl shadow-2xl p-4 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-white font-semibold">
+                {selectedIds.length} invoice{selectedIds.length === 1 ? '' : 's'} selected
+              </p>
+              <p className="text-sm text-dark-300 truncate">
+                {selectedInvoices[0]?.customer_name} · {formatCurrency(selectedTotal)} total
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={exitSelectMode}
+                className="px-4 py-2.5 text-dark-300 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createBatchLink}
+                disabled={creatingBatch || selectedIds.length < 2}
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {creatingBatch ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                Create payment link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success dialog with copyable link */}
+      {batchResult && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => setBatchResult(null)}
+        >
+          <div
+            className="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <CheckCircle2 className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Payment link created</h3>
+                <p className="text-sm text-dark-400">
+                  {batchResult.invoice_count} invoices · {formatCurrency(batchResult.total_cents)}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-dark-300 mb-2">
+              {batchResult.sms_sent
+                ? `Texted to ${batchResult.customer_phone}.`
+                : 'Not texted (no phone on file). Copy the link and send it manually.'}
+            </p>
+
+            <div className="flex items-center gap-2 bg-dark-900 border border-dark-700 rounded-lg p-2 mb-4">
+              <input
+                readOnly
+                value={batchResult.pay_url}
+                className="flex-1 bg-transparent text-sm text-dark-200 outline-none px-1"
+                onFocus={(e) => e.target.select()}
+              />
+              <button
+                onClick={copyBatchLink}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-dark-700 text-white rounded-lg text-sm font-medium hover:bg-dark-600 transition-colors shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                {linkCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <a
+                href={batchResult.pay_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2.5 text-dark-300 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                Open link
+              </a>
+              <button
+                onClick={() => { setBatchResult(null); fetchInvoices(); }}
+                className="px-4 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
