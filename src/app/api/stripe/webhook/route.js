@@ -602,6 +602,26 @@ export async function POST(request) {
               ? `id=eq.${invoiceId}`
               : `invoice_number=eq.${invoiceNumber}`;
 
+            // Idempotency: the /payment-success page also confirms payments
+            // (safety net for when this webhook is down). If that already marked
+            // the invoice paid, skip so we don't send duplicate notifications.
+            // The transaction insert below is separately deduped by session id.
+            try {
+              const existingRes = await fetch(
+                `${supabaseUrl}/rest/v1/invoices?${query}&select=status`,
+                { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
+              );
+              if (existingRes.ok) {
+                const [existing] = await existingRes.json();
+                if (existing?.status === 'paid') {
+                  console.log(`Invoice ${invoiceId || invoiceNumber} already marked paid - skipping duplicate webhook processing`);
+                  return NextResponse.json({ received: true });
+                }
+              }
+            } catch (e) {
+              // Non-fatal — fall through and process normally.
+            }
+
             const updateResponse = await fetch(
               `${supabaseUrl}/rest/v1/invoices?${query}`,
               {

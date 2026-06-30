@@ -9,10 +9,64 @@ import { config } from '../../../../config';
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
+// Find an existing Stripe customer id for our customer, or create one and store
+// it. Used when the office chooses to save the card on file for a repeat
+// customer. Best-effort: never blocks the payment if the lookup/store fails.
+async function getOrCreateStripeCustomer(invoice) {
+  try {
+    let ourCustomer = null;
+    if (invoice.customer_id) {
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/customers?id=eq.${invoice.customer_id}&select=id,stripe_customer_id`,
+        { headers: { apikey: getSupabaseKey(), Authorization: `Bearer ${getSupabaseKey()}` } }
+      );
+      if (res.ok) [ourCustomer] = await res.json();
+      if (ourCustomer?.stripe_customer_id) return ourCustomer.stripe_customer_id;
+    }
+
+    const params = new URLSearchParams();
+    if (invoice.customer_name) params.append('name', invoice.customer_name);
+    if (invoice.customer_email) params.append('email', invoice.customer_email);
+    if (invoice.customer_phone) params.append('phone', invoice.customer_phone);
+    if (invoice.customer_id) params.append('metadata[customer_id]', String(invoice.customer_id));
+
+    const stripeRes = await fetch('https://api.stripe.com/v1/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      },
+      body: params,
+    });
+    const stripeCustomer = await stripeRes.json();
+    if (stripeCustomer.error) {
+      console.error('Stripe customer create error:', stripeCustomer.error);
+      return null;
+    }
+
+    // Remember it on our customer so we reuse the same Stripe customer next time.
+    if (invoice.customer_id) {
+      await fetch(`${supabaseUrl}/rest/v1/customers?id=eq.${invoice.customer_id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: getSupabaseKey(),
+          Authorization: `Bearer ${getSupabaseKey()}`,
+        },
+        body: JSON.stringify({ stripe_customer_id: stripeCustomer.id }),
+      }).catch(() => {});
+    }
+    return stripeCustomer.id;
+  } catch (e) {
+    console.error('getOrCreateStripeCustomer error:', e?.message || e);
+    return null;
+  }
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { invoice_id } = body;
+    const { invoice_id, save_card } = body;
 
     if (!invoice_id) {
       return NextResponse.json(
@@ -93,8 +147,17 @@ export async function POST(request) {
       'phone_number_collection[enabled]': 'true',
     });
 
-    // Pre-fill customer email if available
-    if (invoice.customer_email) {
+    // When saving the card on file (office charging a repeat customer), attach
+    // the payment to a Stripe Customer and tell Stripe to keep the card for
+    // future off-session charges. Otherwise just pre-fill the email.
+    let stripeCustomerId = null;
+    if (save_card) {
+      stripeCustomerId = await getOrCreateStripeCustomer(invoice);
+    }
+    if (stripeCustomerId) {
+      checkoutParams.append('customer', stripeCustomerId);
+      checkoutParams.append('payment_intent_data[setup_future_usage]', 'off_session');
+    } else if (invoice.customer_email) {
       checkoutParams.append('customer_email', invoice.customer_email);
     }
 

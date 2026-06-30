@@ -31,7 +31,6 @@ import {
   CreditCard,
   Banknote
 } from 'lucide-react'
-import CardPaymentForm from '../../../../components/CardPaymentForm'
 
 export default function InvoiceDetailPage() {
   const params = useParams()
@@ -53,7 +52,9 @@ export default function InvoiceDetailPage() {
   const [paymentCheckNumber, setPaymentCheckNumber] = useState('')
   const [paymentDate, setPaymentDate] = useState('')
   const [recordingPayment, setRecordingPayment] = useState(false)
-  const [showCardForm, setShowCardForm] = useState(false)
+  const [startingCheckout, setStartingCheckout] = useState(false)
+  const [chargingSaved, setChargingSaved] = useState(false)
+  const [savedCardCustomer, setSavedCardCustomer] = useState(null)
 
   // Fetch invoice
   const fetchInvoice = useCallback(async () => {
@@ -421,6 +422,87 @@ export default function InvoiceDetailPage() {
       toast.error('Error recording payment')
     }
     setRecordingPayment(false)
+  }
+
+  // Load the linked customer so we know whether they have a card on file
+  // (enables the one-click "Charge saved card" button).
+  useEffect(() => {
+    const customerId = invoice?.customer_id
+    if (!customerId) {
+      setSavedCardCustomer(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const token = sessionStorage.getItem('adminToken')
+        const res = await fetch(`/api/admin/customers?id=${customerId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        const c = Array.isArray(data) ? data[0] : data
+        if (!cancelled) setSavedCardCustomer(c || null)
+      } catch (e) {
+        /* non-fatal: just hides the saved-card button */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [invoice?.customer_id])
+
+  // "Charge Card": send the office to Stripe's hosted checkout page (not the
+  // embedded form, so browser tracking prevention can't block it) and save the
+  // card on file for one-click charges next time.
+  const handleHostedCheckout = async () => {
+    if (!invoice) return
+    setStartingCheckout(true)
+    try {
+      const res = await fetch('/api/invoices/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_id: invoice.id, save_card: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.payment_url) {
+        window.location.href = data.payment_url
+        return
+      }
+      toast.error(data.error || 'Failed to start card payment')
+    } catch (err) {
+      console.error('Hosted checkout error:', err)
+      toast.error('Error starting card payment')
+    }
+    setStartingCheckout(false)
+  }
+
+  // "Charge saved card": one-click off-session charge of the customer's saved card.
+  const handleChargeSavedCard = async () => {
+    if (!invoice) return
+    setChargingSaved(true)
+    try {
+      const token = sessionStorage.getItem('adminToken')
+      const amountCents = paymentAmount ? Math.round(parseFloat(paymentAmount) * 100) : undefined
+      const res = await fetch('/api/stripe/charge-saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ invoice_id: invoice.id, amount_cents: amountCents }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.success) {
+        toast.success(`Charged ${formatCurrency(data.amount_cents)} to saved card`)
+        setShowPaymentModal(false)
+        setPaymentAmount('')
+        fetchInvoice()
+      } else {
+        toast.error(data.error || 'Failed to charge saved card')
+      }
+    } catch (err) {
+      console.error('Charge saved card error:', err)
+      toast.error('Error charging saved card')
+    }
+    setChargingSaved(false)
   }
 
   // Delete invoice
@@ -1181,93 +1263,7 @@ export default function InvoiceDetailPage() {
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-800 rounded-xl border border-dark-700 p-6 w-full max-w-md">
-            {showCardForm ? (
-              <>
-                <h2 className="text-xl font-bold mb-4">Charge Card</h2>
-                <CardPaymentForm
-                  amountCents={Math.round(parseFloat(paymentAmount || (balanceDue / 100)) * 100 * 1.0375)}
-                  customerName={invoice.customer_name}
-                  customerEmail={invoice.customer_email}
-                  invoiceId={invoice.id}
-                  description={`Invoice #${invoice.invoice_number}`}
-                  onSuccess={async (paymentIntent) => {
-                    // Record the payment
-                    const baseAmount = parseFloat(paymentAmount || (balanceDue / 100))
-                    const baseAmountCents = Math.round(baseAmount * 100)
-                    const ccFeeCents = Math.round(baseAmountCents * 0.0375)
-                    const totalAmountCents = baseAmountCents + ccFeeCents
-
-                    const newAmountPaid = (invoice.amount_paid_cents || 0) + totalAmountCents
-                    const newBalanceDue = (invoice.total_cents || 0) - newAmountPaid
-                    const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial'
-
-                    // Build update data — do not inflate total_cents or accumulate
-                    // cc_fee_cents here; the fee is already included in amount_paid_cents.
-                    const cardUpdateData = {
-                      amount_paid_cents: newAmountPaid,
-                      balance_due_cents: Math.max(0, newBalanceDue),
-                      status: newStatus,
-                      updated_at: new Date().toISOString(),
-                    }
-                    if (newStatus === 'paid') {
-                      cardUpdateData.paid_at = new Date().toISOString()
-                    }
-
-                    const token = sessionStorage.getItem('adminToken')
-                    await fetch(`/api/invoices/update?id=${params.id}`, {
-                      method: 'PATCH',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                      },
-                      body: JSON.stringify(cardUpdateData),
-                    })
-
-                    // Create a transaction so this payment shows on the Payments page.
-                    // PaymentIntent flow doesn't trigger checkout.session.completed,
-                    // so the Stripe webhook won't create one for us.
-                    try {
-                      await fetch('/api/transactions', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({
-                          invoice_id: invoice.id,
-                          booking_id: invoice.booking_id || null,
-                          customer_name: invoice.customer_name,
-                          customer_phone: invoice.customer_phone,
-                          customer_email: invoice.customer_email,
-                          amount_cents: totalAmountCents,
-                          description: `Invoice ${invoice.invoice_number}`,
-                          type: 'invoice',
-                          service_address: invoice.service_address || null,
-                          dumpster_size: invoice.dumpster_size || null,
-                          rental_duration: invoice.rental_duration || null,
-                          delivery_date: invoice.delivery_date || null,
-                          stripe_payment_intent: paymentIntent?.id || null,
-                          payment_method: 'card',
-                          send_sms: false,
-                        }),
-                      })
-                    } catch (txErr) {
-                      console.error('Failed to create transaction record:', txErr)
-                    }
-
-                    setShowPaymentModal(false)
-                    setShowCardForm(false)
-                    setPaymentAmount('')
-                    fetchInvoice()
-                  }}
-                  onError={(error) => {
-                    console.error('Payment failed:', error)
-                  }}
-                  onCancel={() => setShowCardForm(false)}
-                />
-              </>
-            ) : (
-              <>
+            <>
                 <h2 className="text-xl font-bold mb-4">Record Payment</h2>
 
                 <div className="space-y-4">
@@ -1330,25 +1326,11 @@ export default function InvoiceDetailPage() {
                     )}
                   </div>
 
-                  {/* CC Fee notice when card is selected */}
-                  {paymentMethod === 'card' && paymentAmount && (
-                    <div className="bg-dark-700 rounded-lg p-3 text-sm">
-                      <div className="flex justify-between text-dark-300">
-                        <span>Payment Amount:</span>
-                        <span>${parseFloat(paymentAmount || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-dark-300">
-                        <span>CC Fee (3.75%):</span>
-                        <span>${(parseFloat(paymentAmount || 0) * 0.0375).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-medium text-white border-t border-dark-600 mt-2 pt-2">
-                        <span>Total with Fee:</span>
-                        <span>${(parseFloat(paymentAmount || 0) * 1.0375).toFixed(2)}</span>
-                      </div>
-                      <p className="text-xs text-dark-400 mt-2">
-                        The 3.75% fee is added only when charging the card through Stripe.
-                        &ldquo;Record Without Charging&rdquo; logs exactly the amount entered above.
-                      </p>
+                  {paymentMethod === 'card' && (
+                    <div className="bg-dark-700 rounded-lg p-3 text-sm text-dark-300">
+                      <strong>Charge Card</strong> collects the full balance due
+                      {balanceDue > 0 ? ` (${formatCurrency(balanceDue)})` : ''}. A saved card uses the
+                      Amount field above if you enter one, otherwise the full balance.
                     </div>
                   )}
 
@@ -1364,60 +1346,70 @@ export default function InvoiceDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 space-y-3">
-                  {paymentMethod === 'card' && (
+                {paymentMethod === 'card' ? (
+                  <div className="mt-6 space-y-3">
                     <p className="text-xs text-dark-400">
-                      Use <strong>Charge Card</strong> to collect payment through Stripe now. If the
-                      payment was already collected, or the card form is blocked by your browser&apos;s
-                      tracking prevention / an ad-blocker, use <strong>Record Without Charging</strong> to
-                      log it manually.
+                      <strong>Charge Card</strong> opens Stripe&apos;s secure page to take a card payment
+                      (and saves the card for one-click charges next time). If the payment was already
+                      collected elsewhere, use <strong>Record Without Charging</strong> to just log it.
                     </p>
-                  )}
-                  <div className="flex gap-3">
+
+                    {savedCardCustomer?.stripe_customer_id && (
+                      <button
+                        onClick={handleChargeSavedCard}
+                        disabled={chargingSaved}
+                        className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+                      >
+                        {chargingSaved ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                        Charge saved card
+                        {savedCardCustomer.card_last4 ? ` •••• ${savedCardCustomer.card_last4}` : ''}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleHostedCheckout}
+                      disabled={startingCheckout}
+                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+                    >
+                      {startingCheckout ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                      {savedCardCustomer?.stripe_customer_id ? 'Use a different card' : 'Charge Card'}
+                    </button>
+
+                    <button
+                      onClick={() => handleRecordPayment({ skipCardFee: true })}
+                      disabled={recordingPayment}
+                      className="w-full px-4 py-3 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+                      Record Without Charging
+                    </button>
+
+                    <button
+                      onClick={() => setShowPaymentModal(false)}
+                      className="w-full px-4 py-2 text-dark-400 hover:text-dark-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-3 mt-6">
                     <button
                       onClick={() => setShowPaymentModal(false)}
                       className="flex-1 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
                     >
                       Cancel
                     </button>
-                    {paymentMethod === 'card' ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            // Set default payment amount to balance due if empty
-                            if (!paymentAmount) {
-                              setPaymentAmount((balanceDue / 100).toFixed(2))
-                            }
-                            setShowCardForm(true)
-                          }}
-                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          Charge Card
-                        </button>
-                        <button
-                          onClick={() => handleRecordPayment({ skipCardFee: true })}
-                          disabled={recordingPayment}
-                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                          {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
-                          Record Without Charging
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => handleRecordPayment()}
-                        disabled={recordingPayment}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
-                        Record Payment
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleRecordPayment()}
+                      disabled={recordingPayment}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+                      Record Payment
+                    </button>
                   </div>
-                </div>
+                )}
               </>
-            )}
           </div>
         </div>
       )}

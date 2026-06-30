@@ -44,6 +44,17 @@ function PaymentSuccessContent() {
       valueDollars: Number.isFinite(valueDollars) ? valueDollars : undefined,
       currency: 'USD',
     })
+
+    // Safety net: confirm the payment server-side so the invoice is marked paid
+    // even if the Stripe webhook didn't fire. This verifies the session with
+    // Stripe directly and is idempotent with the webhook (no double-recording).
+    if (sessionId) {
+      fetch('/api/stripe/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      }).catch((err) => console.error('Payment confirmation failed:', err))
+    }
   }, [bookingId, sessionId, searchParams])
 
   return (
