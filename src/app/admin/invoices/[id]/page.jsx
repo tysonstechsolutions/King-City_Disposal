@@ -306,7 +306,7 @@ export default function InvoiceDetailPage() {
   }
 
   // Record payment
-  const handleRecordPayment = async () => {
+  const handleRecordPayment = async ({ skipCardFee = false } = {}) => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       toast.warning('Enter a valid payment amount')
       return
@@ -320,7 +320,9 @@ export default function InvoiceDetailPage() {
       // The CC fee is collected from the customer on top of the invoice amount,
       // so it goes into amount_paid_cents. We do NOT inflate total_cents or
       // accumulate cc_fee_cents here — that would double-count on repeated payments.
-      const ccFeeCents = paymentMethod === 'card' ? Math.round(baseAmountCents * 0.0375) : 0
+      // When recording a card payment manually (skipCardFee), the admin enters the
+      // exact amount already collected, so we don't tack on the online-convenience fee.
+      const ccFeeCents = (paymentMethod === 'card' && !skipCardFee) ? Math.round(baseAmountCents * 0.0375) : 0
       const totalAmountCents = baseAmountCents + ccFeeCents
 
       const newAmountPaid = (invoice.amount_paid_cents || 0) + totalAmountCents
@@ -1343,6 +1345,10 @@ export default function InvoiceDetailPage() {
                         <span>Total with Fee:</span>
                         <span>${(parseFloat(paymentAmount || 0) * 1.0375).toFixed(2)}</span>
                       </div>
+                      <p className="text-xs text-dark-400 mt-2">
+                        The 3.75% fee is added only when charging the card through Stripe.
+                        &ldquo;Record Without Charging&rdquo; logs exactly the amount entered above.
+                      </p>
                     </div>
                   )}
 
@@ -1358,37 +1364,57 @@ export default function InvoiceDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => setShowPaymentModal(false)}
-                    className="flex-1 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
-                  >
-                    Cancel
-                  </button>
-                  {paymentMethod === 'card' ? (
-                    <button
-                      onClick={() => {
-                        // Set default payment amount to balance due if empty
-                        if (!paymentAmount) {
-                          setPaymentAmount((balanceDue / 100).toFixed(2))
-                        }
-                        setShowCardForm(true)
-                      }}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      Enter Card Details
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleRecordPayment}
-                      disabled={recordingPayment}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
-                      Record Payment
-                    </button>
+                <div className="mt-6 space-y-3">
+                  {paymentMethod === 'card' && (
+                    <p className="text-xs text-dark-400">
+                      Use <strong>Charge Card</strong> to collect payment through Stripe now. If the
+                      payment was already collected, or the card form is blocked by your browser&apos;s
+                      tracking prevention / an ad-blocker, use <strong>Record Without Charging</strong> to
+                      log it manually.
+                    </p>
                   )}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowPaymentModal(false)}
+                      className="flex-1 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600"
+                    >
+                      Cancel
+                    </button>
+                    {paymentMethod === 'card' ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            // Set default payment amount to balance due if empty
+                            if (!paymentAmount) {
+                              setPaymentAmount((balanceDue / 100).toFixed(2))
+                            }
+                            setShowCardForm(true)
+                          }}
+                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Charge Card
+                        </button>
+                        <button
+                          onClick={() => handleRecordPayment({ skipCardFee: true })}
+                          disabled={recordingPayment}
+                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+                          Record Without Charging
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleRecordPayment()}
+                        disabled={recordingPayment}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {recordingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+                        Record Payment
+                      </button>
+                    )}
+                  </div>
                 </div>
               </>
             )}
