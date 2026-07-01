@@ -267,12 +267,15 @@ export default function DocumentsPage() {
         body: JSON.stringify({ document_id: docId }),
       })
 
-      if (response.ok) {
+      const data = await response.json().catch(() => ({}))
+      if (response.ok && data.parsed_invoice?.id) {
         toast.success('Document parsed successfully!')
         fetchDocuments()
       } else {
-        const err = await response.json()
-        toast.error(err.error || 'Failed to parse document')
+        // Either a non-2xx, or a 2xx that didn't actually save a row. Show the
+        // real reason (and stage) instead of a misleading "success".
+        toast.error(data.error || 'Could not parse this document', data.stage || undefined)
+        fetchDocuments()
       }
     } catch (err) {
       console.error('Parse error:', err)

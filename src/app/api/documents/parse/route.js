@@ -295,7 +295,17 @@ export async function POST(request) {
 
     if (!document_id) {
       return NextResponse.json(
-        { error: 'document_id is required' },
+        { error: 'document_id is required', stage: 'bad_request' },
+        { status: 400 }
+      );
+    }
+
+    // Guard the numeric id so a malformed value can't create an orphan
+    // parsed_invoices row (document_id NaN/null) that the list join then drops.
+    const docIdInt = parseInt(document_id, 10);
+    if (Number.isNaN(docIdInt)) {
+      return NextResponse.json(
+        { error: 'Invalid document_id', stage: 'bad_document_id' },
         { status: 400 }
       );
     }
@@ -497,7 +507,11 @@ export async function POST(request) {
       await updateDocumentStatus(document_id, 'failed');
 
       return NextResponse.json(
-        { error: `Failed to parse document with AI: ${claudeResult.error}` },
+        {
+          error: `The AI could not read this document: ${claudeResult.error}. It may be blurry, an unsupported format (e.g. HEIC), or too large.`,
+          stage: 'claude_failed',
+          document_id,
+        },
         { status: 500 }
       );
     }
@@ -526,10 +540,20 @@ export async function POST(request) {
       }
       parsedData = JSON.parse(jsonStr.trim());
     } catch (parseError) {
-      logger.error('Failed to parse AI response', parseError, { response: aiText?.substring(0, 500) });
+      const blockTypes = (claudeData.content || []).map((b) => b?.type);
+      logger.error('Failed to parse AI response', parseError, {
+        response: aiText?.substring(0, 500),
+        model: claudeResult.model,
+        stop_reason: claudeData?.stop_reason,
+        blockTypes,
+      });
       await updateDocumentStatus(document_id, 'failed');
       return NextResponse.json(
-        { error: 'Failed to parse AI response as JSON' },
+        {
+          error: `The AI response could not be read as data (model ${claudeResult.model}, stop_reason ${claudeData?.stop_reason || 'unknown'}, ${aiText.length} chars). The document may be blurry or too complex.`,
+          stage: 'ai_json_parse',
+          document_id,
+        },
         { status: 500 }
       );
     }
@@ -656,12 +680,27 @@ export async function POST(request) {
       }
 
       return NextResponse.json(
-        { error: errorMsg },
+        { error: errorMsg, stage: 'insert_failed', document_id },
         { status: 500 }
       );
     }
 
     const [parsedInvoice] = await insertResponse.json();
+
+    // A 2xx insert that returns no row means the write was suppressed (e.g. an
+    // RLS return=representation restriction). Don't proceed to a false success.
+    if (!parsedInvoice || parsedInvoice.id == null) {
+      logger.error('Parsed invoice insert returned no row', null, { document_id });
+      await updateDocumentStatus(document_id, 'failed');
+      return NextResponse.json(
+        {
+          error: 'The extracted data did not save — the database accepted the insert but returned no record (likely a row-level-security policy on parsed_invoices). Nothing was recorded.',
+          stage: 'insert_empty_representation',
+          document_id,
+        },
+        { status: 500 }
+      );
+    }
 
     // 7. Update document with ALL parsed info
     // This makes the document searchable/filterable without joining parsed_invoices
@@ -771,39 +810,44 @@ export async function POST(request) {
       }
     }
 
-    // Verify the document actually flipped to 'parsed'. The updates above are
-    // non-fatal, so a silent failure (missing column, RLS policy, wrong key)
-    // would leave the document on 'pending' while this endpoint still reports
-    // success — which looks exactly like "parsing completed but nothing
-    // happened". Read the status back and, if it didn't take, return the real
-    // database error instead of a false success.
-    let documentUpdated = true;
+    // Prove the parse actually persisted by re-reading parsed_invoices for this
+    // document — that table is the source of truth for the Documents list (it
+    // shows "Parsed" + the amount from there). As long as a row exists the UI
+    // will show it, whether or not the documents write-back stuck. Only report
+    // success when a row is confirmed readable; otherwise surface the real error
+    // instead of a false success.
+    let parsedRowExists = false;
+    let verifyError = '';
     try {
-      const verifyRes = await fetch(
-        `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}&select=parse_status`,
+      const rowRes = await fetch(
+        `${getSupabaseUrl()}/rest/v1/parsed_invoices?document_id=eq.${docIdInt}&select=id&limit=1`,
         { headers: { apikey: getSupabaseKey(), Authorization: `Bearer ${getSupabaseKey()}` } }
       );
-      if (verifyRes.ok) {
-        const [row] = await verifyRes.json();
-        documentUpdated = row?.parse_status === 'parsed' || row?.parse_status === 'confirmed';
+      if (rowRes.ok) {
+        const rows = await rowRes.json();
+        parsedRowExists = Array.isArray(rows) && rows.length > 0;
+      } else {
+        verifyError = (await rowRes.text().catch(() => '')).substring(0, 200);
       }
     } catch (e) {
-      // Couldn't verify — don't block; assume it went through.
+      verifyError = (e?.message || String(e)).substring(0, 200);
     }
 
-    if (!documentUpdated) {
-      logger.error('Document status did not update to parsed after successful parse', null, {
+    if (!parsedRowExists) {
+      logger.error('Parse ran but no parsed_invoices row is readable afterward', null, {
         document_id,
-        lastUpdateError: lastUpdateError?.substring(0, 300),
+        lastUpdateError: lastUpdateError?.substring(0, 200),
+        verifyError,
       });
+      await updateDocumentStatus(document_id, 'failed');
       return NextResponse.json(
         {
           error:
-            'Extracted the data, but could not update the document to "Parsed" in the database, so it still shows Pending. ' +
-            'This usually means the documents table is missing a parse_status or parsed_invoice_id column, or a row-level-security policy is blocking the update. ' +
-            (lastUpdateError ? `Database said: ${lastUpdateError.substring(0, 300)}` : ''),
-          document_updated: false,
-          parsed_invoice_id: parsedInvoice.id,
+            'The document was read, but the extracted data did not save (no record found afterward). ' +
+            'This usually means a database policy blocked the write. Nothing was recorded — try again.',
+          stage: 'no_parsed_row',
+          document_id,
+          detail: (lastUpdateError || verifyError || '').substring(0, 200) || undefined,
         },
         { status: 500 }
       );

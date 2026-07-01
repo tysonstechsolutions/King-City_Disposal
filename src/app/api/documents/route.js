@@ -31,9 +31,9 @@ export async function GET(request) {
     }
 
     const [docsRes, parsedRes] = await Promise.all([
-      fetch(`${getSupabaseUrl()}/rest/v1/documents?order=created_at.desc`, { headers }),
+      fetch(`${getSupabaseUrl()}/rest/v1/documents?order=created_at.desc&limit=10000`, { headers }),
       fetch(
-        `${getSupabaseUrl()}/rest/v1/parsed_invoices?select=document_id,status,total_cents,from_name,expense_category,invoice_date,parsed_at&order=parsed_at.asc`,
+        `${getSupabaseUrl()}/rest/v1/parsed_invoices?select=document_id,status,total_cents,from_name,expense_category,invoice_date,parsed_at&order=parsed_at.asc&limit=10000`,
         { headers }
       ),
     ])

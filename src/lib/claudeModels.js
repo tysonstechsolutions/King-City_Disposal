@@ -76,8 +76,21 @@ export async function callClaudeWithFallback({
       });
 
       if (response.ok) {
-        console.log(`[Claude] Success with model: ${model}`);
         const result = await response.json();
+        // A 2xx with no usable text is NOT a success: the model may have
+        // returned only thinking blocks, an empty content array, a refusal, or
+        // hit the token limit (stop_reason 'max_tokens'/'end_turn') on a hard
+        // image. Returning it as success gives the caller nothing to parse.
+        // Fall through to the next model instead.
+        const textLen = (result?.content || [])
+          .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+          .reduce((n, b) => n + b.text.trim().length, 0);
+        if (textLen === 0) {
+          console.warn(`[Claude] ${model} returned 2xx with no text (stop_reason=${result?.stop_reason})`);
+          lastError = { model, error: `Model returned no readable text (stop_reason=${result?.stop_reason || 'unknown'})`, status: 200 };
+          continue;
+        }
+        console.log(`[Claude] Success with model: ${model}`);
         return { success: true, data: result, model };
       }
 
