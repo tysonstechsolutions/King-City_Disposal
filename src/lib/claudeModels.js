@@ -5,18 +5,20 @@
 // Prevents website breakage when Claude updates models
 
 // List of Claude models in priority order (newest to oldest)
-// Claude frequently deprecates old models, so we have fallbacks
+// Claude frequently deprecates old models, so we have fallbacks.
+// Updated 2026: the previous Sonnet 4 / Claude 3.5 / Claude 3 models were all
+// retired by Anthropic (they now 404), which silently broke document parsing.
+// These are the current vision-capable models — all support image + PDF input.
 export const CLAUDE_MODELS = {
   // Primary models (try these first)
   PRIMARY: [
-    'claude-sonnet-4-20250514',        // Sonnet 4 (newest, best balance)
-    'claude-3-5-sonnet-20241022',      // Sonnet 3.5 v2 (excellent vision)
+    'claude-sonnet-5',                 // Sonnet 5 (excellent vision, best balance)
+    'claude-opus-4-8',                 // Opus 4.8 (most capable, vision) - accuracy fallback
   ],
 
   // Fallback models (try if primary fails)
   FALLBACK: [
-    'claude-3-5-haiku-20241022',       // Haiku 3.5 (fast, cheap)
-    'claude-3-haiku-20240307',         // Haiku 3 (legacy fallback)
+    'claude-haiku-4-5',                // Haiku 4.5 (fast, cheap, vision-capable)
   ],
 };
 
