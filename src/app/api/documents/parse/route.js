@@ -504,7 +504,15 @@ export async function POST(request) {
 
     logger.info('Document parsed successfully', { model: claudeResult.model, document_id });
     const claudeData = claudeResult.data;
-    const aiText = claudeData.content[0]?.text || '';
+    // Current Claude models (e.g. Sonnet 5) can return a leading "thinking"
+    // block, so content[0] isn't necessarily the text. Concatenate every text
+    // block instead of assuming position 0 — otherwise aiText comes back empty
+    // and JSON parsing "succeeds" on nothing / fails silently.
+    const aiText = (claudeData.content || [])
+      .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+      .map((b) => b.text)
+      .join('')
+      .trim() || '';
 
     // 4. Parse the JSON response
     let parsedData;
