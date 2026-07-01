@@ -369,6 +369,9 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
 
   const CategoryIcon = CATEGORY_ICONS[formData.expense_category] || HelpCircle
   const isWeightTicket = document?.category === 'weight_ticket' || formData.weight_lbs
+  const isPdf = document?.file_type === 'application/pdf' ||
+    document?.file_name?.toLowerCase?.().endsWith('.pdf') ||
+    document?.storage_path?.toLowerCase?.().endsWith('.pdf')
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -448,9 +451,20 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
 
         {/* Content - Side by Side */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          {/* Left: Image Preview (zoomable) */}
-          <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-100 relative flex flex-col">
-            {imageUrl ? (
+          {/* Left: Document Preview (PDF viewer or zoomable image) */}
+          <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-100 relative flex flex-col min-h-[300px] md:min-h-0">
+            {imageUrl && isPdf ? (
+              <object data={imageUrl} type="application/pdf" className="w-full flex-1 min-h-[400px]">
+                <iframe src={imageUrl} title="Document PDF" className="w-full h-full min-h-[400px] border-0" />
+                <div className="flex flex-col items-center justify-center h-full text-neutral-500 gap-2 p-4">
+                  <FileText className="w-8 h-8" />
+                  <p className="text-sm">Can&apos;t preview this PDF here.</p>
+                  <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 underline text-sm">
+                    Open the PDF in a new tab
+                  </a>
+                </div>
+              </object>
+            ) : imageUrl ? (
               <>
                 {/* Zoom controls */}
                 <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/90 backdrop-blur rounded-lg shadow border border-neutral-200 p-1">
