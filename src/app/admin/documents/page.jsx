@@ -72,22 +72,22 @@ export default function DocumentsPage() {
   const fetchDocuments = async () => {
     setLoading(true)
     try {
-      // Always fetch ALL documents so stats remain accurate.
-      // cache: 'no-store' prevents the browser from serving a stale list after
-      // a parse just changed a document's status.
-      const response = await fetch(
-        `${config.supabase.url}/rest/v1/documents?order=created_at.desc`,
-        {
-          cache: 'no-store',
-          headers: {
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-        }
-      )
+      // Read through the server API (service-role): it merges each document with
+      // its parsed_invoices data, so parsed status + amounts show up even if the
+      // write-back onto the documents row failed. cache: 'no-store' avoids a
+      // stale list right after a parse.
+      const token = sessionStorage.getItem('adminToken')
+      const response = await fetch('/api/documents', {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${token}` },
+      })
       if (response.ok) {
         const data = await response.json()
-        setDocuments(data)
+        setDocuments(Array.isArray(data) ? data : [])
+      } else if (response.status === 401) {
+        sessionStorage.removeItem('adminToken')
+        window.location.href = '/admin'
+        return
       }
     } catch (err) {
       console.error('Error fetching documents:', err)
@@ -172,30 +172,23 @@ export default function DocumentsPage() {
             }
 
             try {
-              const checkResponse = await fetch(
-                `${config.supabase.url}/rest/v1/documents?id=eq.${docId}&select=id,parse_status,title,file_name,file_type,storage_path,category,amount_cents,weight_lbs,service_date,created_at`,
-                {
-                  headers: {
-                    'apikey': config.supabase.anonKey,
-                    'Authorization': `Bearer ${config.supabase.anonKey}`,
-                  },
-                }
-              )
+              // Completion = parsed data exists for this document. Checked via
+              // the server (parsed_invoices isn't readable with the anon key),
+              // so it works even if the documents row wasn't written back.
+              const token = sessionStorage.getItem('adminToken')
+              const checkResponse = await fetch(`/api/documents/parse?document_id=${docId}`, {
+                cache: 'no-store',
+                headers: { Authorization: `Bearer ${token}` },
+              })
 
               if (checkResponse.ok) {
-                const [doc] = await checkResponse.json()
-                if (doc?.parse_status === 'parsed' || doc?.parse_status === 'confirmed') {
-                  // Parsing complete! Auto-open review modal
+                const parsed = await checkResponse.json()
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  // Parsing complete!
                   setParsing(prev => ({ ...prev, [docId]: false }))
                   toast.success('Document analyzed! Review the extracted data.')
                   fetchDocuments()
-                  // Auto-open review modal
-                  openReview(doc)
-                  return
-                } else if (doc?.parse_status === 'failed') {
-                  setParsing(prev => ({ ...prev, [docId]: false }))
-                  toast.error('Parsing failed. Click to retry.')
-                  fetchDocuments()
+                  openReview({ id: docId })
                   return
                 }
               }
