@@ -72,10 +72,13 @@ export default function DocumentsPage() {
   const fetchDocuments = async () => {
     setLoading(true)
     try {
-      // Always fetch ALL documents so stats remain accurate
+      // Always fetch ALL documents so stats remain accurate.
+      // cache: 'no-store' prevents the browser from serving a stale list after
+      // a parse just changed a document's status.
       const response = await fetch(
         `${config.supabase.url}/rest/v1/documents?order=created_at.desc`,
         {
+          cache: 'no-store',
           headers: {
             'apikey': config.supabase.anonKey,
             'Authorization': `Bearer ${config.supabase.anonKey}`,

@@ -734,12 +734,13 @@ export async function POST(request) {
     // advances to 'parsed' and shows up as completed in the UI. Without this
     // fallback, a single missing column (e.g. `vendor`) wedges the doc at
     // 'parsing' forever even after Claude finished successfully.
+    let lastUpdateError = '';
     let finalUpdate = await writeDocUpdate(documentUpdate);
     if (!finalUpdate.ok) {
-      const errorText = await finalUpdate.text().catch(() => '');
+      lastUpdateError = await finalUpdate.text().catch(() => '');
       logger.warn('Full document update failed, falling back to minimal', {
         document_id,
-        error: errorText.substring(0, 200),
+        error: lastUpdateError.substring(0, 300),
       });
       const minimalUpdate = {
         parse_status: 'parsed',
@@ -752,12 +753,60 @@ export async function POST(request) {
       if (documentUpdate.category) minimalUpdate.category = documentUpdate.category;
       finalUpdate = await writeDocUpdate(minimalUpdate);
       if (!finalUpdate.ok) {
-        // Last resort: just flip parse_status so it doesn't stay 'parsing'.
-        await writeDocUpdate({
+        lastUpdateError = await finalUpdate.text().catch(() => lastUpdateError);
+        // Last resort: flip parse_status + link the parsed invoice.
+        const lastResort = await writeDocUpdate({
           parse_status: 'parsed',
           parsed_invoice_id: parsedInvoice.id,
         });
+        if (!lastResort.ok) {
+          lastUpdateError = await lastResort.text().catch(() => lastUpdateError);
+          // Absolute minimum: flip ONLY parse_status. The review popup finds the
+          // parsed data by document_id, not by parsed_invoice_id, so this alone
+          // makes the document show as "Parsed" and open its data — even if the
+          // documents table is missing the parsed_invoice_id column.
+          const statusOnly = await writeDocUpdate({ parse_status: 'parsed' });
+          if (!statusOnly.ok) lastUpdateError = await statusOnly.text().catch(() => lastUpdateError);
+        }
       }
+    }
+
+    // Verify the document actually flipped to 'parsed'. The updates above are
+    // non-fatal, so a silent failure (missing column, RLS policy, wrong key)
+    // would leave the document on 'pending' while this endpoint still reports
+    // success — which looks exactly like "parsing completed but nothing
+    // happened". Read the status back and, if it didn't take, return the real
+    // database error instead of a false success.
+    let documentUpdated = true;
+    try {
+      const verifyRes = await fetch(
+        `${getSupabaseUrl()}/rest/v1/documents?id=eq.${document_id}&select=parse_status`,
+        { headers: { apikey: getSupabaseKey(), Authorization: `Bearer ${getSupabaseKey()}` } }
+      );
+      if (verifyRes.ok) {
+        const [row] = await verifyRes.json();
+        documentUpdated = row?.parse_status === 'parsed' || row?.parse_status === 'confirmed';
+      }
+    } catch (e) {
+      // Couldn't verify — don't block; assume it went through.
+    }
+
+    if (!documentUpdated) {
+      logger.error('Document status did not update to parsed after successful parse', null, {
+        document_id,
+        lastUpdateError: lastUpdateError?.substring(0, 300),
+      });
+      return NextResponse.json(
+        {
+          error:
+            'Extracted the data, but could not update the document to "Parsed" in the database, so it still shows Pending. ' +
+            'This usually means the documents table is missing a parse_status or parsed_invoice_id column, or a row-level-security policy is blocking the update. ' +
+            (lastUpdateError ? `Database said: ${lastUpdateError.substring(0, 300)}` : ''),
+          document_updated: false,
+          parsed_invoice_id: parsedInvoice.id,
+        },
+        { status: 500 }
+      );
     }
 
     // 8. Update customer stats if we linked one
