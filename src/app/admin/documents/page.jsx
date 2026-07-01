@@ -310,6 +310,15 @@ export default function DocumentsPage() {
     const token = sessionStorage.getItem('adminToken')
     let success = 0
     let failed = 0
+    let firstError = null
+    // A configuration error (e.g. the AI key isn't set on the server) fails
+    // the same way for every document, so there's no point retrying all 37 —
+    // stop early and tell the owner exactly what to fix instead of silently
+    // leaving everything stuck on "Pending".
+    let configError = null
+    const looksLikeConfigError = (msg, status) =>
+      status >= 500 && /api[_ ]?key|not configured|ANTHROPIC|not set/i.test(msg || '')
+
     for (const doc of pendingDocs) {
       setParsing(prev => ({ ...prev, [doc.id]: true }))
       try {
@@ -325,19 +334,32 @@ export default function DocumentsPage() {
           success++
         } else {
           failed++
+          const err = await response.json().catch(() => ({}))
+          if (!firstError) firstError = err.error || `Server error (${response.status})`
+          if (looksLikeConfigError(err.error, response.status)) {
+            configError = err.error
+            setParsing(prev => ({ ...prev, [doc.id]: false }))
+            break
+          }
         }
       } catch (err) {
         console.error('Re-parse error for doc', doc.id, err)
         failed++
+        if (!firstError) firstError = err.message
       }
       setParsing(prev => ({ ...prev, [doc.id]: false }))
     }
     setReparsingAll(false)
     fetchDocuments()
-    if (failed === 0) {
+    if (configError) {
+      toast.error(
+        `${configError}. Add the ANTHROPIC_API_KEY environment variable in Vercel, then try again (check /api/health to confirm).`,
+        'Document parsing is not set up'
+      )
+    } else if (failed === 0) {
       toast.success(`Parsed ${success} document${success === 1 ? '' : 's'}`)
     } else {
-      toast.warning(`Parsed ${success}, ${failed} failed`)
+      toast.warning(`Parsed ${success}, ${failed} failed${firstError ? ` — ${firstError}` : ''}`)
     }
   }
 
