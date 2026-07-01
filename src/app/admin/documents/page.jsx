@@ -50,6 +50,7 @@ export default function DocumentsPage() {
   const [reviewingDoc, setReviewingDoc] = useState(null)
   const [parsedInvoice, setParsedInvoice] = useState(null)
   const [parsing, setParsing] = useState({})
+  const [manualDoc, setManualDoc] = useState(null)
 
   // Upload state
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -478,7 +479,10 @@ export default function DocumentsPage() {
   }, [documents, searchTerm, sortBy, filterCategory, filterStatus])
 
   // Get status badge
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, manual) => {
+    if (manual && (status === 'parsed' || status === 'confirmed')) {
+      return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1"><PenLine className="w-3 h-3" />Manual</span>
+    }
     const badges = {
       parsing: <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Parsing</span>,
       parsed: <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-400 border border-green-500/30">Parsed</span>,
@@ -755,7 +759,7 @@ export default function DocumentsPage() {
                           <span className="font-medium text-white group-hover:text-primary truncate">
                             {doc.title || doc.file_name}
                           </span>
-                          {getStatusBadge(doc.parse_status)}
+                          {getStatusBadge(doc.parse_status, doc.manual)}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dark-400">
                           <span className={`px-2 py-0.5 rounded text-xs bg-dark-700 text-dark-300`}>
@@ -839,6 +843,17 @@ export default function DocumentsPage() {
                           </button>
                         )}
 
+                        {/* Manual entry fallback for anything not yet completed */}
+                        {!(doc.parse_status === 'parsed' || doc.parse_status === 'confirmed') && !parsing[doc.id] && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setManualDoc(doc) }}
+                            className="p-2 text-dark-400 hover:text-green-400 hover:bg-dark-700 rounded-lg transition-colors"
+                            title="Enter details manually"
+                          >
+                            <PenLine className="w-4 h-4" />
+                          </button>
+                        )}
+
                         {doc.storage_path && (
                           <a
                             href={doc.storage_path.startsWith('http')
@@ -892,6 +907,23 @@ export default function DocumentsPage() {
           onReparse={() => {
             closeReview()
             parseDocument({ stopPropagation: () => {} }, reviewingDoc.id)
+          }}
+        />
+      )}
+
+      {/* Manual Entry Modal — type the details from the receipt image */}
+      {manualDoc && (
+        <ParsedInvoiceReview
+          document={manualDoc}
+          parsedInvoice={null}
+          manualMode
+          documentId={manualDoc.id}
+          imageUrl={manualDoc.id ? `/api/documents/image/${manualDoc.id}` : null}
+          onClose={() => setManualDoc(null)}
+          onConfirm={() => {
+            setManualDoc(null)
+            toast.success('Saved! Document marked as manually entered.')
+            fetchDocuments()
           }}
         />
       )}

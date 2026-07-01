@@ -26,12 +26,16 @@ import {
   Link2,
   Unlink,
   Scale,
-  Truck
+  Truck,
+  ZoomIn,
+  ZoomOut,
+  Pencil
 } from 'lucide-react'
 
-export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl, onClose, onConfirm, onReparse }) {
+export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl, onClose, onConfirm, onReparse, manualMode = false, documentId = null }) {
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [zoom, setZoom] = useState(1)
   const [error, setError] = useState(null)
   const [formData, setFormData] = useState(null)
   const [originalData, setOriginalData] = useState(null) // Track original values for learning
@@ -76,8 +80,27 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
       if (parsedInvoice.customer_id) {
         fetchCustomer(parsedInvoice.customer_id)
       }
+    } else if (manualMode) {
+      // Manual entry: start with a blank, editable form.
+      const blank = {
+        invoice_type: document?.category === 'weight_ticket' ? 'vendor_expense' : 'vendor_expense',
+        from_name: '', from_address: '', from_phone: '', from_email: '',
+        to_name: '', to_address: '', to_phone: '', to_email: '',
+        invoice_number: '',
+        invoice_date: document?.service_date || '',
+        due_date: '', payment_terms: '',
+        subtotal_cents: 0, tax_cents: 0, fees_cents: 0, total_cents: 0,
+        expense_category: document?.category && document.category !== 'invoice' ? document.category : 'other',
+        is_tax_deductible: true,
+        line_items: [],
+        weight_lbs: null,
+        customer_id: null,
+      }
+      setFormData(blank)
+      setOriginalData({ ...blank })
+      setEditing(true)
     }
-  }, [parsedInvoice])
+  }, [parsedInvoice, manualMode])
 
   const fetchCustomer = async (customerId) => {
     try {
@@ -227,7 +250,38 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
     }
   }
 
+  // Manual entry: create a new parsed record for a document the AI couldn't read.
+  const handleManualSave = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const adminToken = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null
+      const response = await fetch('/api/documents/parse/manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
+        },
+        body: JSON.stringify({ document_id: documentId || document?.id, ...formData }),
+      })
+      if (response.ok) {
+        if (onConfirm) onConfirm()
+        onClose()
+      } else {
+        const err = await response.json().catch(() => ({}))
+        setError(err.error || 'Failed to save entry')
+      }
+    } catch (err) {
+      setError('Error saving entry')
+      console.error(err)
+    }
+    setLoading(false)
+  }
+
   const handleConfirm = async () => {
+    if (manualMode) {
+      return handleManualSave()
+    }
     setLoading(true)
     setError(null)
 
@@ -336,18 +390,21 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
             </div>
             <div>
               <h2 className="text-lg font-bold text-neutral-900">
-                {isWeightTicket ? 'Weight Ticket' :
+                {manualMode ? 'Manual Entry' :
+                 isWeightTicket ? 'Weight Ticket' :
                  formData.invoice_type === 'vendor_expense' ? 'Vendor Expense' : 'Customer Invoice Record'}
               </h2>
               <p className="text-sm text-neutral-500">
-                {parsedInvoice.confidence_score
-                  ? `${Math.round(parsedInvoice.confidence_score * 100)}% confidence`
-                  : 'Review extracted data'}
+                {manualMode
+                  ? 'Type the details from the image'
+                  : parsedInvoice?.confidence_score
+                    ? `${Math.round(parsedInvoice.confidence_score * 100)}% confidence`
+                    : 'Review extracted data'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {!editing ? (
+            {!manualMode && (!editing ? (
               <button
                 onClick={() => setEditing(true)}
                 className="flex items-center gap-2 px-3 py-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
@@ -364,7 +421,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                 <Save className="w-4 h-4" />
                 Save
               </button>
-            )}
+            ))}
             {onReparse && (
               <button
                 onClick={onReparse}
@@ -391,16 +448,44 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
 
         {/* Content - Side by Side */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          {/* Left: Image Preview */}
-          <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-100 p-4 overflow-auto">
+          {/* Left: Image Preview (zoomable) */}
+          <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-100 relative flex flex-col">
             {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt="Document"
-                className="w-full h-auto rounded-lg shadow-lg"
-              />
+              <>
+                {/* Zoom controls */}
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/90 backdrop-blur rounded-lg shadow border border-neutral-200 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
+                    className="p-1.5 text-neutral-600 hover:bg-neutral-100 rounded disabled:opacity-40"
+                    disabled={zoom <= 1}
+                    title="Zoom out"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-neutral-600 w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.min(5, Math.round((z + 0.25) * 100) / 100))}
+                    className="p-1.5 text-neutral-600 hover:bg-neutral-100 rounded disabled:opacity-40"
+                    disabled={zoom >= 5}
+                    title="Zoom in"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
+                  <img
+                    src={imageUrl}
+                    alt="Document"
+                    style={{ width: `${zoom * 100}%` }}
+                    onDoubleClick={() => setZoom((z) => (z >= 2 ? 1 : 2))}
+                    className="h-auto max-w-none rounded-lg shadow-lg cursor-zoom-in select-none"
+                  />
+                </div>
+              </>
             ) : (
-              <div className="flex items-center justify-center h-full text-neutral-400">
+              <div className="flex items-center justify-center h-full text-neutral-400 p-4">
                 No image preview available
               </div>
             )}
@@ -752,14 +837,25 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between p-4 border-t border-neutral-200 bg-neutral-50 shrink-0">
-          <button
-            onClick={handleReject}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <XCircle className="w-5 h-5" />
-            Reject
-          </button>
+          {manualMode ? (
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+              Cancel
+            </button>
+          ) : (
+            <button
+              onClick={handleReject}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <XCircle className="w-5 h-5" />
+              Reject
+            </button>
+          )}
           <div className="flex items-center gap-2 text-sm text-neutral-500">
             {customer && (
               <span className="flex items-center gap-1">
@@ -778,7 +874,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
             ) : (
               <CheckCircle2 className="w-5 h-5" />
             )}
-            Confirm & Save
+            {manualMode ? 'Save Entry' : 'Confirm & Save'}
           </button>
         </div>
       </div>
