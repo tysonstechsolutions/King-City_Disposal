@@ -364,10 +364,14 @@ export async function POST(request) {
       // else: fall through and reclaim the stuck job.
     }
 
-    // Delete any existing parsed_invoice for this document (for re-parsing)
-    if (document.parsed_invoice_id) {
+    // Delete any existing parsed_invoice rows for this document (re-parsing).
+    // This must NOT be gated on document.parsed_invoice_id — that link can be
+    // missing (the write-back to documents can fail on a missing column), and
+    // gating on it let every re-parse stack another duplicate row, which
+    // double-counts the receipt in expenses/tax reports.
+    try {
       await fetch(
-        `${getSupabaseUrl()}/rest/v1/parsed_invoices?document_id=eq.${document_id}`,
+        `${getSupabaseUrl()}/rest/v1/parsed_invoices?document_id=eq.${docIdInt}`,
         {
           method: 'DELETE',
           headers: {
@@ -376,7 +380,8 @@ export async function POST(request) {
           },
         }
       );
-      logger.info('Deleted existing parsed invoice for re-parsing', { document_id });
+    } catch (e) {
+      logger.warn('Could not delete prior parsed rows before re-parse', { document_id });
     }
 
     // Mark document as parsing. PostgREST rejects the *entire* row when an
@@ -473,12 +478,32 @@ export async function POST(request) {
       const base64Data = Buffer.from(fileBuffer).toString('base64');
       const isPdf = mediaType === 'application/pdf' || document.file_name?.toLowerCase().endsWith('.pdf');
 
+      // The Claude vision API only accepts JPEG/PNG/GIF/WebP images (and PDF
+      // documents). Uploads allow more types (HEIC from iPhones, BMP, TIFF...)
+      // — sending those burns through every model fallback with a cryptic
+      // media-type error. Normalize what we can and fail fast with a clear,
+      // actionable message for the rest.
+      const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      let visionMediaType = (mediaType || '').toLowerCase();
+      if (visionMediaType === 'image/jpg') visionMediaType = 'image/jpeg';
+      if (!isPdf && !SUPPORTED_IMAGE_TYPES.includes(visionMediaType)) {
+        await updateDocumentStatus(document_id, 'failed');
+        return NextResponse.json(
+          {
+            error: `This file type (${mediaType || 'unknown'}) can't be read by the AI. Please convert it to JPG, PNG, or PDF and upload again. Tip: iPhone photos are HEIC by default — set Camera > Formats to "Most Compatible", or share the photo as a JPEG.`,
+            stage: 'unsupported_media_type',
+            document_id,
+          },
+          { status: 415 }
+        );
+      }
+
       messageContent = [
         {
           type: isPdf ? 'document' : 'image',
           source: {
             type: 'base64',
-            media_type: isPdf ? 'application/pdf' : mediaType,
+            media_type: isPdf ? 'application/pdf' : visionMediaType,
             data: base64Data,
           },
         },
@@ -769,10 +794,11 @@ export async function POST(request) {
     );
 
     // Try the full update first. If PostgREST rejects it (PGRST204 — column
-    // missing), strip optional fields and retry so the document at least
-    // advances to 'parsed' and shows up as completed in the UI. Without this
-    // fallback, a single missing column (e.g. `vendor`) wedges the doc at
-    // 'parsing' forever even after Claude finished successfully.
+    // missing), strip optional fields and retry so the document at least gets
+    // its parsed_invoice link + amount. Critically, the later fallbacks must
+    // NOT include parse_status/vendor/description: in databases where those
+    // columns were never added, any payload containing them is rejected
+    // wholesale, which is exactly how parsed_invoice_id ended up never written.
     let lastUpdateError = '';
     let finalUpdate = await writeDocUpdate(documentUpdate);
     if (!finalUpdate.ok) {
@@ -781,33 +807,24 @@ export async function POST(request) {
         document_id,
         error: lastUpdateError.substring(0, 300),
       });
-      const minimalUpdate = {
-        parse_status: 'parsed',
-        parsed_invoice_id: parsedInvoice.id,
-      };
+      // Only columns that exist in the base schema — no parse_status/vendor,
+      // and no parsed_invoice_id either: in unmigrated databases that column
+      // is a UUID (wrong type), so including the bigint id fails the whole
+      // PATCH. Write the display fields first, then try the link separately.
+      const minimalUpdate = {};
       if (documentUpdate.amount_cents != null) minimalUpdate.amount_cents = documentUpdate.amount_cents;
       if (documentUpdate.weight_lbs != null) minimalUpdate.weight_lbs = documentUpdate.weight_lbs;
       if (documentUpdate.service_date) minimalUpdate.service_date = documentUpdate.service_date;
       if (documentUpdate.title) minimalUpdate.title = documentUpdate.title;
       if (documentUpdate.category) minimalUpdate.category = documentUpdate.category;
-      finalUpdate = await writeDocUpdate(minimalUpdate);
-      if (!finalUpdate.ok) {
-        lastUpdateError = await finalUpdate.text().catch(() => lastUpdateError);
-        // Last resort: flip parse_status + link the parsed invoice.
-        const lastResort = await writeDocUpdate({
-          parse_status: 'parsed',
-          parsed_invoice_id: parsedInvoice.id,
-        });
-        if (!lastResort.ok) {
-          lastUpdateError = await lastResort.text().catch(() => lastUpdateError);
-          // Absolute minimum: flip ONLY parse_status. The review popup finds the
-          // parsed data by document_id, not by parsed_invoice_id, so this alone
-          // makes the document show as "Parsed" and open its data — even if the
-          // documents table is missing the parsed_invoice_id column.
-          const statusOnly = await writeDocUpdate({ parse_status: 'parsed' });
-          if (!statusOnly.ok) lastUpdateError = await statusOnly.text().catch(() => lastUpdateError);
-        }
+      if (documentUpdate.customer_id != null) minimalUpdate.customer_id = documentUpdate.customer_id;
+      if (Object.keys(minimalUpdate).length > 0) {
+        finalUpdate = await writeDocUpdate(minimalUpdate);
+        if (!finalUpdate.ok) lastUpdateError = await finalUpdate.text().catch(() => lastUpdateError);
       }
+      // Best-effort link — works once the migration fixes the column type.
+      const linkAttempt = await writeDocUpdate({ parsed_invoice_id: parsedInvoice.id });
+      if (!linkAttempt.ok) lastUpdateError = await linkAttempt.text().catch(() => lastUpdateError);
     }
 
     // Prove the parse actually persisted by re-reading parsed_invoices for this
@@ -1047,7 +1064,9 @@ export async function GET(request) {
     if (id) {
       query = `id=eq.${id}`;
     } else if (documentId) {
-      query = `document_id=eq.${documentId}`;
+      // Keep the ordering: if duplicates exist for a document, callers that
+      // take the first row must get the LATEST parse, not an arbitrary one.
+      query = `document_id=eq.${documentId}&order=parsed_at.desc`;
     } else if (status) {
       query += `&status=eq.${status}`;
     }

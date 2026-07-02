@@ -136,10 +136,19 @@ export async function POST(request) {
 
     let docRes = await writeDoc(fullDoc)
     if (!docRes.ok) {
-      docRes = await writeDoc({ parse_status: 'parsed', parsed_invoice_id: parsedInvoice.id })
-      if (!docRes.ok) {
-        await writeDoc({ parse_status: 'parsed' })
+      // Base-schema columns only (no parse_status/vendor — those may not exist,
+      // and PostgREST rejects the whole payload when any column is unknown).
+      // parsed_invoice_id goes in its own attempt: in unmigrated databases that
+      // column is a UUID and the bigint id would sink the whole PATCH.
+      const minimalDoc = {
+        ...(totalCents ? { amount_cents: totalCents } : {}),
+        ...(body.expense_category ? { category: body.expense_category } : {}),
+        ...(invoiceDate ? { service_date: invoiceDate } : {}),
       }
+      if (Object.keys(minimalDoc).length > 0) {
+        docRes = await writeDoc(minimalDoc)
+      }
+      await writeDoc({ parsed_invoice_id: parsedInvoice.id }).catch(() => {})
     }
 
     return NextResponse.json({ success: true, parsed_invoice: parsedInvoice })

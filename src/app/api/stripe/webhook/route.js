@@ -22,6 +22,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { config } from '../../../../config';
 import { notifyOwner, notifyCustomer, sendSMS, bookingConfirmationEmail, invoiceEmail, sendEmail } from '../../../../lib/notifications';
+import { findInvoice, markInvoicePaid, recordTransaction, notifyInvoicePaid } from '../../../../lib/stripeBilling';
 
 // Initialize Stripe lazily to avoid build-time crash when env var is missing
 let _stripe;
@@ -62,6 +63,46 @@ async function updateBooking(id, updates) {
   }
   console.error(`❌ updateBooking ${id} failed:`, await response.text());
   return null;
+}
+
+// Mark an invoice paid, resilient to missing optional columns. PostgREST
+// rejects the ENTIRE update when any column in the body doesn't exist
+// (payment_method / stripe_payment_intent_id may not be in the schema yet),
+// which used to leave paid invoices showing "unpaid" on the website. Try the
+// full update first, then retry with only the core columns.
+async function patchInvoicePaid(query, { amountPaidCents, paymentIntentId }) {
+  const supabaseUrl = config.supabase.url;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
+  const doPatch = (body) => fetch(
+    `${supabaseUrl}/rest/v1/invoices?${query}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  const core = {
+    status: 'paid',
+    paid_at: new Date().toISOString(),
+    amount_paid_cents: amountPaidCents,
+  };
+  let response = await doPatch({
+    ...core,
+    payment_method: 'stripe',
+    stripe_payment_intent_id: paymentIntentId,
+  });
+  if (!response.ok) {
+    const err = await response.text().catch(() => '');
+    console.error(`patchInvoicePaid full update failed (${query}), retrying minimal:`, err.substring(0, 300));
+    response = await doPatch(core);
+  }
+  return response;
 }
 
 async function getBooking(id) {
@@ -622,25 +663,10 @@ export async function POST(request) {
               // Non-fatal — fall through and process normally.
             }
 
-            const updateResponse = await fetch(
-              `${supabaseUrl}/rest/v1/invoices?${query}`,
-              {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Prefer': 'return=representation',
-                },
-                body: JSON.stringify({
-                  status: 'paid',
-                  paid_at: new Date().toISOString(),
-                  amount_paid_cents: session.amount_total,
-                  payment_method: 'stripe',
-                  stripe_payment_intent_id: session.payment_intent,
-                }),
-              }
-            );
+            const updateResponse = await patchInvoicePaid(query, {
+              amountPaidCents: session.amount_total,
+              paymentIntentId: session.payment_intent,
+            });
 
             if (updateResponse.ok) {
               const [invoice] = await updateResponse.json();
@@ -758,25 +784,11 @@ export async function POST(request) {
 
             const balance = Math.max(0, (inv.total_cents || 0) - (inv.amount_paid_cents || 0));
 
-            // Mark this invoice paid
-            await fetch(
-              `${supabaseUrl}/rest/v1/invoices?id=eq.${invId}`,
-              {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`,
-                },
-                body: JSON.stringify({
-                  status: 'paid',
-                  paid_at: new Date().toISOString(),
-                  amount_paid_cents: inv.total_cents,
-                  payment_method: 'stripe',
-                  stripe_payment_intent_id: session.payment_intent,
-                }),
-              }
-            );
+            // Mark this invoice paid (resilient to missing optional columns)
+            await patchInvoicePaid(`id=eq.${invId}`, {
+              amountPaidCents: inv.total_cents,
+              paymentIntentId: session.payment_intent,
+            });
 
             // One receipt per invoice. Composite session id keeps the webhook
             // dedup working per-invoice (one real Stripe session, many invoices).
@@ -883,6 +895,59 @@ export async function POST(request) {
           );
         } catch (e) {
           console.error('Team notification failed:', e);
+        }
+      }
+    }
+
+    // Handle direct PaymentIntent payments (admin card charge / saved card).
+    // Checkout-session payments are handled above via checkout.session.completed
+    // — their PaymentIntents carry no invoice metadata, so this branch skips
+    // them. Everything here is idempotent: markInvoicePaid no-ops when the
+    // invoice is already paid, and recordTransaction dedupes on `pi_<id>`.
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object;
+      const piMeta = pi.metadata || {};
+      const invoiceRef = piMeta.invoice_id || piMeta.invoice_number;
+
+      if (invoiceRef && (piMeta.source === 'admin_manual_charge' || piMeta.source === 'admin_saved_card' || piMeta.type === 'invoice')) {
+        try {
+          const invoice = await findInvoice({
+            invoiceId: piMeta.invoice_id,
+            invoiceNumber: piMeta.invoice_number,
+          });
+
+          if (invoice) {
+            const { wasAlreadyPaid, invoice: updated } = await markInvoicePaid(invoice, {
+              amountCents: pi.amount_received || pi.amount,
+              paymentIntentId: pi.id,
+              paymentMethod: 'card',
+            });
+
+            await recordTransaction({
+              invoice_id: invoice.id,
+              booking_id: invoice.booking_id || null,
+              customer_name: invoice.customer_name,
+              customer_phone: invoice.customer_phone,
+              customer_email: invoice.customer_email,
+              amount_cents: pi.amount_received || pi.amount,
+              description: `Invoice ${invoice.invoice_number}`,
+              type: 'invoice',
+              service_address: invoice.service_address || null,
+              stripe_session_id: `pi_${pi.id}`,
+              stripe_payment_intent: pi.id,
+              payment_method: 'card',
+              send_sms: false,
+            });
+
+            if (!wasAlreadyPaid) {
+              await notifyInvoicePaid(updated || invoice, pi.amount_received || pi.amount);
+            }
+            console.log(`Invoice ${invoice.invoice_number} marked paid via payment_intent.succeeded (${pi.id})`);
+          } else {
+            console.error(`payment_intent.succeeded: invoice not found for ref ${invoiceRef}`);
+          }
+        } catch (e) {
+          console.error('payment_intent.succeeded processing error:', e);
         }
       }
     }

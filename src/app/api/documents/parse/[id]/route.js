@@ -420,9 +420,11 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Reset document parse status
+    // Reset document parse status. Try the full reset first; if parse_status
+    // doesn't exist in this database the whole PATCH is rejected, so retry
+    // with just the parsed_invoice link (which does exist in the base schema).
     if (documentId) {
-      await fetch(
+      const resetDoc = (payload) => fetch(
         `${supabaseUrl}/rest/v1/documents?id=eq.${documentId}`,
         {
           method: 'PATCH',
@@ -431,12 +433,13 @@ export async function DELETE(request, { params }) {
             'apikey': getSupabaseKey(),
             'Authorization': `Bearer ${getSupabaseKey()}`,
           },
-          body: JSON.stringify({
-            parse_status: null,
-            parsed_invoice_id: null,
-          }),
+          body: JSON.stringify(payload),
         }
       );
+      const resetRes = await resetDoc({ parse_status: null, parsed_invoice_id: null });
+      if (!resetRes.ok) {
+        await resetDoc({ parsed_invoice_id: null });
+      }
     }
 
     return NextResponse.json({

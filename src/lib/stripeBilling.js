@@ -64,12 +64,29 @@ export async function markInvoicePaid(invoice, { amountCents, paymentIntentId, p
   if (fullyPaid) update.paid_at = new Date().toISOString()
   if (paymentIntentId) update.stripe_payment_intent_id = paymentIntentId
 
+  const patchInvoice = (payload) => fetch(`${supabaseUrl}/rest/v1/invoices?id=eq.${invoice.id}`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+    body: JSON.stringify(payload),
+  })
+
   try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/invoices?id=eq.${invoice.id}`, {
-      method: 'PATCH',
-      headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
-      body: JSON.stringify(update),
-    })
+    let res = await patchInvoice(update)
+    if (!res.ok) {
+      // PostgREST rejects the WHOLE update when any column in the body doesn't
+      // exist (e.g. payment_method / stripe_payment_intent_id before the
+      // migration is run). Retry with only the core columns so the invoice
+      // still flips to paid — this is what makes payments show on the website.
+      const err = await res.text().catch(() => '')
+      console.error('markInvoicePaid full update failed, retrying minimal:', err.substring(0, 300))
+      const minimal = {
+        amount_paid_cents: newAmountPaid,
+        balance_due_cents: Math.max(0, newBalanceDue),
+        status: fullyPaid ? 'paid' : 'partial',
+      }
+      if (fullyPaid) minimal.paid_at = update.paid_at
+      res = await patchInvoice(minimal)
+    }
     if (!res.ok) {
       console.error('markInvoicePaid update failed:', await res.text())
       return { wasAlreadyPaid: false, invoice }
