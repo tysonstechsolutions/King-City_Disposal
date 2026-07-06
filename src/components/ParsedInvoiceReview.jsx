@@ -41,6 +41,39 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
   const [originalData, setOriginalData] = useState(null) // Track original values for learning
   const [customer, setCustomer] = useState(null)
 
+  // Raw text for numeric inputs. Editing a currency/weight field as a plain
+  // string lets the user type decimals and clear the field, instead of the
+  // value snapping back to "0.00" on every keystroke (which happens when a
+  // controlled number input is force-formatted with .toFixed on each render).
+  const [amountText, setAmountText] = useState({ subtotal: '', tax: '', total: '', weightTons: '' })
+
+  const syncAmountText = (data) => {
+    setAmountText({
+      subtotal: data.subtotal_cents ? (data.subtotal_cents / 100).toFixed(2) : '',
+      tax: data.tax_cents ? (data.tax_cents / 100).toFixed(2) : '',
+      total: data.total_cents ? (data.total_cents / 100).toFixed(2) : '',
+      weightTons: data.weight_lbs ? (data.weight_lbs / 2000).toFixed(2) : '',
+    })
+  }
+
+  const handleCentsChange = (key, centsField, text) => {
+    setAmountText((prev) => ({ ...prev, [key]: text }))
+    const num = parseFloat(text)
+    setFormData((prev) => ({
+      ...prev,
+      [centsField]: text === '' || isNaN(num) ? 0 : Math.round(num * 100),
+    }))
+  }
+
+  const handleWeightChange = (text) => {
+    setAmountText((prev) => ({ ...prev, weightTons: text }))
+    const num = parseFloat(text)
+    setFormData((prev) => ({
+      ...prev,
+      weight_lbs: text === '' || isNaN(num) ? null : Math.round(num * 2000),
+    }))
+  }
+
   // Customer search state
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
@@ -75,6 +108,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
       }
       setFormData(data)
       setOriginalData({ ...data }) // Store original for comparison
+      syncAmountText(data)
 
       // Fetch linked customer if exists
       if (parsedInvoice.customer_id) {
@@ -98,6 +132,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
       }
       setFormData(blank)
       setOriginalData({ ...blank })
+      syncAmountText(blank)
       setEditing(true)
     }
   }, [parsedInvoice, manualMode])
@@ -375,7 +410,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col [color-scheme:light]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 shrink-0">
           <div className="flex items-center gap-3">
@@ -553,7 +588,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                           placeholder="Search by name or phone..."
                           value={customerSearch}
                           onChange={(e) => setCustomerSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                          className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg bg-white text-neutral-900 placeholder-neutral-400 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
                           autoFocus
                         />
                         {searchingCustomers && (
@@ -609,9 +644,9 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                       <input
                         type="number"
                         step="0.01"
-                        value={formData.weight_lbs ? (formData.weight_lbs / 2000).toFixed(2) : ''}
-                        onChange={(e) => setFormData({ ...formData, weight_lbs: e.target.value ? Math.round(parseFloat(e.target.value) * 2000) : null })}
-                        className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
+                        value={amountText.weightTons}
+                        onChange={(e) => handleWeightChange(e.target.value)}
+                        className="w-full px-2 py-1 border border-neutral-300 rounded text-sm bg-white text-neutral-900 placeholder-neutral-400"
                         placeholder="e.g., 2.25"
                       />
                     ) : (
@@ -672,7 +707,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                       type="text"
                       value={formData.from_name}
                       onChange={(e) => setFormData({ ...formData, from_name: e.target.value })}
-                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
+                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm bg-white text-neutral-900 placeholder-neutral-400"
                     />
                   ) : (
                     <p className="text-sm font-medium">{formData.from_name || '-'}</p>
@@ -685,7 +720,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                       type="text"
                       value={formData.from_phone}
                       onChange={(e) => setFormData({ ...formData, from_phone: e.target.value })}
-                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
+                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm bg-white text-neutral-900 placeholder-neutral-400"
                     />
                   ) : (
                     <p className="text-sm">{formData.from_phone || '-'}</p>
@@ -698,7 +733,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                       type="text"
                       value={formData.from_address}
                       onChange={(e) => setFormData({ ...formData, from_address: e.target.value })}
-                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
+                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm bg-white text-neutral-900 placeholder-neutral-400"
                     />
                   ) : (
                     <p className="text-sm">{formData.from_address || '-'}</p>
@@ -721,7 +756,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                       type="text"
                       value={formData.invoice_number}
                       onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
+                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm bg-white text-neutral-900 placeholder-neutral-400"
                     />
                   ) : (
                     <p className="text-sm font-medium">{formData.invoice_number || '-'}</p>
@@ -734,7 +769,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                       type="date"
                       value={formData.invoice_date}
                       onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
+                      className="w-full px-2 py-1 border border-neutral-300 rounded text-sm bg-white text-neutral-900 placeholder-neutral-400"
                     />
                   ) : (
                     <p className="text-sm">{formData.invoice_date || '-'}</p>
@@ -771,9 +806,10 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                     <input
                       type="number"
                       step="0.01"
-                      value={(formData.subtotal_cents / 100).toFixed(2)}
-                      onChange={(e) => setFormData({ ...formData, subtotal_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
-                      className="w-24 px-2 py-1 border border-neutral-300 rounded text-sm text-right"
+                      value={amountText.subtotal}
+                      onChange={(e) => handleCentsChange('subtotal', 'subtotal_cents', e.target.value)}
+                      className="w-24 px-2 py-1 border border-neutral-300 rounded text-sm text-right bg-white text-neutral-900 placeholder-neutral-400"
+                      placeholder="0.00"
                     />
                   ) : (
                     <span>{formatCurrency(formData.subtotal_cents)}</span>
@@ -785,9 +821,10 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                     <input
                       type="number"
                       step="0.01"
-                      value={(formData.tax_cents / 100).toFixed(2)}
-                      onChange={(e) => setFormData({ ...formData, tax_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
-                      className="w-24 px-2 py-1 border border-neutral-300 rounded text-sm text-right"
+                      value={amountText.tax}
+                      onChange={(e) => handleCentsChange('tax', 'tax_cents', e.target.value)}
+                      className="w-24 px-2 py-1 border border-neutral-300 rounded text-sm text-right bg-white text-neutral-900 placeholder-neutral-400"
+                      placeholder="0.00"
                     />
                   ) : (
                     <span>{formatCurrency(formData.tax_cents)}</span>
@@ -799,9 +836,10 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                     <input
                       type="number"
                       step="0.01"
-                      value={(formData.total_cents / 100).toFixed(2)}
-                      onChange={(e) => setFormData({ ...formData, total_cents: Math.round(parseFloat(e.target.value || 0) * 100) })}
-                      className="w-24 px-2 py-1 border border-neutral-300 rounded text-sm text-right font-semibold"
+                      value={amountText.total}
+                      onChange={(e) => handleCentsChange('total', 'total_cents', e.target.value)}
+                      className="w-24 px-2 py-1 border border-neutral-300 rounded text-sm text-right font-semibold bg-white text-neutral-900 placeholder-neutral-400"
+                      placeholder="0.00"
                     />
                   ) : (
                     <span className="text-lg">{formatCurrency(formData.total_cents)}</span>
@@ -821,7 +859,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                   <select
                     value={formData.expense_category}
                     onChange={(e) => setFormData({ ...formData, expense_category: e.target.value })}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg bg-white text-neutral-900"
                   >
                     {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
