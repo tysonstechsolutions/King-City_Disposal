@@ -13,6 +13,39 @@ export const dynamic = 'force-dynamic';
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
 
+// Columns that actually exist on parsed_invoices and are safe to edit.
+// The review form carries extra client-only fields (e.g. weight_lbs, which
+// lives on the documents table). Sending an unknown column makes PostgREST
+// reject the entire request with a 500, so we filter to this allowlist.
+const EDITABLE_COLUMNS = new Set([
+  'invoice_type',
+  'from_name', 'from_address', 'from_phone', 'from_email',
+  'to_name', 'to_address', 'to_phone', 'to_email',
+  'invoice_number', 'invoice_date', 'due_date', 'payment_terms',
+  'line_items',
+  'subtotal_cents', 'tax_cents', 'fees_cents', 'discount_cents', 'total_cents',
+  'expense_category', 'is_tax_deductible', 'tax_year',
+  'status', 'confidence_score', 'confirmed_at',
+  'raw_text', 'notes', 'customer_id',
+]);
+
+// DATE columns reject empty strings ("" is not valid date syntax), so coerce
+// blank values to null.
+const DATE_COLUMNS = new Set(['invoice_date', 'due_date']);
+
+function sanitizeUpdates(raw) {
+  const clean = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!EDITABLE_COLUMNS.has(key)) continue;
+    if (DATE_COLUMNS.has(key) && (value === '' || value === undefined)) {
+      clean[key] = null;
+      continue;
+    }
+    clean[key] = value;
+  }
+  return clean;
+}
+
 // ============================================
 // GET - Fetch single parsed invoice
 // ============================================
@@ -77,17 +110,23 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
 
   try {
-    const updates = await request.json();
+    const rawUpdates = await request.json();
+
+    // Keep only real, editable columns (drops client-only fields like
+    // weight_lbs that would otherwise make PostgREST reject the whole PATCH).
+    const updates = sanitizeUpdates(rawUpdates);
 
     // If line_items is being updated, stringify it
     if (updates.line_items && typeof updates.line_items !== 'string') {
       updates.line_items = JSON.stringify(updates.line_items);
     }
 
-    // Prevent changing certain fields
-    delete updates.id;
-    delete updates.document_id;
-    delete updates.parsed_at;
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        { error: 'No editable fields provided' },
+        { status: 400 }
+      );
+    }
 
     const response = await fetch(
       `${supabaseUrl}/rest/v1/parsed_invoices?id=eq.${id}`,
@@ -107,7 +146,7 @@ export async function PATCH(request, { params }) {
       const errorText = await response.text();
       console.error('Update parsed invoice error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to update parsed invoice' },
+        { error: 'Failed to update parsed invoice', detail: errorText },
         { status: 500 }
       );
     }
