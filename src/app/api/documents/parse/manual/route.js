@@ -34,10 +34,6 @@ export async function POST(request) {
 
   try {
     const body = await request.json()
-    const docIdInt = parseInt(body.document_id, 10)
-    if (Number.isNaN(docIdInt)) {
-      return NextResponse.json({ error: 'A valid document_id is required' }, { status: 400 })
-    }
 
     const headers = {
       'Content-Type': 'application/json',
@@ -46,6 +42,46 @@ export async function POST(request) {
     }
 
     const invoiceDate = formatDate(body.invoice_date)
+
+    // A document_id is normally supplied (manual review of an uploaded file).
+    // When it's absent — the standalone "Manual" entry with no attachment —
+    // create a fileless document record server-side (service key) so the rest
+    // of the flow is identical. Only base-schema columns go in the insert so
+    // an unmigrated database can't reject it; richer fields are patched below.
+    let docIdInt = parseInt(body.document_id, 10)
+    if (Number.isNaN(docIdInt)) {
+      const newDoc = {
+        category: body.expense_category || 'other',
+        title: body.from_name
+          ? `${body.from_name}${invoiceDate ? ` - ${invoiceDate}` : ''}`
+          : 'Manual entry',
+        amount_cents: parseInt(body.total_cents, 10) || null,
+        service_date: invoiceDate || null,
+      }
+      Object.keys(newDoc).forEach((k) => (newDoc[k] == null) && delete newDoc[k])
+
+      const createRes = await fetch(`${getSupabaseUrl()}/rest/v1/documents`, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'return=representation' },
+        body: JSON.stringify(newDoc),
+      })
+      if (!createRes.ok) {
+        const errText = await createRes.text().catch(() => '')
+        logger.error('Manual entry: could not create document', null, { error: errText.substring(0, 300) })
+        return NextResponse.json(
+          { error: `Could not create the record: ${errText.substring(0, 200) || 'database rejected the write'}` },
+          { status: 500 }
+        )
+      }
+      const [createdDoc] = await createRes.json()
+      if (!createdDoc || createdDoc.id == null) {
+        return NextResponse.json(
+          { error: 'The record did not save (database returned no row — check RLS on documents).' },
+          { status: 500 }
+        )
+      }
+      docIdInt = createdDoc.id
+    }
     const taxYear = invoiceDate ? new Date(invoiceDate).getFullYear() : new Date().getFullYear()
     const totalCents = parseInt(body.total_cents, 10) || 0
 
@@ -78,9 +114,16 @@ export async function POST(request) {
       status: 'confirmed',
       confidence_score: 1.0,
       confirmed_at: new Date().toISOString(),
-      raw_text: MANUAL_MARKER,
-      weight_lbs: body.weight_lbs != null ? parseInt(body.weight_lbs, 10) : null,
+      raw_text: body.notes ? `${MANUAL_MARKER} — ${body.notes}` : MANUAL_MARKER,
+      // NOTE: weight_lbs is NOT a column on parsed_invoices (it lives on the
+      // documents table). Including it here made PostgREST reject the entire
+      // insert, so every manual entry failed. Weight is written to the
+      // document record below instead.
     }
+
+    const weightLbs = body.weight_lbs != null && body.weight_lbs !== ''
+      ? parseInt(body.weight_lbs, 10)
+      : null
 
     // Remove a fresh existing parsed row for this document (re-entry), so we
     // don't stack duplicates.
@@ -131,6 +174,7 @@ export async function POST(request) {
       vendor: body.from_name || null,
       category: body.expense_category || null,
       service_date: invoiceDate || null,
+      weight_lbs: weightLbs,
     }
     Object.keys(fullDoc).forEach((k) => (fullDoc[k] == null) && delete fullDoc[k])
 
@@ -144,6 +188,7 @@ export async function POST(request) {
         ...(totalCents ? { amount_cents: totalCents } : {}),
         ...(body.expense_category ? { category: body.expense_category } : {}),
         ...(invoiceDate ? { service_date: invoiceDate } : {}),
+        ...(weightLbs != null ? { weight_lbs: weightLbs } : {}),
       }
       if (Object.keys(minimalDoc).length > 0) {
         docRes = await writeDoc(minimalDoc)

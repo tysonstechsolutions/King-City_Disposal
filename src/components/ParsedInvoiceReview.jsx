@@ -103,7 +103,9 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
         expense_category: parsedInvoice.expense_category || 'other',
         is_tax_deductible: parsedInvoice.is_tax_deductible !== false,
         line_items: parsedInvoice.line_items || [],
-        weight_lbs: parsedInvoice.weight_lbs || null,
+        // Weight lives on the documents table, not parsed_invoices, so fall
+        // back to the document's value for display on weight tickets.
+        weight_lbs: parsedInvoice.weight_lbs ?? document?.weight_lbs ?? null,
         customer_id: parsedInvoice.customer_id || null,
       }
       setFormData(data)

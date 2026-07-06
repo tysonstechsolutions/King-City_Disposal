@@ -54,6 +54,7 @@ export async function POST(request) {
     const weightLbs = formData.get('weight_lbs');
     const amountCents = formData.get('amount_cents');
     const serviceDate = formData.get('service_date'); // Date on the receipt (when service occurred)
+    const skipParse = formData.get('skip_parse') === 'true'; // Manual entry attaches its own data
 
     if (!file) {
       return NextResponse.json(
@@ -236,7 +237,7 @@ export async function POST(request) {
       'truck_maintenance', 'maintenance', 'office_supplies', 'cleaning_supplies',
       'meals', 'advertising', 'misc', 'other'
     ];
-    const shouldParse = parsableCategories.includes(category);
+    const shouldParse = !skipParse && parsableCategories.includes(category);
     let parseTriggered = false;
     if (shouldParse && process.env.ANTHROPIC_API_KEY) {
       // Await the parse call. Fire-and-forget doesn't reliably complete in

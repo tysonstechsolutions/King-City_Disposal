@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { config } from '../config'
 import { CATEGORY_LABELS } from '../lib/constants'
 import {
   X,
@@ -107,61 +106,9 @@ export default function ManualReceiptEntry({ onClose, onSuccess }) {
 
     try {
       const token = sessionStorage.getItem('adminToken')
-      let documentId = null
+      const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {}
 
-      // Step 1: Upload file if provided
-      if (selectedFile) {
-        const uploadFormData = new FormData()
-        uploadFormData.append('file', selectedFile)
-        uploadFormData.append('category', formData.category)
-        uploadFormData.append('title', `${formData.vendor_name} - ${formData.invoice_date}`)
-
-        const uploadResponse = await fetch('/api/documents/upload', {
-          method: 'POST',
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-          body: uploadFormData,
-        })
-
-        if (!uploadResponse.ok) {
-          const err = await uploadResponse.json()
-          throw new Error(err.error || 'Failed to upload file')
-        }
-
-        const uploadData = await uploadResponse.json()
-        documentId = uploadData.document?.id
-      } else {
-        // Create document record without file
-        const docResponse = await fetch(
-          `${config.supabase.url}/rest/v1/documents`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': config.supabase.anonKey,
-              'Authorization': `Bearer ${config.supabase.anonKey}`,
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify({
-              category: formData.category,
-              title: `${formData.vendor_name} - ${formData.invoice_date}`,
-              vendor: formData.vendor_name,
-              amount_cents: Math.round(parseFloat(formData.total) * 100),
-              weight_lbs: formData.weight_lbs ? parseInt(formData.weight_lbs) : null,
-              service_date: formData.invoice_date,
-              parse_status: 'confirmed', // Manual entry is pre-confirmed
-            }),
-          }
-        )
-
-        if (!docResponse.ok) {
-          throw new Error('Failed to create document record')
-        }
-
-        const [doc] = await docResponse.json()
-        documentId = doc.id
-      }
-
-      // Step 2: Create parsed_invoices record with manual data
+      // Amounts (dollars -> cents)
       const totalCents = Math.round(parseFloat(formData.total || 0) * 100)
       const subtotalCents = formData.subtotal
         ? Math.round(parseFloat(formData.subtotal) * 100)
@@ -175,73 +122,66 @@ export default function ManualReceiptEntry({ onClose, onSuccess }) {
         .map(item => ({
           description: item.description,
           quantity: 1,
-          total_cents: Math.round(parseFloat(item.amount) * 100)
+          total_cents: Math.round(parseFloat(item.amount) * 100),
         }))
 
-      const parsedInvoiceData = {
-        document_id: documentId,
-        invoice_type: 'vendor_expense',
-        from_name: formData.vendor_name,
-        invoice_number: formData.invoice_number || null,
-        invoice_date: formData.invoice_date,
-        subtotal_cents: subtotalCents,
-        tax_cents: taxCents,
-        total_cents: totalCents,
-        expense_category: formData.category,
-        line_items: JSON.stringify(lineItems.length > 0 ? lineItems : [{
-          description: `${formData.category} expense`,
-          quantity: 1,
-          total_cents: totalCents
-        }]),
-        raw_text: formData.notes || null,
-        status: 'confirmed',
-        confidence_score: 1.0, // Manual entry = 100% confidence
-        confirmed_at: new Date().toISOString(),
-        tax_year: new Date(formData.invoice_date).getFullYear(),
-      }
+      // Step 1: If a file is attached, upload it (admin-authenticated) to get a
+      // document. skip_parse=true prevents the AI parser from also running —
+      // the manual data below is the source of truth.
+      let documentId = null
+      if (selectedFile) {
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', selectedFile)
+        uploadFormData.append('category', formData.category)
+        uploadFormData.append('title', `${formData.vendor_name} - ${formData.invoice_date}`)
+        uploadFormData.append('skip_parse', 'true')
 
-      const parseResponse = await fetch(
-        `${config.supabase.url}/rest/v1/parsed_invoices`,
-        {
+        const uploadResponse = await fetch('/api/documents/upload', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify(parsedInvoiceData),
-        }
-      )
+          headers: authHeaders,
+          body: uploadFormData,
+        })
 
-      if (!parseResponse.ok) {
-        const errText = await parseResponse.text()
-        console.error('Parse insert error:', errText)
-        throw new Error('Failed to save receipt details')
+        if (!uploadResponse.ok) {
+          const err = await uploadResponse.json().catch(() => ({}))
+          throw new Error(err.error || 'Failed to upload file')
+        }
+
+        const uploadData = await uploadResponse.json()
+        documentId = uploadData.document?.id
       }
 
-      const [parsedInvoice] = await parseResponse.json()
+      // Step 2: Save the manual entry through the service-role API. This creates
+      // the parsed_invoices row (and a fileless document if none was attached),
+      // marks it confirmed, and flips the document to "Parsed". Writing via the
+      // server avoids the anon-key RLS block on parsed_invoices.
+      const manualResponse = await fetch('/api/documents/parse/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          document_id: documentId, // null -> server creates the record
+          invoice_type: 'vendor_expense',
+          from_name: formData.vendor_name,
+          invoice_number: formData.invoice_number || null,
+          invoice_date: formData.invoice_date,
+          subtotal_cents: subtotalCents,
+          tax_cents: taxCents,
+          total_cents: totalCents,
+          expense_category: formData.category,
+          weight_lbs: formData.weight_lbs ? parseInt(formData.weight_lbs, 10) : null,
+          notes: formData.notes || null,
+          line_items: lineItems.length > 0 ? lineItems : [{
+            description: `${formData.category} expense`,
+            quantity: 1,
+            total_cents: totalCents,
+          }],
+        }),
+      })
 
-      // Step 3: Update document with parsed_invoice_id
-      await fetch(
-        `${config.supabase.url}/rest/v1/documents?id=eq.${documentId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.supabase.anonKey,
-            'Authorization': `Bearer ${config.supabase.anonKey}`,
-          },
-          body: JSON.stringify({
-            parsed_invoice_id: parsedInvoice.id,
-            parse_status: 'confirmed',
-            vendor: formData.vendor_name,
-            amount_cents: totalCents,
-            weight_lbs: formData.weight_lbs ? parseInt(formData.weight_lbs) : null,
-            service_date: formData.invoice_date,
-          }),
-        }
-      )
+      if (!manualResponse.ok) {
+        const err = await manualResponse.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to save receipt details')
+      }
 
       if (onSuccess) onSuccess()
       onClose()
