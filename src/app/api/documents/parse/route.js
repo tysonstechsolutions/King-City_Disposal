@@ -263,6 +263,8 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
   * cleaning_supplies - cleaning products, janitorial supplies
   * meals - food, restaurants, coffee, business meals
   * advertising - marketing, ads, promotional items, signs, business cards
+  * phone_internet - cell phone bills, internet/broadband service, phone service
+  * utilities - electric, gas, water, sewer, trash utility bills
   * misc - anything that doesn't fit above categories
 - Include weight/tonnage info in the notes field even if it appears elsewhere
 - Set confidence between 0 and 1 based on data clarity and your certainty

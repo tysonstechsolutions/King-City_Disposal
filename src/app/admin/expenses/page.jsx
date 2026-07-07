@@ -35,6 +35,7 @@ const COLOR_CLASSES = {
   amber:   { bg: 'bg-amber-500/20',   text: 'text-amber-400',   bar: 'bg-amber-500',   badge: 'bg-amber-500/20 text-amber-400' },
   orange:  { bg: 'bg-orange-500/20',  text: 'text-orange-400',  bar: 'bg-orange-500',  badge: 'bg-orange-500/20 text-orange-400' },
   cyan:    { bg: 'bg-cyan-500/20',    text: 'text-cyan-400',    bar: 'bg-cyan-500',    badge: 'bg-cyan-500/20 text-cyan-400' },
+  sky:     { bg: 'bg-sky-500/20',     text: 'text-sky-400',     bar: 'bg-sky-500',     badge: 'bg-sky-500/20 text-sky-400' },
   red:     { bg: 'bg-red-500/20',     text: 'text-red-400',     bar: 'bg-red-500',     badge: 'bg-red-500/20 text-red-400' },
   green:   { bg: 'bg-green-500/20',   text: 'text-green-400',   bar: 'bg-green-500',   badge: 'bg-green-500/20 text-green-400' },
   pink:    { bg: 'bg-pink-500/20',    text: 'text-pink-400',    bar: 'bg-pink-500',    badge: 'bg-pink-500/20 text-pink-400' },

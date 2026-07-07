@@ -86,6 +86,25 @@ export async function DELETE(request) {
   }
 
   try {
+    // Other rows can reference this invoice via a foreign key (transactions
+    // and documents both carry invoice_id). Postgres blocks the delete while
+    // those references exist, which surfaced as an opaque 500. Unlink them
+    // first (best-effort — a table/column may not exist in every database) so
+    // the record can be removed without orphaning or erroring.
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': getSupabaseKey(),
+      'Authorization': `Bearer ${getSupabaseKey()}`,
+    };
+    const unlink = (table) =>
+      fetch(`${supabaseUrl}/rest/v1/${table}?invoice_id=eq.${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ invoice_id: null }),
+      }).catch(() => {});
+
+    await Promise.all([unlink('transactions'), unlink('documents')]);
+
     const response = await fetch(
       `${supabaseUrl}/rest/v1/invoices?id=eq.${id}`,
       {
@@ -98,7 +117,12 @@ export async function DELETE(request) {
     );
 
     if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 });
+      const errorText = await response.text().catch(() => '');
+      console.error('Invoice delete error:', errorText);
+      return NextResponse.json(
+        { error: 'Failed to delete invoice', detail: errorText.substring(0, 300) || undefined },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });

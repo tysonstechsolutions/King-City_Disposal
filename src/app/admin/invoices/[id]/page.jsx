@@ -520,7 +520,8 @@ export default function InvoiceDetailPage() {
         toast.success('Invoice deleted')
         router.push('/admin/invoices')
       } else {
-        toast.error('Failed to delete invoice')
+        const err = await response.json().catch(() => ({}))
+        toast.error(err.detail || err.error || 'Failed to delete invoice')
       }
     } catch (err) {
       console.error('Error deleting:', err)

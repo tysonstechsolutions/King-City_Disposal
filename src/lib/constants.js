@@ -16,6 +16,8 @@ import {
   Package,
   HelpCircle,
   Receipt,
+  Wifi,
+  Zap,
 } from 'lucide-react';
 
 // Document/Expense categories (for uploads and parsed documents)
@@ -30,6 +32,8 @@ export const DOCUMENT_CATEGORIES = [
   { id: 'cleaning_supplies', label: 'Cleaning Supplies', icon: Package, color: 'teal' },
   { id: 'meals', label: 'Meals', icon: Receipt, color: 'pink' },
   { id: 'advertising', label: 'Advertising', icon: Receipt, color: 'violet' },
+  { id: 'phone_internet', label: 'Phone/Internet', icon: Wifi, color: 'sky' },
+  { id: 'utilities', label: 'Utilities', icon: Zap, color: 'yellow' },
   { id: 'misc', label: 'Misc', icon: File, color: 'neutral' },
 ];
 
@@ -45,6 +49,8 @@ export const EXPENSE_CATEGORIES = [
   { id: 'cleaning_supplies', label: 'Cleaning Supplies', icon: Package, color: 'teal' },
   { id: 'meals', label: 'Meals', icon: Receipt, color: 'pink' },
   { id: 'advertising', label: 'Advertising', icon: Receipt, color: 'violet' },
+  { id: 'phone_internet', label: 'Phone/Internet', icon: Wifi, color: 'sky' },
+  { id: 'utilities', label: 'Utilities', icon: Zap, color: 'yellow' },
   { id: 'misc', label: 'Misc', icon: HelpCircle, color: 'neutral' },
 ];
 
@@ -59,6 +65,8 @@ export const CATEGORY_ICONS = {
   cleaning_supplies: Package,
   meals: Receipt,
   advertising: Receipt,
+  phone_internet: Wifi,
+  utilities: Zap,
   misc: HelpCircle,
   // Legacy mappings for backwards compatibility
   landfill: Truck,
@@ -76,6 +84,8 @@ export const CATEGORY_LABELS = {
   cleaning_supplies: 'Cleaning Supplies',
   meals: 'Meals',
   advertising: 'Advertising',
+  phone_internet: 'Phone/Internet',
+  utilities: 'Utilities',
   misc: 'Misc',
   // Legacy mappings
   landfill: 'Disposal',
