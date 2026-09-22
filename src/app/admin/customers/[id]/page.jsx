@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { config } from '../../../../config'
 import AdminNav from '../../../../components/AdminNav'
+import { getCustomerReviewReason, clearCustomerReview } from '../../../../lib/reviewReason'
 import { useToast } from '../../../../components/Toast'
 import {
   ArrowLeft,
@@ -321,6 +322,28 @@ export default function CustomerDetailPage() {
     setRecordingPayment(false)
   }
 
+  // Keep a customer that was marked "Needs Review": strip the marker from notes.
+  const markCustomerReviewed = async () => {
+    try {
+      const notes = clearCustomerReview(customer.notes)
+      const response = await fetch(`/api/admin/customers/update?id=${params.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ notes }),
+      })
+      if (response.ok) {
+        setCustomer({ ...customer, notes })
+        setFormData({ ...formData, notes })
+        toast.success('Marked as reviewed')
+      } else {
+        toast.error('Failed to update customer')
+      }
+    } catch (err) {
+      console.error('Error marking reviewed:', err)
+      toast.error('Error updating customer')
+    }
+  }
+
   // Toggle customer flagged status
   const toggleFlag = async () => {
     try {
@@ -489,6 +512,30 @@ export default function CustomerDetailPage() {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 md:p-6">
+        {getCustomerReviewReason(customer) && (
+          <div className="mb-6 flex flex-wrap items-center gap-4 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10">
+            <AlertTriangle className="w-6 h-6 text-amber-300 shrink-0" />
+            <div className="flex-1 min-w-[220px]">
+              <p className="font-semibold text-amber-200">Why this customer needs review</p>
+              <p className="text-sm text-amber-200/80">{getCustomerReviewReason(customer)}</p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={markCustomerReviewed}
+                className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm font-medium hover:bg-dark-600 border border-dark-600"
+              >
+                Keep customer
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+              >
+                Delete customer
+              </button>
+            </div>
+          </div>
+        )}
         <div className="grid lg:grid-cols-3 gap-6">
 
           {/* Left Column - Customer Info */}

@@ -24,3 +24,24 @@ export function getReviewReason(row) {
   if (row.confidence_score != null) return lowConfidenceReason(row.confidence_score)
   return 'The AI wasn’t sure about this receipt. Check it against the photo, then confirm.'
 }
+
+// ============================================
+// CUSTOMERS THAT NEED REVIEW
+// ============================================
+// Customers the receipt scanner created by mistake (e.g. our own business, or
+// a table number off a restaurant receipt). Marked with a prefix on
+// customers.notes so no schema change is needed; "Mark reviewed" strips it.
+
+export const CUSTOMER_REVIEW_PREFIX = 'NEEDS REVIEW: '
+
+export function getCustomerReviewReason(customer) {
+  const notes = customer?.notes || ''
+  if (!notes.startsWith(CUSTOMER_REVIEW_PREFIX)) return null
+  return notes.slice(CUSTOMER_REVIEW_PREFIX.length).split('\n')[0]
+}
+
+// Notes with the review marker line removed.
+export function clearCustomerReview(notes) {
+  if (!notes?.startsWith(CUSTOMER_REVIEW_PREFIX)) return notes || ''
+  return notes.split('\n').slice(1).join('\n')
+}

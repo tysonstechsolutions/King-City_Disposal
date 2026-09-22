@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
+import { getCustomerReviewReason } from '../../../lib/reviewReason'
 import { useToast } from '../../../components/Toast'
 import {
   Users,
@@ -121,6 +122,7 @@ export default function CustomersPage() {
     // Apply type filter
     if (filter === 'vip' && !c.is_vip) return false
     if (filter === 'flagged' && !c.is_flagged) return false
+    if (filter === 'needs_review' && !getCustomerReviewReason(c)) return false
     if (filter === 'business' && !c.is_business) return false
 
     // Apply customer name filter
@@ -179,6 +181,36 @@ export default function CustomersPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Needs Review — customers the receipt scanner created by mistake */}
+        {(() => {
+          const needsReview = customers.filter(c => getCustomerReviewReason(c)).length
+          if (needsReview === 0) return null
+          const active = filter === 'needs_review'
+          return (
+            <button
+              onClick={() => setFilter(active ? 'all' : 'needs_review')}
+              className={`w-full mb-6 flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
+                active ? 'bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/30' : 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
+              }`}
+            >
+              <div className="p-2.5 bg-amber-500/20 rounded-lg shrink-0">
+                <AlertTriangle className="w-6 h-6 text-amber-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-amber-200">
+                  {needsReview} customer{needsReview === 1 ? '' : 's'} need{needsReview === 1 ? 's' : ''} your review
+                </p>
+                <p className="text-sm text-amber-200/70">
+                  Probably created by mistake when a receipt was scanned. Open each one to keep or delete it.
+                </p>
+              </div>
+              <span className="shrink-0 px-4 py-2 bg-amber-500 text-dark-900 rounded-lg font-semibold text-sm">
+                {active ? 'Show all' : 'Review now'}
+              </span>
+            </button>
+          )
+        })()}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
@@ -239,6 +271,7 @@ export default function CustomersPage() {
                 <option value="all">All Types</option>
                 <option value="vip">VIP</option>
                 <option value="flagged">Flagged</option>
+                <option value="needs_review">Needs Review</option>
                 <option value="business">Business</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
@@ -328,7 +361,13 @@ export default function CustomersPage() {
                       {customer.is_vip && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
                       {customer.is_flagged && <AlertTriangle className="w-4 h-4 text-red-500" />}
                       {customer.is_business && <Building2 className="w-4 h-4 text-blue-500" />}
+                      {getCustomerReviewReason(customer) && (
+                        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap">Needs Review</span>
+                      )}
                     </div>
+                    {getCustomerReviewReason(customer) && (
+                      <p className="text-sm text-amber-300/90 mt-0.5">{getCustomerReviewReason(customer)}</p>
+                    )}
                     {customer.company_name && (
                       <p className="text-sm text-dark-400">{customer.company_name}</p>
                     )}
