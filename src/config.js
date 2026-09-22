@@ -219,13 +219,13 @@ export const config = {
       // Which project types recommend this size
       recommendedFor: ["cleanout", "renovation", "roofing"],
       pricing: {
-        "10-day": 475,
+        "10-day": 550,
       },
       weightIncluded: "3 tons",
       weightLimit: 6000,      // 3 tons in lbs (for weight overage calc)
-      overage: 105,           // $105/ton overage rate
-      overageRate: 105,       // Alias for FAQ page
-      weightOverage: 105,
+      overage: 125,           // $125/ton overage rate
+      overageRate: 125,       // Alias for FAQ page
+      weightOverage: 125,
       extensionRate: 100,     // $100 per week extension
       extensionNotDumped: 50, // $50/week if container not dumped
       image: "/images/20-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
@@ -252,13 +252,13 @@ export const config = {
       // Which project types recommend this size
       recommendedFor: ["construction", "major-renovation", "commercial"],
       pricing: {
-        "10-day": 575,
+        "10-day": 650,
       },
       weightIncluded: "3 tons",
       weightLimit: 6000,      // 3 tons in lbs (for weight overage calc)
-      overage: 105,           // $105/ton overage rate
-      overageRate: 105,       // Alias for FAQ page
-      weightOverage: 105,
+      overage: 125,           // $125/ton overage rate
+      overageRate: 125,       // Alias for FAQ page
+      weightOverage: 125,
       extensionRate: 100,     // $100 per week extension
       extensionNotDumped: 50, // $50/week if container not dumped
       image: "/images/30-yard.svg" // ← REPLACE WITH REAL PHOTO LATER
@@ -324,8 +324,8 @@ export const config = {
   // 🔍 SEO SETTINGS
   // ============================================
   seo: {
-    title: "Dumpster Rental Mount Vernon IL | From $475 | Same-Day Delivery",
-    description: "Need a dumpster TODAY? Get same-day delivery in Mount Vernon & Southern IL! 20 & 30 yard roll-offs from $475. No hidden fees, 10-day rental included. Family owned, 5-star service. Call (618) 231-8481!",
+    title: "Dumpster Rental Mount Vernon IL | From $550 | Same-Day Delivery", // ← update if the 20-yard price changes
+    description: "Need a dumpster TODAY? Get same-day delivery in Mount Vernon & Southern IL! 20 & 30 yard roll-offs from $550. No hidden fees, 10-day rental included. Family owned, 5-star service. Call (618) 231-8481!",
     keywords: [
       // Primary location keywords
       "dumpster rental Mount Vernon IL",

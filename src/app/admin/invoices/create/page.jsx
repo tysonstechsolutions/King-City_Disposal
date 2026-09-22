@@ -64,9 +64,9 @@ function CreateInvoiceContent() {
     date_set: '', // Date dumpster was serviced
     weight_tons: '',
     weight_included_tons: 3, // 3 tons default (matches config)
-    overage_rate: 75, // Default overage rate per ton
+    overage_rate: config.dumpsters[0].overage, // Default overage rate per ton (from config)
     line_items: [
-      { id: 1, description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500, preset: '30yd' }
+      { id: 1, description: '30 Yard Dumpster - 10-Day Rental', amount_cents: config.dumpsters.find(d => d.id === '30yd').pricing['10-day'] * 100, preset: '30yd' }
     ],
     notes: '',
     purchase_order: '', // PO number (some customers require this)
@@ -223,7 +223,7 @@ function CreateInvoiceContent() {
   const calculateOverage = () => {
     if (!invoice.weight_tons || !invoice.weight_included_tons) return 0
     const overageTons = Math.max(0, parseFloat(invoice.weight_tons) - parseFloat(invoice.weight_included_tons))
-    const overageRate = parseFloat(invoice.overage_rate) || config.pricing?.overagePerTon || 75
+    const overageRate = parseFloat(invoice.overage_rate) || config.dumpsters[0].overage
     return Math.round(overageTons * overageRate * 100)
   }
 
@@ -664,8 +664,8 @@ function CreateInvoiceContent() {
                         const preset = e.target.value
                         const presets = {
                           'extended': { description: 'Extended Use Charge', amount_cents: 5000 },
-                          '20yd': { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: 47500 },
-                          '30yd': { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: 57500 },
+                          '20yd': { description: '20 Yard Dumpster - 10-Day Rental', amount_cents: config.dumpsters.find(d => d.id === '20yd').pricing['10-day'] * 100 },
+                          '30yd': { description: '30 Yard Dumpster - 10-Day Rental', amount_cents: config.dumpsters.find(d => d.id === '30yd').pricing['10-day'] * 100 },
                           'compactor': { description: 'Self-Contained Compactor', amount_cents: 0 },
                           'monthly': { description: 'Monthly Fee', amount_cents: 0 },
                           'haul': { description: 'Haul Fee', amount_cents: 0 },

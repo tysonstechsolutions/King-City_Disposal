@@ -414,7 +414,7 @@ async function handleWeight(body) {
 
   const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
   const includedLbs = dumpster?.weightLimit || 6000;
-  const overageRate = dumpster?.overage || 70;
+  const overageRate = dumpster?.overage || config.dumpsters[0].overage;
 
   await updateBooking(booking.id, { actual_weight_lbs: weightLbs });
 
@@ -614,7 +614,7 @@ export async function POST(request) {
           // Calculate overage
           const dumpster = config.dumpsters.find(d => d.id === booking.dumpster_size);
           const includedLbs = dumpster?.weightLimit || 6000;
-          const overageRate = dumpster?.overage || 105;
+          const overageRate = dumpster?.overage || config.dumpsters[0].overage;
           const weightTons = weightLbs / 2000;
 
           // Update booking with weight

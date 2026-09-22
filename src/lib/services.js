@@ -14,6 +14,9 @@
 //   - Service-specific FAQ rendered with FAQPage schema
 //
 // To add a new service: copy a block, swap the slug + content, that's it.
+// Write prices as ${price} (the 20-yard rate from config) so copy never goes stale.
+
+import { config } from '../config'
 
 export const services = [
   {
@@ -22,9 +25,9 @@ export const services = [
     icon: 'Home',
     title: 'Residential Dumpster Rental',
     h1: 'Residential Dumpster Rentals in {city}, IL',
-    metaTitle: 'Residential Dumpster Rental in {city}, IL | From $475',
+    metaTitle: 'Residential Dumpster Rental in {city}, IL | From ${price}',
     metaDescription:
-      'Affordable residential dumpster rental in {city}, IL for garage cleanouts, basement clear-outs, and home projects. 20 & 30 yard sizes from $475. Book online or call {phone}.',
+      'Affordable residential dumpster rental in {city}, IL for garage cleanouts, basement clear-outs, and home projects. 20 & 30 yard sizes from ${price}. Book online or call {phone}.',
     intent: 'home cleanouts, garage, basement, attic, moving',
     intro:
       'Whether you’re tackling a long-overdue garage purge, clearing out a basement, or prepping for a move, a residential dumpster from {business} makes the job dead simple. Drop it in your driveway, fill it on your schedule, and we haul it away.',
@@ -106,7 +109,7 @@ export const services = [
     h1: 'Roofing Dumpster Rentals in {city}, IL',
     metaTitle: 'Roofing Dumpster Rental in {city}, IL | Tear-Off Ready',
     metaDescription:
-      'Roof tear-off dumpsters in {city}, IL. Built for shingles, underlayment, and roofing debris. Quick turnaround for roofing crews. From $475. Call {phone}.',
+      'Roof tear-off dumpsters in {city}, IL. Built for shingles, underlayment, and roofing debris. Quick turnaround for roofing crews. From ${price}. Call {phone}.',
     intent: 'roof, shingles, tear-off, roofer, asphalt',
     intro:
       'Roofing tear-offs generate a lot of weight in a hurry. Asphalt shingles can fill a 20-yard fast, so we’ll help you pick the right size and get it on-site before your crew shows up.',
@@ -166,7 +169,7 @@ export const services = [
     faq: [
       {
         q: 'Is it cheaper to rent a dumpster or hire a junk-haul service?',
-        a: 'For anything more than a single pickup-truck load, a rental dumpster is almost always cheaper. Junk-haul services typically charge $300-700 per truckload; our 20-yard rental is $475 and holds about 8 pickup-truck loads.',
+        a: 'For anything more than a single pickup-truck load, a rental dumpster is almost always cheaper. Junk-haul services typically charge $300-700 per truckload; our 20-yard rental is ${price} and holds about 8 pickup-truck loads.',
       },
       {
         q: 'What can’t go in?',
@@ -320,6 +323,7 @@ function resolveServiceVars(svc, vars) {
           .replace(/\{city\}/g, vars.city || 'Mount Vernon')
           .replace(/\{phone\}/g, vars.phone || '(618) 231-8481')
           .replace(/\{business\}/g, vars.business || 'King City Disposal')
+          .replace(/\{price\}/g, String(config.dumpsters[0].pricing['10-day']))
       : str
 
   return {

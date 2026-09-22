@@ -12,7 +12,7 @@ import { config } from "../config";
 const TAX_CENTS = config.payments?.flatRentalTaxCents ?? 1688; // $16.88 flat tax
 const STRIPE_RATE = config.payments?.stripeProcessingRate ?? 0.029; // 2.9%
 const STRIPE_FLAT = config.payments?.stripeProcessingFlat ?? 30; // $0.30 in cents
-const OVERAGE_RATE_PER_TON = config.pricing?.overagePerTon ?? 105; // $105/ton
+const OVERAGE_RATE_PER_TON = config.dumpsters[0].overage; // $/ton, from config
 const EXTENSION_RATE_PER_WEEK = 100; // $100/week
 
 // ============================================

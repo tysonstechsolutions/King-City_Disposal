@@ -39,7 +39,7 @@ const faqCategories = [
       },
       {
         q: 'What if I go over the weight limit?',
-        a: `We'll weigh the dumpster at the dump. If you're over your included tonnage, we charge the overage rate per ton. For example, our 20-yard dumpster includes ${config.dumpsters[0]?.weightIncluded || '3 tons'}. Go over by 1 ton, and you pay an extra $${config.dumpsters[0]?.overageRate || 105}. We always let you know before charging.`
+        a: `We'll weigh the dumpster at the dump. If you're over your included tonnage, we charge the overage rate per ton. For example, our 20-yard dumpster includes ${config.dumpsters[0]?.weightIncluded || '3 tons'}. Go over by 1 ton, and you pay an extra ${config.dumpsters[0]?.overageRate}. We always let you know before charging.`
       },
       {
         q: 'Do you require a deposit?',
@@ -51,7 +51,7 @@ const faqCategories = [
       },
       {
         q: `How much does a dumpster cost in ${config.address.city}?`,
-        a: `Our dumpster rentals start at $${config.dumpsters[0]?.pricing['10-day'] || '475'} for a 10-day rental. Price includes delivery, pickup, and disposal up to the included weight limit. Check our pricing page for current rates on all sizes.`
+        a: `Our dumpster rentals start at ${config.dumpsters[0]?.pricing['10-day']} for a 10-day rental. Price includes delivery, pickup, and disposal up to the included weight limit. Check our pricing page for current rates on all sizes.`
       },
     ]
   },

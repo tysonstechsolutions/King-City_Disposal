@@ -77,7 +77,7 @@ export function HowToSchema() {
     "estimatedCost": {
       "@type": "MonetaryAmount",
       "currency": "USD",
-      "value": config.dumpsters[0]?.pricing['10-day'] || 475
+      "value": config.dumpsters[0]?.pricing['10-day']
     },
     "step": [
       {

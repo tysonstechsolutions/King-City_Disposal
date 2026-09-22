@@ -35,7 +35,7 @@ export async function generateMetadata({ params }) {
   // Keep titles under ~60 chars so they don't truncate in SERPs.
   // Drop the price from the title — it's already in the description and on
   // the page, and including it pushed the string past Google's display limit
-  // (e.g. "30 Yard Dumpster Rental - $575 for 10 Days | King City Disposal" = 67 chars).
+  // (e.g. "30 Yard Dumpster Rental - $650 for 10 Days | King City Disposal" = 67 chars).
   return {
     title: `${dumpster.name} Rental in ${config.address.city}, IL`,
     description: `Rent a ${dumpster.name.toLowerCase()} from $${dumpster.pricing['10-day']} for 10 days. ${dumpster.weightIncluded} included. Same-day delivery in ${config.address.city}. Call ${config.phone}.`,
