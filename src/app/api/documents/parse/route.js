@@ -8,7 +8,7 @@ import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
 import { requireAdminAuth } from '../../../../lib/adminAuth';
 import { callClaudeWithFallback } from '../../../../lib/claudeModels';
-import { AUTO_CONFIRM_CONFIDENCE, misfiledReason, lowConfidenceReason } from '../../../../lib/reviewReason';
+import { AUTO_CONFIRM_CONFIDENCE, misfiledReason, lowConfidenceReason, findReceiptIssues } from '../../../../lib/reviewReason';
 import * as XLSX from 'xlsx';
 
 // Force dynamic rendering (not static)
@@ -141,7 +141,7 @@ function getWeightTicketPrompt() {
   "subtotal_cents": 10000,
   "tax_cents": 0,
   "total_cents": 10000,
-  "expense_category": "landfill",
+  "expense_category": "disposal",
   "notes": "Gross weight: X lbs, Tare weight: X lbs, Net weight: X lbs (X.XX tons)",
   "confidence": 0.95
 }
@@ -651,14 +651,46 @@ export async function POST(request) {
       ? new Date(formattedInvoiceDate).getFullYear()
       : null;
 
-    // A receipt is held for review (kept out of Expenses) when the AI is unsure
-    // or when we had to correct its vendor/customer call. Say why, in notes.
-    const autoConfirm = !typeOverridden && parsedData.confidence >= AUTO_CONFIRM_CONFIDENCE;
-    const reviewReason = autoConfirm
-      ? null
-      : typeOverridden
-        ? misfiledReason(parsedData.from?.name)
-        : lowConfidenceReason(parsedData.confidence ?? 0.8);
+    // Sanity checks (duplicates, missing/odd dates, bad math...). Any hit holds
+    // the receipt for review. Only vendor expenses feed the Expenses page.
+    let receiptIssues = [];
+    if (invoiceType === 'vendor_expense') {
+      let sameDateRows = [];
+      if (formattedInvoiceDate) {
+        try {
+          const sameRes = await fetch(
+            `${getSupabaseUrl()}/rest/v1/parsed_invoices?invoice_type=eq.vendor_expense&status=neq.rejected&invoice_date=eq.${formattedInvoiceDate}&document_id=neq.${docIdInt}&select=from_name,total_cents,invoice_number`,
+            { headers: { apikey: getSupabaseKey(), Authorization: `Bearer ${getSupabaseKey()}` } }
+          );
+          if (sameRes.ok) sameDateRows = await sameRes.json();
+        } catch (e) {
+          logger.warn('Duplicate check failed', { document_id });
+        }
+      }
+      receiptIssues = findReceiptIssues({
+        invoice_date: formattedInvoiceDate,
+        from_name: parsedData.from?.name || null,
+        invoice_number: parsedData.invoice_number || null,
+        total_cents: parsedData.total_cents || null,
+        subtotal_cents: parsedData.subtotal_cents || null,
+        tax_cents: parsedData.tax_cents || 0,
+        fees_cents: parsedData.fees_cents || 0,
+        discount_cents: parsedData.discount_cents || 0,
+        expense_category: parsedData.expense_category || 'misc',
+      }, { uploadedAt: document.created_at || new Date(), sameDateRows });
+    }
+
+    // A receipt is held for review (kept out of Expenses) when the AI is unsure,
+    // when we had to correct its vendor/customer call, or when anything above
+    // looks odd. Say why, in notes.
+    const lowConfidence = !(parsedData.confidence >= AUTO_CONFIRM_CONFIDENCE);
+    const reasons = [
+      ...(typeOverridden ? [misfiledReason(parsedData.from?.name)] : []),
+      ...(lowConfidence ? [lowConfidenceReason(parsedData.confidence ?? 0.8)] : []),
+      ...receiptIssues,
+    ];
+    const autoConfirm = reasons.length === 0;
+    const reviewReason = autoConfirm ? null : reasons.join(' Also: ');
 
     const parsedInvoiceData = {
       document_id: parseInt(document_id),
@@ -682,7 +714,7 @@ export async function POST(request) {
       fees_cents: parsedData.fees_cents || 0,
       discount_cents: parsedData.discount_cents || 0,
       total_cents: parsedData.total_cents || null,
-      expense_category: parsedData.expense_category || 'other',
+      expense_category: parsedData.expense_category || 'misc',
       tax_year: taxYear,
       status: autoConfirm ? 'confirmed' : 'pending_review',
       notes: reviewReason,
