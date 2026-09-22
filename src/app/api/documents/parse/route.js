@@ -595,7 +595,19 @@ export async function POST(request) {
     // IMPORTANT: Only create customers for customer_record invoices (invoices TO customers)
     // Vendor expenses (fuel, landfill fees, etc.) should NOT create customers
     let customer = null;
-    const invoiceType = parsedData.invoice_type || 'vendor_expense';
+    let invoiceType = parsedData.invoice_type || 'vendor_expense';
+
+    // A customer_record is an invoice King City Disposal SENT. The model has
+    // tagged store receipts (Dairy Queen, USPS, parts counters) as customer
+    // records, which hides them from Expenses and creates bogus customers.
+    // Only trust that label when King City is actually the sender.
+    if (invoiceType === 'customer_record' && !/king\s*city/i.test(parsedData.from?.name || '')) {
+      logger.warn('Overriding customer_record to vendor_expense (sender is not King City)', {
+        document_id,
+        from: parsedData.from?.name,
+      });
+      invoiceType = 'vendor_expense';
+    }
 
     if (invoiceType === 'customer_record') {
       // For invoices TO customers, the customer is in the "to" field

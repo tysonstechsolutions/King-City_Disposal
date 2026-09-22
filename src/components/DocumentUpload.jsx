@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { prepareFileForUpload, readUploadResponse } from '../lib/prepareUpload'
 import {
   Upload,
   X,
@@ -105,8 +106,10 @@ export default function DocumentUpload({
       const category = detectCategory(selectedFile.name)
 
       // Create form data
+      // Vercel rejects bodies over 4.5MB before our route runs — shrink first.
+      const fileToSend = await prepareFileForUpload(selectedFile)
       const formData = new FormData()
-      formData.append('file', selectedFile)
+      formData.append('file', fileToSend)
       formData.append('category', category)
       formData.append('title', title || selectedFile.name)
       if (bookingId) formData.append('booking_id', bookingId)
@@ -122,8 +125,9 @@ export default function DocumentUpload({
         body: formData,
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      const result = await readUploadResponse(response)
+      if (result.ok) {
+        const data = result.data || {}
 
         // Show upload success
         setUploading(false)
@@ -139,6 +143,8 @@ export default function DocumentUpload({
             setParsing(false)
             setSuccessMessage('Document uploaded and analyzed!')
           }, 3000)
+        } else if (data.parse_error) {
+          setError(`Uploaded, but the AI couldn't read it: ${data.parse_error}`)
         } else {
           setSuccess(true)
           setSuccessMessage('Document uploaded successfully!')
@@ -152,11 +158,10 @@ export default function DocumentUpload({
         // Reset success message after 5 seconds
         setTimeout(() => setSuccess(false), 5000)
       } else {
-        const err = await response.json()
-        setError(err.error || 'Upload failed')
+        setError(result.error)
       }
     } catch (err) {
-      setError('Failed to upload file')
+      setError(err?.message || 'Failed to upload file')
     }
 
     setUploading(false)

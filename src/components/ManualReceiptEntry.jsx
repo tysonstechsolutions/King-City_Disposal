@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { CATEGORY_LABELS } from '../lib/constants'
+import { prepareFileForUpload, readUploadResponse } from '../lib/prepareUpload'
 import {
   X,
   Upload,
@@ -130,8 +131,10 @@ export default function ManualReceiptEntry({ onClose, onSuccess }) {
       // the manual data below is the source of truth.
       let documentId = null
       if (selectedFile) {
+        // Vercel rejects bodies over 4.5MB before our route runs — shrink first.
+        const fileToSend = await prepareFileForUpload(selectedFile)
         const uploadFormData = new FormData()
-        uploadFormData.append('file', selectedFile)
+        uploadFormData.append('file', fileToSend)
         uploadFormData.append('category', formData.category)
         uploadFormData.append('title', `${formData.vendor_name} - ${formData.invoice_date}`)
         uploadFormData.append('skip_parse', 'true')
@@ -142,13 +145,10 @@ export default function ManualReceiptEntry({ onClose, onSuccess }) {
           body: uploadFormData,
         })
 
-        if (!uploadResponse.ok) {
-          const err = await uploadResponse.json().catch(() => ({}))
-          throw new Error(err.error || 'Failed to upload file')
-        }
+        const uploadResult = await readUploadResponse(uploadResponse)
+        if (!uploadResult.ok) throw new Error(uploadResult.error)
 
-        const uploadData = await uploadResponse.json()
-        documentId = uploadData.document?.id
+        documentId = uploadResult.data?.document?.id
       }
 
       // Step 2: Save the manual entry through the service-role API. This creates

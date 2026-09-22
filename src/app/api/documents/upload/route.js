@@ -239,6 +239,7 @@ export async function POST(request) {
     ];
     const shouldParse = !skipParse && parsableCategories.includes(category);
     let parseTriggered = false;
+    let parseError = null;
     if (shouldParse && process.env.ANTHROPIC_API_KEY) {
       // Await the parse call. Fire-and-forget doesn't reliably complete in
       // serverless functions — the instance can be terminated before the inner
@@ -260,14 +261,21 @@ export async function POST(request) {
           logger.info('Document parsing completed', { category, document_id: document.id });
         } else {
           const errorText = await parseResponse.text().catch(() => '');
+          try {
+            parseError = JSON.parse(errorText).error || null;
+          } catch {
+            parseError = null;
+          }
+          parseError = parseError || `AI parsing failed (HTTP ${parseResponse.status}). Open the document to retry.`;
           logger.error('Document parsing failed', null, {
             document_id: document.id,
             status: parseResponse.status,
             error: errorText.substring(0, 500),
           });
         }
-      } catch (parseError) {
-        logger.error('Failed to trigger document parsing', parseError);
+      } catch (triggerError) {
+        logger.error('Failed to trigger document parsing', triggerError);
+        parseError = 'AI parsing could not start. Open the document to retry.';
       }
     }
 
@@ -278,6 +286,8 @@ export async function POST(request) {
       document,
       storage_path: storagePath,
       parsing: parseTriggered,
+      // Surfaced so the UI can say "uploaded but not read" instead of a false success.
+      parse_error: parseError,
     });
 
   } catch (error) {

@@ -7,6 +7,7 @@ import AdminNav from '../../../components/AdminNav'
 import { useToast } from '../../../components/Toast'
 import ParsedInvoiceReview from '../../../components/ParsedInvoiceReview'
 import ManualReceiptEntry from '../../../components/ManualReceiptEntry'
+import { prepareFileForUpload, readUploadResponse } from '../../../lib/prepareUpload'
 import { DOCUMENT_CATEGORIES, formatCurrency, formatDate, formatWeight, getDocumentCategory, formatCategoryLabel } from '../../../lib/constants'
 import {
   FileText,
@@ -103,8 +104,9 @@ export default function DocumentsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('File too large. Maximum 10MB.')
+    // Photos are shrunk in the browser before upload, so accept large originals.
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File too large. Maximum 50MB.')
       return
     }
 
@@ -140,8 +142,10 @@ export default function DocumentsPage() {
     setUploading(true)
 
     try {
+      // Vercel rejects bodies over 4.5MB before our route runs — shrink first.
+      const fileToSend = await prepareFileForUpload(selectedFile)
       const formData = new FormData()
-      formData.append('file', selectedFile)
+      formData.append('file', fileToSend)
       formData.append('title', selectedFile.name)
       formData.append('category', uploadCategory)
       if (uploadServiceDate) formData.append('service_date', uploadServiceDate)
@@ -153,8 +157,9 @@ export default function DocumentsPage() {
         body: formData,
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      const result = await readUploadResponse(response)
+      if (result.ok) {
+        const data = result.data || {}
         closeUploadModal()
 
         // If parsing was triggered by upload, poll for completion and auto-open review
@@ -203,17 +208,19 @@ export default function DocumentsPage() {
 
           fetchDocuments()
           pollForParsed()
+        } else if (data.parse_error) {
+          toast.error(`Uploaded, but the AI couldn't read it: ${data.parse_error}`)
+          fetchDocuments()
         } else {
           toast.success('Document uploaded!')
           fetchDocuments()
         }
       } else {
-        const err = await response.json()
-        toast.error(err.error || 'Upload failed')
+        toast.error(result.error)
       }
     } catch (err) {
       console.error('Upload error:', err)
-      toast.error('Failed to upload')
+      toast.error(err?.message || 'Failed to upload')
     }
 
     setUploading(false)
