@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Script from 'next/script'
 import { config } from '../../config'
 import Breadcrumbs from '../../components/Breadcrumbs'
 import {
@@ -24,7 +23,7 @@ function PricingBreadcrumbSchema() {
     ],
   }
   return (
-    <Script id="pricing-breadcrumb" type="application/ld+json"
+    <script id="pricing-breadcrumb" type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
   )
 }
@@ -66,7 +65,7 @@ function PricingFAQSchema() {
     })),
   }
   return (
-    <Script id="pricing-faq" type="application/ld+json"
+    <script id="pricing-faq" type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
   )
 }

@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { config, getDumpsterById } from '../../../config'
 import { getAggregateRating } from '../../../lib/reviews'
 import { notFound } from 'next/navigation'
-import Script from 'next/script'
 import {
   Truck,
   Check,
@@ -155,12 +154,12 @@ function DumpsterSchema({ dumpster }) {
 
   return (
     <>
-      <Script
+      <script
         id={`dumpster-schema-${dumpster.id}`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
-      <Script
+      <script
         id={`dumpster-breadcrumb-${dumpster.id}`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}

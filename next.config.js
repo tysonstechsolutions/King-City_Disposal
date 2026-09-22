@@ -42,6 +42,13 @@ const nextConfig = {
         destination: '/',
         permanent: true,
       },
+      // "East Salem" isn't a real town (no record in OpenStreetMap); its page
+      // was removed. Send any links/rankings it earned to Salem.
+      {
+        source: '/dumpster-rental/east-salem-il',
+        destination: '/dumpster-rental/salem-il',
+        permanent: true,
+      },
     ]
   },
   // Security headers

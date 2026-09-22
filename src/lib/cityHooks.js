@@ -36,7 +36,7 @@ export const cityHooks = {
     },
   },
   'Centralia': {
-    hook: 'From estate cleanouts off Broadway to roofing crews tearing off shingles on the older neighborhoods near Foundation Park, Centralia projects fit our 20- and 30-yard roll-offs perfectly. Delivery is a quick run up Route 51 from our Mount Vernon base.',
+    hook: 'From estate cleanouts off Broadway to roofing crews tearing off shingles on the older neighborhoods near Foundation Park, Centralia projects fit our 20- and 30-yard roll-offs perfectly. Delivery is a short run northwest from our Mount Vernon yard.',
     faq: {
       q: 'Can you deliver a dumpster to a Centralia rental property?',
       a: 'Yes — we work with landlords across Centralia for turn-over cleanouts. We can deliver and pick up without you being on site as long as we have placement instructions and someone authorized to sign for delivery.',
@@ -60,7 +60,7 @@ export const cityHooks = {
     hook: 'We service McLeansboro and the surrounding Hamilton County area weekly. From cleanouts on older homes near the square to contractor jobs out toward Dale, our 20- and 30-yard roll-offs handle most projects.',
     faq: {
       q: 'How does delivery work to a McLeansboro address?',
-      a: 'We deliver from our Mount Vernon base via Route 14. Plan for delivery the same day for morning orders or next day for afternoon orders.',
+      a: 'We deliver from our Mount Vernon yard. Plan for delivery the same day for morning orders or next day for afternoon orders.',
     },
   },
   'West Frankfort': {
@@ -85,7 +85,7 @@ export const cityHooks = {
     },
   },
   'Flora': {
-    hook: 'Flora projects on the north end of our service area — Clay County cleanouts, farm and barn demolition, contractor work — all fit our roll-offs. Delivery from Mount Vernon via Route 37 is straightforward.',
+    hook: 'Flora projects on the north end of our service area — Clay County cleanouts, farm and barn demolition, contractor work — all fit our roll-offs. Delivery from our Mount Vernon yard is straightforward.',
     faq: {
       q: 'Can you handle agricultural / farm cleanouts in Flora?',
       a: 'Yes. Old fencing, scrap lumber, general farm debris all go in a 30-yard. Tires, batteries, and chemicals do not — give us a call and we’ll help you figure out the right disposal route for those.',
@@ -95,45 +95,4 @@ export const cityHooks = {
 
 export function getCityHook(townName) {
   return cityHooks[townName] || null
-}
-
-// ============================================
-// NEARBY CITIES — for hub-and-spoke internal linking
-// ============================================
-// Each entry lists geographically adjacent towns. Internal links between
-// nearby cities accomplish two SEO goals:
-//   1. Pass PageRank around the city-page cluster instead of dead-ending.
-//   2. Signal to Google that these are related local entities, helping it
-//      treat the cluster as a coherent service area.
-//
-// Curated by rough proximity (not driving distance). Cities not in the
-// map fall back to the alphabetical default.
-// ============================================
-export const nearbyCities = {
-  'Mount Vernon': ['Centralia', 'Woodlawn', 'Bluford', 'Dix', 'Opdyke', 'Waltonville'],
-  'Fairfield': ['Wayne City', 'Cisne', 'Albion', 'Carmi', 'McLeansboro', 'Enfield'],
-  'Centralia': ['Mount Vernon', 'Salem', 'Sandoval', 'Odin', 'Woodlawn', 'Nashville'],
-  'Salem': ['Centralia', 'Kinmundy', 'Sandoval', 'Odin', 'Mount Vernon', 'Flora'],
-  'Carmi': ['Enfield', 'Norris City', 'Crossville', 'McLeansboro', 'Fairfield', 'Albion'],
-  'McLeansboro': ['Enfield', 'Carmi', 'Dale', 'Fairfield', 'Mount Vernon', 'Norris City'],
-  'West Frankfort': ['Benton', 'Sesser', 'Christopher', 'Ina', 'Nason', 'Woodlawn'],
-  'Benton': ['West Frankfort', 'Sesser', 'Christopher', 'Ina', 'Woodlawn', 'Mount Vernon'],
-  'Nashville': ['Centralia', 'Sandoval', 'Mount Vernon', 'Odin', 'Salem'],
-  'Flora': ['Louisville', 'Clay City', 'Xenia', 'Salem', 'Kinmundy', 'Iuka'],
-  'Wayne City': ['Fairfield', 'Cisne', 'Mount Vernon', 'Bluford', 'Bonnie'],
-  'Albion': ['Carmi', 'Fairfield', 'Crossville', 'Norris City'],
-  'Sesser': ['Benton', 'West Frankfort', 'Christopher', 'Woodlawn', 'Ina'],
-  'Nashville': ['Centralia', 'Sandoval', 'Mount Vernon'],
-}
-
-export function getNearbyCities(townName, fallbackList, count = 6) {
-  const curated = nearbyCities[townName]
-  if (curated && curated.length > 0) {
-    // Only include towns we actually service (some entries may have been
-    // removed from config.serviceTowns over time)
-    const validated = curated.filter(t => fallbackList.includes(t))
-    if (validated.length >= 2) return validated.slice(0, count)
-  }
-  // Fallback: first N of remaining service towns
-  return fallbackList.filter(t => t !== townName).slice(0, count)
 }

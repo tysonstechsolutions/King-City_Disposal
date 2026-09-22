@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Script from 'next/script'
 import { config } from '../../config'
 import BreadcrumbSchema from '../../components/BreadcrumbSchema'
 import Breadcrumbs from '../../components/Breadcrumbs'
@@ -47,7 +46,7 @@ function DumpstersFAQSchema() {
     })),
   }
   return (
-    <Script id="dumpsters-faq" type="application/ld+json"
+    <script id="dumpsters-faq" type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
   )
 }

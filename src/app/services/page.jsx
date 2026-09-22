@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Script from 'next/script'
 import { config } from '../../config'
 import { services } from '../../lib/services'
 import {
@@ -59,9 +58,9 @@ function ServicesIndexSchema() {
   }
   return (
     <>
-      <Script id="services-itemlist" type="application/ld+json"
+      <script id="services-itemlist" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
-      <Script id="services-breadcrumb" type="application/ld+json"
+      <script id="services-breadcrumb" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
     </>
   )

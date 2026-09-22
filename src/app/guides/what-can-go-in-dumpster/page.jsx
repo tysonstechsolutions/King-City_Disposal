@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Script from 'next/script'
 import { config } from '../../../config'
 import RelatedLinks from '../../../components/RelatedLinks'
 import {
@@ -85,12 +84,12 @@ function ArticleSchema() {
 
   return (
     <>
-      <Script
+      <script
         id="article-schema"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
-      <Script
+      <script
         id="article-breadcrumb"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
@@ -148,7 +147,7 @@ function FAQSchema() {
   }
 
   return (
-    <Script
+    <script
       id="faq-schema"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}

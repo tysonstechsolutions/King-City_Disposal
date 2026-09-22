@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { config } from '../config'
+import { FAQSchema, HowToSchema } from '../components/HomeSchema'
 import { reviews as testimonials } from '../lib/reviews'
 import {
   Phone,
@@ -35,6 +36,8 @@ const haulItems = [
 export default function HomePage() {
   return (
     <>
+      <FAQSchema />
+      <HowToSchema />
       {/* Hero Section - Navy blue with image on left */}
       <section className="bg-gradient-to-br from-accent-950 via-accent-900 to-accent-800 text-white overflow-hidden">
         <div className="container-custom py-12 md:py-20">

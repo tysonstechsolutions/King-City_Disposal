@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Script from 'next/script'
 import { notFound } from 'next/navigation'
 import { config } from '../../../config'
 import { services, getService } from '../../../lib/services'
@@ -117,11 +116,11 @@ function ServiceSchema({ svc, baseUrl }) {
 
   return (
     <>
-      <Script id="svc-schema" type="application/ld+json"
+      <script id="svc-schema" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
-      <Script id="svc-faq" type="application/ld+json"
+      <script id="svc-faq" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <Script id="svc-breadcrumb" type="application/ld+json"
+      <script id="svc-breadcrumb" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
     </>
   )

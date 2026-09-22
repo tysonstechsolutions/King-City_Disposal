@@ -1,4 +1,3 @@
-import Script from 'next/script'
 import { config } from '../config'
 
 // ============================================
@@ -41,7 +40,7 @@ export default function BreadcrumbSchema({ items, id }) {
   const scriptId = id || `breadcrumb-${items.map(i => i.path.replace(/[^a-z0-9]/gi, '')).join('-')}`
 
   return (
-    <Script
+    <script
       id={scriptId}
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}

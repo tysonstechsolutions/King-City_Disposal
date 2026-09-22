@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Script from 'next/script'
 import { config } from '../../config'
 import { reviews, getAggregateRating } from '../../lib/reviews'
 import Breadcrumbs from '../../components/Breadcrumbs'
@@ -42,7 +41,7 @@ function AboutBreadcrumbSchema() {
     ],
   }
   return (
-    <Script id="about-breadcrumb" type="application/ld+json"
+    <script id="about-breadcrumb" type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
   )
 }

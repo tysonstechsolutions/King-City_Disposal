@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Script from 'next/script'
 import { config } from '../../../config'
 import RelatedLinks from '../../../components/RelatedLinks'
 import Breadcrumbs from '../../../components/Breadcrumbs'
@@ -126,11 +125,11 @@ function ComparisonSchemas() {
 
   return (
     <>
-      <Script id="comparison-article" type="application/ld+json"
+      <script id="comparison-article" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
-      <Script id="comparison-faq" type="application/ld+json"
+      <script id="comparison-faq" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <Script id="comparison-breadcrumb" type="application/ld+json"
+      <script id="comparison-breadcrumb" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
     </>
   )

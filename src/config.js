@@ -167,7 +167,7 @@ export const config = {
     "McLeansboro", "Enfield", "Norris City",
     "Benton", "West Frankfort", "Sesser", "Christopher",
     "Nashville", "Centralia", "Sandoval", "Odin",
-    "Salem", "East Salem", "Kinmundy",
+    "Salem", "Kinmundy",
     "Flora", "Louisville", "Clay City", "Xenia",
     "Woodlawn", "Bluford", "Bonnie", "Dix", "Opdyke",
     "Waltonville", "Ina", "Nason", "Texico", "Belle Rive",

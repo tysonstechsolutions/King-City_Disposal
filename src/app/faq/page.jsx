@@ -1,7 +1,5 @@
 import { config } from '../../config'
-import Script from 'next/script'
 import Link from 'next/link'
-import BreadcrumbSchema from '../../components/BreadcrumbSchema'
 import Breadcrumbs from '../../components/Breadcrumbs'
 import {
   AlertTriangle,
@@ -195,9 +193,9 @@ function FAQSchema() {
 
   return (
     <>
-      <Script id="faq-schema" type="application/ld+json"
+      <script id="faq-schema" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <Script id="faq-breadcrumb" type="application/ld+json"
+      <script id="faq-breadcrumb" type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
     </>
   )
@@ -209,7 +207,6 @@ function FAQSchema() {
 export default function FAQPage() {
   return (
     <>
-      <BreadcrumbSchema items={[{ name: 'FAQ', path: '/faq' }]} />
       <FAQSchema />
 
       {/* Hero */}

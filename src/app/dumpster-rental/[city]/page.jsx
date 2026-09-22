@@ -12,9 +12,10 @@
 
 import Link from 'next/link'
 import { config } from '../../../config'
-import { getCityHook, getNearbyCities } from '../../../lib/cityHooks'
+import { getCityHook } from '../../../lib/cityHooks'
+import { getTownGeo, getNearestTowns, getSameCountyTowns } from '../../../lib/townData'
+import { services } from '../../../lib/services'
 import { notFound } from 'next/navigation'
-import Script from 'next/script'
 import {
   Truck,
   MapPin,
@@ -65,10 +66,16 @@ export async function generateMetadata({ params }) {
   }
 
   const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
+  const geo = getTownGeo(townName)
+  const where = geo
+    ? geo.isBase
+      ? `based right here in ${geo.county} County`
+      : `about ${geo.milesFromBase} miles from our Mount Vernon yard (${geo.county} County)`
+    : 'in Southern Illinois'
 
   return {
     title: `Dumpster Rental ${townName}, IL - Same Day Delivery`,
-    description: `Need a dumpster in ${townName}, Illinois? ${config.businessName} offers fast, affordable roll-off dumpster rentals. 20 & 30 yard sizes. Same-day delivery available. Call ${config.phone}!`,
+    description: `Roll-off dumpster rental in ${townName}, IL — ${where}. 20 & 30 yard dumpsters from ${config.dumpsters[0]?.pricing['10-day']} with a 10-day rental. Call ${config.phone}.`,
     keywords: [
       `dumpster rental ${townName.toLowerCase()} il`,
       `roll off dumpster ${townName.toLowerCase()}`,
@@ -93,7 +100,7 @@ export async function generateMetadata({ params }) {
 // ============================================
 // CITY-SPECIFIC SCHEMA MARKUP
 // ============================================
-function CitySchema({ townName, hook }) {
+function CitySchema({ townName, faqs }) {
   const baseUrl = config.websiteUrl || 'https://www.kingcitydisposal.com'
 
   const serviceSchema = {
@@ -167,32 +174,30 @@ function CitySchema({ townName, hook }) {
   // City-specific FAQ schema — when present, makes the page eligible for
   // the "People also ask" Google feature for queries like
   // "dumpster permit Mount Vernon IL".
-  const faqSchema = hook?.faq ? {
+  const faqSchema = faqs.length > 0 ? {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": hook.faq.q,
-        "acceptedAnswer": { "@type": "Answer", "text": hook.faq.a },
-      },
-    ],
+    "mainEntity": faqs.map((f) => ({
+      "@type": "Question",
+      "name": f.q,
+      "acceptedAnswer": { "@type": "Answer", "text": f.a },
+    })),
   } : null
 
   return (
     <>
-      <Script
+      <script
         id={`city-schema-${slugify(townName)}`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
       />
-      <Script
+      <script
         id={`breadcrumb-schema-${slugify(townName)}`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       {faqSchema && (
-        <Script
+        <script
           id={`faq-schema-${slugify(townName)}`}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -202,31 +207,29 @@ function CitySchema({ townName, hook }) {
   )
 }
 
-// Calculate approximate distance from base
-function getDistance(town) {
-  const distances = {
-    'Mount Vernon': 0,
-    'Woodlawn': 5,
-    'Bluford': 8,
-    'Centralia': 15,
-    'Salem': 20,
-    'Marion': 25,
-    'Carbondale': 35,
-    'Benton': 20,
-    'Harrisburg': 30,
-    'Fairfield': 25,
-    'Flora': 30,
-    'Olney': 35,
-    'West Frankfort': 20,
-    'Herrin': 30,
-  }
-  return distances[town] || Math.floor(15 + (town.length % 10) * 2)
+function listTowns(towns) {
+  if (towns.length <= 1) return towns.join('')
+  return `${towns.slice(0, -1).join(', ')} and ${towns[towns.length - 1]}`
 }
 
-// Get nearby towns for internal linking. Delegates to getNearbyCities()
-// which prefers curated geographic neighbors when available.
-function getNearbyTowns(currentTown, count = 6) {
-  return getNearbyCities(currentTown, config.serviceTowns, count)
+// Factual, town-specific Q&As built from real geography (src/lib/townData.js).
+// These are what make each city page genuinely different from the others.
+function buildGeoFaqs(townName, geo, nearest) {
+  if (!geo) return []
+  const faqs = []
+  if (!geo.isBase) {
+    faqs.push({
+      q: `How far is ${townName} from ${config.businessName}?`,
+      a: `${townName} is about ${geo.milesFromBase} miles ${geo.directionFromBase} of our Mount Vernon yard as the crow flies (the drive is a little longer). Call ${config.phone} to check same-day availability for ${townName}.`,
+    })
+  }
+  if (nearest.length > 0) {
+    faqs.push({
+      q: `Do you also deliver to towns near ${townName}?`,
+      a: `Yes. Nearby towns we serve include ${listTowns(nearest.slice(0, 4).map(n => `${n.town} (about ${n.miles} mi)`))}. Same pricing, same 10-day rental.`,
+    })
+  }
+  return faqs
 }
 
 // ============================================
@@ -239,14 +242,17 @@ export default function CityPage({ params }) {
     notFound()
   }
 
-  const distance = getDistance(townName)
-  const nearbyTowns = getNearbyTowns(townName)
+  const geo = getTownGeo(townName)
+  const distance = geo?.milesFromBase
+  const nearest = getNearestTowns(townName, 6)
+  const sameCounty = getSameCountyTowns(townName)
   const isBaseCity = townName === config.address.city
   const hook = getCityHook(townName)
+  const faqs = [...(hook?.faq ? [hook.faq] : []), ...buildGeoFaqs(townName, geo, nearest)]
 
   return (
     <>
-      <CitySchema townName={townName} hook={hook} />
+      <CitySchema townName={townName} faqs={faqs} />
 
       {/* Hero Section */}
       <section className="bg-primary-700 text-white py-16">
@@ -264,7 +270,9 @@ export default function CityPage({ params }) {
             <div className="flex items-center gap-3 mb-4">
               <MapPin className="w-8 h-8 text-primary-400" />
               <span className="bg-primary/20 text-primary-300 px-3 py-1 rounded-full text-sm font-medium">
-                {isBaseCity ? 'Our Home Base' : `${distance} miles from base`}
+                {isBaseCity
+                  ? 'Our Home Base'
+                  : geo ? `About ${distance} mi ${geo.directionFromBase} of Mount Vernon` : 'Southern Illinois'}
               </span>
             </div>
 
@@ -341,18 +349,46 @@ export default function CityPage({ params }) {
         </section>
       )}
 
-      {/* City-specific FAQ — also drives FAQ schema (eligible for
-          "People also ask" placements in Google) */}
-      {hook?.faq && (
+      {/* Local area facts — real geography, different on every page */}
+      {geo && (
         <section className="section bg-dark-900">
+          <div className="container-custom">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Dumpster Service in {townName} &amp; {geo.county} County
+              </h2>
+              <p className="text-dark-300 leading-relaxed mb-4">
+                {isBaseCity
+                  ? `${townName} is home base for ${config.businessName}. Our dumpsters are dispatched from here, so ${geo.county} County addresses get the shortest wait.`
+                  : `${townName} is in ${geo.county} County, about ${distance} miles ${geo.directionFromBase} of our Mount Vernon yard.`}
+                {sameCounty.length > 0
+                  ? ` Elsewhere in ${geo.county} County we also deliver to ${listTowns(sameCounty)}.`
+                  : ` It's the only ${geo.county} County town on our regular route, and we're glad to make the trip.`}
+              </p>
+              <p className="text-dark-300 leading-relaxed">
+                Whether your {townName} address is in town or out on a rural route, tell us where you want the
+                dumpster when you book — you can drop a pin on the map — and we&apos;ll plan the placement before we arrive.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* City FAQ — also drives FAQ schema (eligible for "People also ask") */}
+      {faqs.length > 0 && (
+        <section className="section bg-dark-800">
           <div className="container-custom">
             <div className="max-w-3xl mx-auto">
               <h2 className="text-2xl font-bold text-white mb-4">
                 {townName} Dumpster Rental FAQ
               </h2>
-              <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
-                <h3 className="text-lg font-semibold text-white mb-2">{hook.faq.q}</h3>
-                <p className="text-dark-300 leading-relaxed">{hook.faq.a}</p>
+              <div className="space-y-4">
+                {faqs.map((f) => (
+                  <div key={f.q} className="bg-dark-900 rounded-xl border border-dark-700 p-6">
+                    <h3 className="text-lg font-semibold text-white mb-2">{f.q}</h3>
+                    <p className="text-dark-300 leading-relaxed">{f.a}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -426,7 +462,7 @@ export default function CityPage({ params }) {
                     title: `Fast Delivery to ${townName}`,
                     description: isBaseCity
                       ? "We're based right here! Same-day delivery is usually available."
-                      : `Just ${distance} miles from our base - we can often deliver same-day to ${townName}.`
+                      : `About ${distance} miles from our Mount Vernon yard - we can often deliver same-day to ${townName}.`
                   },
                   {
                     title: 'Transparent Pricing',
@@ -459,10 +495,18 @@ export default function CityPage({ params }) {
               </h3>
 
               <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center py-3 border-b border-dark-700">
-                  <span className="text-dark-300">Distance from Base</span>
-                  <span className="text-white font-semibold">{distance} miles</span>
-                </div>
+                {geo && (
+                  <div className="flex justify-between items-center py-3 border-b border-dark-700">
+                    <span className="text-dark-300">County</span>
+                    <span className="text-white font-semibold">{geo.county} County</span>
+                  </div>
+                )}
+                {geo && !isBaseCity && (
+                  <div className="flex justify-between items-center py-3 border-b border-dark-700">
+                    <span className="text-dark-300">Distance from Mount Vernon</span>
+                    <span className="text-white font-semibold">About {distance} miles</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center py-3 border-b border-dark-700">
                   <span className="text-dark-300">Same-Day Delivery</span>
                   <span className="text-primary font-semibold">Available</span>
@@ -489,56 +533,23 @@ export default function CityPage({ params }) {
         </div>
       </section>
 
-      {/* Common Projects in This Area */}
+      {/* Project types — short links to the full service pages instead of
+          repeating the same six project cards on every city page (that
+          boilerplate made the 37 city pages near-duplicates of each other). */}
       <section className="section bg-dark-800">
         <div className="container-custom">
           <h2 className="text-3xl font-bold text-white mb-8 text-center">
-            Common Dumpster Projects in {townName}
+            What Are You Working On in {townName}?
           </h2>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {[
-              {
-                title: 'Home Cleanouts',
-                description: `Clearing out a house, garage, or basement in ${townName}? A 20-yard dumpster handles most home cleanouts.`,
-                size: '20 Yard'
-              },
-              {
-                title: 'Roofing Projects',
-                description: `Replacing your roof in ${townName}? Our 30-yard dumpster holds shingles from most residential roofs.`,
-                size: '30 Yard'
-              },
-              {
-                title: 'Remodeling & Renovation',
-                description: `Kitchen or bathroom remodel in ${townName}? We'll match the right dumpster size to your project.`,
-                size: '20-30 Yard'
-              },
-              {
-                title: 'Yard Cleanup',
-                description: `Big yard project? Storm debris? Our dumpsters make disposal easy. Note: yard waste may have restrictions.`,
-                size: '20 Yard'
-              },
-              {
-                title: 'Estate Cleanouts',
-                description: `Handling an estate cleanout in ${townName}? We can accommodate multiple dumpsters if needed.`,
-                size: '20-30 Yard'
-              },
-              {
-                title: 'Construction Debris',
-                description: `Building or demolition project? Our heavy-duty roll-offs handle construction waste with ease.`,
-                size: '30 Yard'
-              },
-            ].map((project, index) => (
-              <div
-                key={index}
-                className="bg-dark-900 rounded-xl p-6 border border-dark-700"
+          <div className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
+            {services.map((svc) => (
+              <Link
+                key={svc.slug}
+                href={`/services/${svc.slug}`}
+                className="bg-dark-900 border border-dark-700 hover:border-primary-300 rounded-full px-5 py-2 text-white text-sm font-medium transition-colors"
               >
-                <h3 className="font-semibold text-white mb-2">{project.title}</h3>
-                <p className="text-dark-400 text-sm mb-4">{project.description}</p>
-                <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                  Recommended: {project.size}
-                </span>
-              </div>
+                {svc.title}
+              </Link>
             ))}
           </div>
         </div>
@@ -555,14 +566,14 @@ export default function CityPage({ params }) {
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
-            {nearbyTowns.map((town) => (
+            {nearest.map(({ town, miles }) => (
               <Link
                 key={town}
                 href={`/dumpster-rental/${slugify(town)}-il`}
                 className="bg-dark-800 hover:bg-dark-800 border border-dark-700 hover:border-primary-300 rounded-xl p-4 text-center transition-all"
               >
                 <p className="text-white font-medium">{town}, IL</p>
-                <p className="text-dark-400 text-sm">Dumpster Rental</p>
+                <p className="text-dark-400 text-sm">About {miles} mi away</p>
               </Link>
             ))}
           </div>
