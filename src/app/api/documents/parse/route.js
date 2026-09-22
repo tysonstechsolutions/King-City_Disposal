@@ -8,6 +8,7 @@ import { config } from '../../../../config';
 import { logger } from '../../../../lib/logger';
 import { requireAdminAuth } from '../../../../lib/adminAuth';
 import { callClaudeWithFallback } from '../../../../lib/claudeModels';
+import { AUTO_CONFIRM_CONFIDENCE, misfiledReason, lowConfidenceReason } from '../../../../lib/reviewReason';
 import * as XLSX from 'xlsx';
 
 // Force dynamic rendering (not static)
@@ -596,6 +597,7 @@ export async function POST(request) {
     // Vendor expenses (fuel, landfill fees, etc.) should NOT create customers
     let customer = null;
     let invoiceType = parsedData.invoice_type || 'vendor_expense';
+    let typeOverridden = false;
 
     // A customer_record is an invoice King City Disposal SENT. The model has
     // tagged store receipts (Dairy Queen, USPS, parts counters) as customer
@@ -607,6 +609,7 @@ export async function POST(request) {
         from: parsedData.from?.name,
       });
       invoiceType = 'vendor_expense';
+      typeOverridden = true;
     }
 
     if (invoiceType === 'customer_record') {
@@ -648,6 +651,15 @@ export async function POST(request) {
       ? new Date(formattedInvoiceDate).getFullYear()
       : null;
 
+    // A receipt is held for review (kept out of Expenses) when the AI is unsure
+    // or when we had to correct its vendor/customer call. Say why, in notes.
+    const autoConfirm = !typeOverridden && parsedData.confidence >= AUTO_CONFIRM_CONFIDENCE;
+    const reviewReason = autoConfirm
+      ? null
+      : typeOverridden
+        ? misfiledReason(parsedData.from?.name)
+        : lowConfidenceReason(parsedData.confidence ?? 0.8);
+
     const parsedInvoiceData = {
       document_id: parseInt(document_id),
       customer_id: customer?.id || null,
@@ -672,11 +684,11 @@ export async function POST(request) {
       total_cents: parsedData.total_cents || null,
       expense_category: parsedData.expense_category || 'other',
       tax_year: taxYear,
-      // Auto-confirm if confidence >= 95%
-      status: (parsedData.confidence >= 0.95) ? 'confirmed' : 'pending_review',
+      status: autoConfirm ? 'confirmed' : 'pending_review',
+      notes: reviewReason,
       confidence_score: parsedData.confidence || 0.8,
       raw_text: parsedData.notes || null,
-      confirmed_at: (parsedData.confidence >= 0.95) ? new Date().toISOString() : null,
+      confirmed_at: autoConfirm ? new Date().toISOString() : null,
     };
 
     const insertResponse = await fetch(
@@ -906,7 +918,7 @@ export async function POST(request) {
       }
     }
 
-    const autoConfirmed = parsedData.confidence >= 0.95;
+    const autoConfirmed = autoConfirm;
     logger.info('Document parsed successfully', {
       document_id,
       parsed_invoice_id: parsedInvoice.id,

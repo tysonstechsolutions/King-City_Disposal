@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { config } from '../config'
 import { CATEGORY_ICONS, CATEGORY_LABELS, formatWeight } from '../lib/constants'
+import { getReviewReason } from '../lib/reviewReason'
 import {
   X,
   Building2,
@@ -483,6 +484,13 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
         {error && (
           <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             {error}
+          </div>
+        )}
+
+        {!manualMode && getReviewReason(parsedInvoice) && (
+          <div className="mx-4 mt-4 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-900 text-sm">
+            <span className="font-semibold">Why this needs review: </span>
+            {getReviewReason(parsedInvoice)}
           </div>
         )}
 

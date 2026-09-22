@@ -827,6 +827,12 @@ export default function DocumentsPage() {
                             Uploaded {formatDate(doc.created_at)}
                           </span>
                         </div>
+                        {doc.review_reason && (
+                          <p className="mt-1.5 text-sm text-amber-300/90 flex items-start gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                            <span>{doc.review_reason}</span>
+                          </p>
+                        )}
                       </div>
 
                       {/* Amount */}

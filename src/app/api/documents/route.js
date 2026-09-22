@@ -10,6 +10,7 @@
 // as long as the parse actually ran — independent of the documents write-back.
 
 import { NextResponse } from 'next/server'
+import { getReviewReason } from '../../../lib/reviewReason'
 import { config } from '../../../config'
 import { requireAdminAuth } from '../../../lib/adminAuth'
 
@@ -33,7 +34,7 @@ export async function GET(request) {
     const [docsRes, parsedRes] = await Promise.all([
       fetch(`${getSupabaseUrl()}/rest/v1/documents?order=created_at.desc&limit=10000`, { headers }),
       fetch(
-        `${getSupabaseUrl()}/rest/v1/parsed_invoices?select=document_id,status,total_cents,from_name,expense_category,invoice_date,parsed_at,raw_text&order=parsed_at.asc&limit=10000`,
+        `${getSupabaseUrl()}/rest/v1/parsed_invoices?select=document_id,status,total_cents,from_name,expense_category,invoice_date,parsed_at,raw_text,notes,confidence_score&order=parsed_at.asc&limit=10000`,
         { headers }
       ),
     ])
@@ -75,6 +76,7 @@ export async function GET(request) {
         // 'pending_review' = AI wasn't confident enough to auto-confirm; the
         // receipt stays out of Expenses until someone confirms it.
         review_status: pi.status || null,
+        review_reason: getReviewReason(pi),
       }
     })
 

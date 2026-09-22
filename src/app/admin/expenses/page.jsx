@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { config } from '../../../config'
 import AdminNav from '../../../components/AdminNav'
+import { getReviewReason } from '../../../lib/reviewReason'
 import { EXPENSE_CATEGORIES, formatCurrency, formatDate, getExpenseCategory } from '../../../lib/constants'
 import {
   Receipt,
@@ -344,7 +345,10 @@ export default function ExpensesPage() {
                       href={`/admin/documents?review=${exp.document_id}`}
                       className="flex items-center gap-4 px-4 py-3 hover:bg-amber-500/10 transition-colors"
                     >
-                      <span className="flex-1 min-w-0 truncate text-white">{exp.from_name || 'Unknown vendor'}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate text-white">{exp.from_name || 'Unknown vendor'}</span>
+                        <span className="block text-xs text-amber-200/70 mt-0.5">{getReviewReason(exp)}</span>
+                      </span>
                       <span className="text-sm text-dark-400 shrink-0">{exp.invoice_date ? formatDate(exp.invoice_date) : 'No date'}</span>
                       <span className="font-semibold text-white shrink-0 w-24 text-right">{formatCurrency(exp.total_cents || 0)}</span>
                     </a>
