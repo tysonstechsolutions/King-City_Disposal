@@ -69,6 +69,10 @@ export default function DocumentsPage() {
       return
     }
     fetchDocuments()
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('filter') === 'needs_review') setFilterStatus('needs_review')
+    const reviewId = parseInt(params.get('review'), 10)
+    if (!Number.isNaN(reviewId)) openReview({ id: reviewId })
   }, [])
 
   const fetchDocuments = async () => {
@@ -425,6 +429,7 @@ export default function DocumentsPage() {
     parsed: documents.filter(d => d.parse_status === 'parsed' || d.parse_status === 'confirmed').length,
     pending: documents.filter(d => !d.parse_status || d.parse_status === 'pending' || isStuckParsing(d)).length,
     failed: documents.filter(d => d.parse_status === 'failed').length,
+    needsReview: documents.filter(d => d.review_status === 'pending_review').length,
     totalWeight: documents.reduce((sum, d) => sum + (d.weight_lbs || 0), 0),
     totalAmount: documents.reduce((sum, d) => sum + (d.amount_cents || 0), 0),
   }), [documents])
@@ -453,7 +458,9 @@ export default function DocumentsPage() {
 
         // Status filter
         if (filterStatus !== 'all') {
-          if (filterStatus === 'pending') {
+          if (filterStatus === 'needs_review') {
+            if (doc.review_status !== 'pending_review') return false
+          } else if (filterStatus === 'pending') {
             // Pending includes docs with no parse_status, 'pending', or stuck 'parsing'
             const isPending = !doc.parse_status || doc.parse_status === 'pending' || isStuckParsing(doc)
             if (!isPending) return false
@@ -486,7 +493,10 @@ export default function DocumentsPage() {
   }, [documents, searchTerm, sortBy, filterCategory, filterStatus])
 
   // Get status badge
-  const getStatusBadge = (status, manual) => {
+  const getStatusBadge = (status, manual, reviewStatus) => {
+    if (reviewStatus === 'pending_review') {
+      return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1 whitespace-nowrap"><AlertCircle className="w-3 h-3" />Needs Review</span>
+    }
     if (manual && (status === 'parsed' || status === 'confirmed')) {
       return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1"><PenLine className="w-3 h-3" />Manual</span>
     }
@@ -581,6 +591,34 @@ export default function DocumentsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Needs Review banner — receipts the AI wasn't sure about. They are
+            NOT counted in Expenses until confirmed, so make them hard to miss. */}
+        {stats.needsReview > 0 && (
+          <button
+            onClick={() => { setFilterStatus(filterStatus === 'needs_review' ? 'all' : 'needs_review'); setFilterCategory('all') }}
+            className={`w-full mb-6 flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
+              filterStatus === 'needs_review'
+                ? 'bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/30'
+                : 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
+            }`}
+          >
+            <div className="p-2.5 bg-amber-500/20 rounded-lg shrink-0">
+              <AlertCircle className="w-6 h-6 text-amber-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-amber-200">
+                {stats.needsReview} receipt{stats.needsReview === 1 ? '' : 's'} need{stats.needsReview === 1 ? 's' : ''} your review
+              </p>
+              <p className="text-sm text-amber-200/70">
+                The AI wasn&apos;t sure about {stats.needsReview === 1 ? 'this one' : 'these'}, so {stats.needsReview === 1 ? "it isn't" : "they aren't"} counted in Expenses yet. Open each one, check it, and click Confirm.
+              </p>
+            </div>
+            <span className="shrink-0 px-4 py-2 bg-amber-500 text-dark-900 rounded-lg font-semibold text-sm">
+              {filterStatus === 'needs_review' ? 'Show all' : 'Review now'}
+            </span>
+          </button>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <button
@@ -680,6 +718,7 @@ export default function DocumentsPage() {
                 <option value="all">All Status</option>
                 <option value="parsed">Parsed</option>
                 <option value="confirmed">Confirmed</option>
+                <option value="needs_review">Needs Review</option>
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
               </select>
@@ -766,7 +805,7 @@ export default function DocumentsPage() {
                           <span className="font-medium text-white group-hover:text-primary truncate">
                             {doc.title || doc.file_name}
                           </span>
-                          {getStatusBadge(doc.parse_status, doc.manual)}
+                          {getStatusBadge(doc.parse_status, doc.manual, doc.review_status)}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dark-400">
                           <span className={`px-2 py-0.5 rounded text-xs bg-dark-700 text-dark-300`}>

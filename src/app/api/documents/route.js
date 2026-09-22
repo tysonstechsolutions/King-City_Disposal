@@ -72,6 +72,9 @@ export async function GET(request) {
         category: d.category || pi.expense_category || d.category,
         service_date: d.service_date || pi.invoice_date || null,
         manual: pi.raw_text === 'Manually entered',
+        // 'pending_review' = AI wasn't confident enough to auto-confirm; the
+        // receipt stays out of Expenses until someone confirms it.
+        review_status: pi.status || null,
       }
     })
 

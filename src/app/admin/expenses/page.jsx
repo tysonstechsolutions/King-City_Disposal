@@ -73,6 +73,20 @@ export default function ExpensesPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
+  // Receipts parsed but not yet confirmed — excluded from every total below.
+  const [needsReview, setNeedsReview] = useState([])
+  const [showNeedsReview, setShowNeedsReview] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !sessionStorage.getItem('adminToken')) return
+    fetch('/api/expenses?status=pending_review', {
+      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}` },
+    })
+      .then(r => (r.ok ? r.json() : []))
+      .then(data => setNeedsReview(Array.isArray(data) ? data : []))
+      .catch(() => setNeedsReview([]))
+  }, [])
+
   useEffect(() => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem('adminToken')) {
       window.location.href = '/admin'
@@ -291,6 +305,56 @@ export default function ExpensesPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Needs Review — these receipts are NOT in any total on this page */}
+        {needsReview.length > 0 && (
+          <div className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10">
+            <div className="flex flex-wrap items-center gap-4 p-4">
+              <div className="p-2.5 bg-amber-500/20 rounded-lg shrink-0">
+                <AlertCircle className="w-6 h-6 text-amber-300" />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <p className="font-semibold text-amber-200">
+                  {needsReview.length} receipt{needsReview.length === 1 ? '' : 's'} waiting for your review
+                  {' '}({formatCurrency(needsReview.reduce((s, e) => s + (e.total_cents || 0), 0))})
+                </p>
+                <p className="text-sm text-amber-200/70">
+                  Not included in the totals below until you confirm {needsReview.length === 1 ? 'it' : 'them'}.
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => setShowNeedsReview(v => !v)}
+                  className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm font-medium hover:bg-dark-600 border border-dark-600"
+                >
+                  {showNeedsReview ? 'Hide list' : 'Show list'}
+                </button>
+                <a
+                  href="/admin/documents?filter=needs_review"
+                  className="px-4 py-2 bg-amber-500 text-dark-900 rounded-lg text-sm font-semibold hover:bg-amber-400"
+                >
+                  Review now
+                </a>
+              </div>
+            </div>
+            {showNeedsReview && (
+              <ul className="border-t border-amber-500/20 divide-y divide-amber-500/10">
+                {needsReview.map((exp) => (
+                  <li key={exp.id}>
+                    <a
+                      href={`/admin/documents?review=${exp.document_id}`}
+                      className="flex items-center gap-4 px-4 py-3 hover:bg-amber-500/10 transition-colors"
+                    >
+                      <span className="flex-1 min-w-0 truncate text-white">{exp.from_name || 'Unknown vendor'}</span>
+                      <span className="text-sm text-dark-400 shrink-0">{exp.invoice_date ? formatDate(exp.invoice_date) : 'No date'}</span>
+                      <span className="font-semibold text-white shrink-0 w-24 text-right">{formatCurrency(exp.total_cents || 0)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* Summary Cards */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
