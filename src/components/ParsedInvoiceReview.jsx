@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react'
 import { config } from '../config'
 import { CATEGORY_ICONS, CATEGORY_LABELS, formatWeight } from '../lib/constants'
-import { getReviewReason } from '../lib/reviewReason'
+import { getReviewReason, VALID_EXPENSE_CATEGORIES } from '../lib/reviewReason'
+
+// Old category ids still on some rows; show them as their current category so
+// the dropdown has a matching option.
+const LEGACY_CATEGORY = { other: 'misc', landfill: 'disposal' }
 import {
   X,
   Building2,
@@ -120,8 +124,8 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
         tax_cents: parsedInvoice.tax_cents || 0,
         fees_cents: parsedInvoice.fees_cents || 0,
         total_cents: parsedInvoice.total_cents || 0,
-        expense_category: parsedInvoice.expense_category || 'other',
-        is_tax_deductible: parsedInvoice.is_tax_deductible !== false,
+        expense_category: LEGACY_CATEGORY[parsedInvoice.expense_category] || parsedInvoice.expense_category || 'misc',
+        is_tax_deductible: parsedInvoice.is_tax_deductible === true,
         line_items: parsedInvoice.line_items || [],
         // Weight lives on the documents table, not parsed_invoices, so fall
         // back to the document's value for display on weight tickets.
@@ -146,8 +150,8 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
         invoice_date: document?.service_date || '',
         due_date: '', payment_terms: '',
         subtotal_cents: 0, tax_cents: 0, fees_cents: 0, total_cents: 0,
-        expense_category: document?.category && document.category !== 'invoice' ? document.category : 'other',
-        is_tax_deductible: true,
+        expense_category: document?.category && document.category !== 'invoice' ? (LEGACY_CATEGORY[document.category] || document.category) : 'misc',
+        is_tax_deductible: false,
         line_items: [],
         weight_lbs: null,
         customer_id: null,
@@ -983,8 +987,8 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
                     onChange={(e) => setFormData({ ...formData, expense_category: e.target.value })}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg bg-white text-neutral-900"
                   >
-                    {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
+                    {VALID_EXPENSE_CATEGORIES.map(value => (
+                      <option key={value} value={value}>{CATEGORY_LABELS[value]}</option>
                     ))}
                   </select>
                 ) : (

@@ -108,7 +108,7 @@ export async function POST(request) {
       discount_cents: parseInt(body.discount_cents, 10) || 0,
       total_cents: totalCents,
       expense_category: body.expense_category || 'other',
-      is_tax_deductible: body.is_tax_deductible !== false,
+      is_tax_deductible: body.is_tax_deductible === true,
       tax_year: taxYear,
       // Mark manual + confirmed so it lands directly in the completed section.
       status: 'confirmed',

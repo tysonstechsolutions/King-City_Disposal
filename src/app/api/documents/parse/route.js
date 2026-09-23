@@ -715,6 +715,7 @@ export async function POST(request) {
       discount_cents: parsedData.discount_cents || 0,
       total_cents: parsedData.total_cents || null,
       expense_category: parsedData.expense_category || 'misc',
+      is_tax_deductible: false, // office ticks it when reviewing
       tax_year: taxYear,
       status: autoConfirm ? 'confirmed' : 'pending_review',
       notes: reviewReason,

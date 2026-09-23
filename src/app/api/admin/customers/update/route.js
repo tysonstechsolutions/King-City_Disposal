@@ -74,6 +74,24 @@ export async function DELETE(request) {
   }
 
   try {
+    // Other rows point at this customer (the receipt that created it, invoices,
+    // bookings...). Postgres blocks the delete while those references exist, so
+    // unlink them first. Best-effort: a table/column may not exist in every DB.
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': getServiceKey(),
+      'Authorization': `Bearer ${getServiceKey()}`,
+    };
+    const unlink = (table) =>
+      fetch(`${supabaseUrl}/rest/v1/${table}?customer_id=eq.${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ customer_id: null }),
+      }).catch(() => {});
+    await Promise.all(
+      ['parsed_invoices', 'invoices', 'bookings', 'transactions', 'documents', 'payment_batches', 'customer_requests'].map(unlink)
+    );
+
     const response = await fetch(
       `${supabaseUrl}/rest/v1/customers?id=eq.${id}`,
       {
@@ -86,7 +104,12 @@ export async function DELETE(request) {
     );
 
     if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to delete customer' }, { status: 500 });
+      const errorText = await response.text().catch(() => '');
+      console.error('Customer delete error:', errorText);
+      return NextResponse.json(
+        { error: 'Failed to delete customer', detail: errorText.substring(0, 300) || undefined },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });

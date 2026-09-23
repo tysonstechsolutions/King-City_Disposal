@@ -316,7 +316,8 @@ export default function ManualReceiptEntry({ onClose, onSuccess }) {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-4 py-2.5 bg-dark-700 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               >
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                {/* Skip legacy ids (other, landfill) — they'd show as a second Misc/Disposal */}
+                {Object.entries(CATEGORY_LABELS).filter(([value]) => !['other', 'landfill'].includes(value)).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>

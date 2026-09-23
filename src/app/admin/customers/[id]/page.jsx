@@ -158,7 +158,8 @@ export default function CustomerDetailPage() {
         toast.success('Customer deleted')
         router.push('/admin/customers')
       } else {
-        toast.error('Failed to delete customer')
+        const err = await response.json().catch(() => ({}))
+        toast.error(err.detail ? `Failed to delete customer: ${err.detail}` : 'Failed to delete customer')
       }
     } catch (err) {
       console.error('Error deleting:', err)
