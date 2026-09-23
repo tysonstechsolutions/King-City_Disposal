@@ -24,11 +24,13 @@ export function calculateInvoiceTotals(lineItems, options = {}) {
     includeTax = true,
     discountCents = 0,
     lateFeesCents = 0,
+    taxCents: taxOverrideCents = null, // explicit tax amount (e.g. 4 dumpsters = 4 x flat tax)
   } = options;
 
   const serviceItems = lineItems.filter(item => !item.is_tax && !item.is_fee);
   const subtotalCents = serviceItems.reduce((sum, item) => sum + (item.amount_cents || 0), 0);
-  const taxCents = includeTax ? TAX_CENTS : 0;
+  const hasTaxOverride = Number.isFinite(taxOverrideCents) && taxOverrideCents >= 0;
+  const taxCents = !includeTax ? 0 : hasTaxOverride ? Math.round(taxOverrideCents) : TAX_CENTS;
   let runningTotal = subtotalCents + taxCents + lateFeesCents - discountCents;
   let ccFeeCents = 0;
   if (includeCardFee && runningTotal > 0) {
@@ -44,6 +46,16 @@ export function calculateInvoiceTotals(lineItems, options = {}) {
     discount_cents: discountCents,
     total_cents: totalCents,
   };
+}
+
+export const FLAT_TAX_CENTS = TAX_CENTS;
+
+// How many dumpster/compactor rentals are on the invoice — flat sales tax is
+// charged once per rental, so this is the default tax quantity.
+export function countTaxableRentals(lineItems) {
+  return (lineItems || []).filter(item =>
+    !item.is_tax && !item.is_fee && /dumpster|compactor/i.test(item.description || '')
+  ).length;
 }
 
 export function addTaxesAndFees(lineItems, options = {}) {

@@ -82,14 +82,12 @@ export default function CustomerInvoicePage() {
         body: JSON.stringify({ invoice_id: invoice.id }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.payment_url) {
-          window.location.href = data.payment_url
-        }
-      } else {
-        alert('Failed to create payment link')
+      const data = await response.json().catch(() => ({}))
+      if (response.ok && data.payment_url) {
+        window.location.href = data.payment_url
+        return
       }
+      alert(`We couldn't start your payment${data.error ? ` (${data.error})` : ''}. Please call ${config.billingPhone || config.phone} to pay.`)
     } catch (err) {
       console.error('Error creating payment:', err)
       alert('Error processing payment')

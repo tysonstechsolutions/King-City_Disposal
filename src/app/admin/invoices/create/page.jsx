@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { config } from '../../../../config'
 import { useToast } from '../../../../components/Toast'
-import { calculateInvoiceTotals } from '../../../../lib/invoiceHelpers'
+import { calculateInvoiceTotals, countTaxableRentals, FLAT_TAX_CENTS } from '../../../../lib/invoiceHelpers'
 import {
   ArrowLeft,
   Plus,
@@ -74,6 +74,8 @@ function CreateInvoiceContent() {
     send_immediately: false,
     include_cc_fee: true, // Include credit card processing fee by default
     include_tax: true, // Include Illinois sales tax by default
+    tax_qty: null, // null = one flat tax per dumpster on the invoice
+    tax_cents_override: null, // null = tax_qty x flat tax
   })
 
   useEffect(() => {
@@ -248,9 +250,15 @@ function CreateInvoiceContent() {
 
   // Use centralized calculation function for display
   const validLineItems = invoice.line_items.filter(item => item.description && item.amount_cents > 0)
+  // Flat sales tax is charged per dumpster; the office can change the count or
+  // type an exact amount before saving.
+  const autoTaxQty = Math.max(1, countTaxableRentals(validLineItems))
+  const taxQty = invoice.tax_qty ?? autoTaxQty
+  const taxCents = invoice.tax_cents_override ?? taxQty * FLAT_TAX_CENTS
   const calculatedTotals = calculateInvoiceTotals(validLineItems, {
     includeCardFee: invoice.include_cc_fee,
     includeTax: invoice.include_tax,
+    taxCents,
   })
 
   const handleSubmit = async (sendNow = false) => {
@@ -315,6 +323,7 @@ function CreateInvoiceContent() {
         due_date: dueDate.toISOString().split('T')[0],
         include_cc_fee: invoice.include_cc_fee, // Backend uses this to calculate CC fee
         include_tax: invoice.include_tax, // Backend uses this to calculate tax
+        tax_cents: calculatedTotals.tax_cents,
         status: sendNow ? 'sent' : 'draft',
         sent_at: sendNow ? new Date().toISOString() : null,
       }
@@ -803,6 +812,39 @@ function CreateInvoiceContent() {
                   />
                   <span>Include Illinois sales tax</span>
                 </label>
+                {invoice.include_tax && (
+                  <div className="ml-6 flex flex-wrap items-center gap-3 text-sm text-dark-300">
+                    <label className="flex items-center gap-2">
+                      <span>Dumpsters taxed</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={taxQty}
+                        onChange={(e) => {
+                          const qty = Math.max(0, parseInt(e.target.value, 10) || 0)
+                          setInvoice({ ...invoice, tax_qty: qty, tax_cents_override: null })
+                        }}
+                        className="w-16 px-2 py-1 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                      <span>× ${(FLAT_TAX_CENTS / 100).toFixed(2)}</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <span>= Tax amount $</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        key={`tax-${taxCents}`}
+                        defaultValue={(taxCents / 100).toFixed(2)}
+                        onBlur={(e) => {
+                          const cents = Math.round((parseFloat(e.target.value) || 0) * 100)
+                          if (cents !== taxCents) setInvoice({ ...invoice, tax_cents_override: cents })
+                        }}
+                        className="w-24 px-2 py-1 bg-dark-700 text-white border border-dark-600 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                    </label>
+                  </div>
+                )}
                 <label className="flex items-center gap-2 text-dark-300 cursor-pointer">
                   <input
                     type="checkbox"
@@ -930,6 +972,7 @@ function CreateInvoiceContent() {
                 due_date: dueDate.toISOString().split('T')[0],
                 include_cc_fee: invoice.include_cc_fee, // Backend uses this
                 include_tax: invoice.include_tax, // Backend uses this
+                tax_cents: calculatedTotals.tax_cents,
                 status: 'draft',
               }
 

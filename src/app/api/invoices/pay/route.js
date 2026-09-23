@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { firstValidEmail } from '../../../../lib/stripeBilling';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -26,7 +27,8 @@ async function getOrCreateStripeCustomer(invoice) {
 
     const params = new URLSearchParams();
     if (invoice.customer_name) params.append('name', invoice.customer_name);
-    if (invoice.customer_email) params.append('email', invoice.customer_email);
+    const email = firstValidEmail(invoice.customer_email);
+    if (email) params.append('email', email);
     if (invoice.customer_phone) params.append('phone', invoice.customer_phone);
     if (invoice.customer_id) params.append('metadata[customer_id]', String(invoice.customer_id));
 
@@ -106,7 +108,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invoice already paid' }, { status: 400 });
     }
 
-    const amountDue = invoice.balance_due_cents || invoice.total_cents;
+    // Same math the invoice page shows the customer. The stored
+    // balance_due_cents can be stale after the office edits an invoice.
+    const amountDue = Math.round(
+      Math.max(0, (invoice.total_cents || 0) - (invoice.amount_paid_cents || 0))
+    );
     if (amountDue <= 0) {
       return NextResponse.json({ error: 'No balance due' }, { status: 400 });
     }
@@ -122,10 +128,11 @@ export async function POST(request) {
     } catch (e) {
       lineItems = [];
     }
+    if (!Array.isArray(lineItems)) lineItems = [];
 
-    const description = lineItems.length > 0
-      ? lineItems.map(item => item.description).join(', ')
-      : `Invoice ${invoice.invoice_number}`;
+    // Stripe rejects an empty description, so fall back to the invoice number.
+    const description = lineItems.map(item => item?.description).filter(Boolean).join(', ')
+      || `Invoice ${invoice.invoice_number}`;
 
     // Create Stripe Checkout Session (NOT a Payment Link!)
     // Checkout Sessions properly pass metadata to the webhook
@@ -138,7 +145,7 @@ export async function POST(request) {
       'mode': 'payment',
       'metadata[type]': 'invoice',
       'metadata[invoice_id]': invoice.id.toString(),
-      'metadata[invoice_number]': invoice.invoice_number,
+      'metadata[invoice_number]': invoice.invoice_number || '',
       'metadata[customer_name]': invoice.customer_name || '',
       'metadata[customer_phone]': invoice.customer_phone || '',
       'metadata[customer_email]': invoice.customer_email || '',
@@ -157,8 +164,9 @@ export async function POST(request) {
     if (stripeCustomerId) {
       checkoutParams.append('customer', stripeCustomerId);
       checkoutParams.append('payment_intent_data[setup_future_usage]', 'off_session');
-    } else if (invoice.customer_email) {
-      checkoutParams.append('customer_email', invoice.customer_email);
+    } else {
+      const email = firstValidEmail(invoice.customer_email);
+      if (email) checkoutParams.append('customer_email', email);
     }
 
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {

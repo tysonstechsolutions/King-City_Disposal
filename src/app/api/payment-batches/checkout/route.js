@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { config } from '../../../../config';
+import { firstValidEmail } from '../../../../lib/stripeBilling';
 
 const supabaseUrl = config.supabase.url;
 const getSupabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey;
@@ -99,8 +100,9 @@ export async function POST(request) {
       'phone_number_collection[enabled]': 'true',
     });
 
-    if (batch.customer_email) {
-      checkoutParams.append('customer_email', batch.customer_email);
+    const email = firstValidEmail(batch.customer_email);
+    if (email) {
+      checkoutParams.append('customer_email', email);
     }
 
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {

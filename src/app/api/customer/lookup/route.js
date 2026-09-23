@@ -200,6 +200,31 @@ export async function POST(request) {
       }
     }
 
+    // Invoices typed in by the office aren't always linked to a customer record,
+    // so also match on the phone number printed on the invoice. The phone may be
+    // stored formatted ("(618) 231-8380"), so narrow by the last 4 digits and
+    // compare the full number here.
+    if (last10) {
+      const phoneResponse = await fetch(
+        `${supabaseUrl}/rest/v1/invoices?customer_phone=ilike.*${last10.slice(-4)}*&order=created_at.desc&limit=50`,
+        {
+          headers: {
+            'apikey': getSupabaseKey(),
+            'Authorization': `Bearer ${getSupabaseKey()}`,
+          },
+        }
+      );
+      if (phoneResponse.ok) {
+        const seen = new Set(invoices.map(i => i.id));
+        const byPhone = (await phoneResponse.json()).filter(i =>
+          !seen.has(i.id) && (i.customer_phone || '').replace(/\D/g, '').slice(-10) === last10
+        );
+        invoices = [...invoices, ...byPhone].sort((a, b) =>
+          new Date(b.created_at) - new Date(a.created_at)
+        );
+      }
+    }
+
     // Return sanitized data (no internal IDs exposed directly)
     return NextResponse.json({
       success: true,
@@ -224,10 +249,11 @@ export async function POST(request) {
       })),
       invoices: invoices.map(i => ({
         id: i.id,
+        invoiceNumber: i.invoice_number,
         status: i.status,
         totalCents: i.total_cents,
+        balanceDueCents: Math.max(0, (i.total_cents || 0) - (i.amount_paid_cents || 0)),
         dueDate: i.due_date,
-        paymentLink: i.payment_link,
       })),
     });
 

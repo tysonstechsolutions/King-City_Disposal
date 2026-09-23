@@ -12,6 +12,13 @@ import { notifyOwner, notifyCustomer } from './notifications'
 const supabaseUrl = config.supabase.url
 const getServiceKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || config.supabase.anonKey
 
+// Stripe rejects a request whose email is malformed (e.g. two addresses in one
+// field or a stray space), so only pass along a single valid address.
+export function firstValidEmail(value) {
+  const email = (value || '').split(/[,;\s]+/).find(Boolean)
+  return email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null
+}
+
 function authHeaders(extra = {}) {
   const key = getServiceKey()
   return {

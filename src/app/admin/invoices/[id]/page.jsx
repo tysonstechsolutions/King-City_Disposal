@@ -241,6 +241,9 @@ export default function InvoiceDetailPage() {
           cc_fee_cents: ccFee,
           discount_cents: discount,
           total_cents: total,
+          // Keep the stored balance in step with the new total, otherwise the
+          // customer's online payment charges the old amount.
+          balance_due_cents: Math.max(0, total - (editedInvoice.amount_paid_cents || 0)),
           notes: editedInvoice.notes,
           invoice_date: editedInvoice.invoice_date,
           due_date: editedInvoice.due_date,
@@ -291,8 +294,9 @@ export default function InvoiceDetailPage() {
         const result = await response.json()
         if (result.sms_sent || result.email_sent) {
           toast.success(`Invoice sent${result.sms_sent ? ' via SMS' : ''}${result.email_sent ? ' via Email' : ''}`)
+          if (result.delivery_error) toast.warning(result.delivery_error)
         } else {
-          toast.warning('Invoice saved but delivery failed - check Twilio/Resend config')
+          toast.warning(`Invoice not delivered${result.delivery_error ? `: ${result.delivery_error}` : ' - check Twilio/Resend config'}`)
         }
         fetchInvoice()
       } else {

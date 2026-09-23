@@ -376,20 +376,21 @@ export default function MyRentalsPage() {
                     <div>
                       <p className="text-white font-medium">
                         ${((invoice.totalCents || 0) / 100).toFixed(2)}
+                        {invoice.invoiceNumber && (
+                          <span className="text-dark-400 text-sm font-normal ml-2">{invoice.invoiceNumber}</span>
+                        )}
                       </p>
                       <p className="text-dark-400 text-sm">
                         {invoice.status === 'paid' ? 'Paid' : `Due: ${formatDate(invoice.dueDate)}`}
                       </p>
                     </div>
                   </div>
-                  {invoice.paymentLink && invoice.status !== 'paid' && (
+                  {invoice.invoiceNumber && invoice.status !== 'paid' && invoice.balanceDueCents > 0 && (
                     <a
-                      href={invoice.paymentLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={`/invoice/${encodeURIComponent(invoice.invoiceNumber)}`}
                       className="btn-primary text-sm py-2 px-4"
                     >
-                      Pay Now
+                      Pay ${(invoice.balanceDueCents / 100).toFixed(2)}
                     </a>
                   )}
                 </div>

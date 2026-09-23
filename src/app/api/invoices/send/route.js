@@ -19,7 +19,8 @@ async function sendSMS(to, message) {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_PHONE_NUMBER;
 
-  if (!accountSid || !authToken || !from || !to) return false;
+  if (!to) return { ok: false, error: 'no phone number' };
+  if (!accountSid || !authToken || !from) return { ok: false, error: 'Twilio is not configured' };
 
   // Clean phone number
   let cleanPhone = to.replace(/\D/g, '');
@@ -38,10 +39,16 @@ async function sendSMS(to, message) {
         body: new URLSearchParams({ To: cleanPhone, From: from, Body: message }),
       }
     );
-    return response.ok;
+    if (response.ok) return { ok: true };
+    const data = await response.json().catch(() => ({}));
+    console.error('SMS error:', response.status, data);
+    const reason = response.status === 401
+      ? 'Twilio rejected the login (check TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)'
+      : data.message || `Twilio HTTP ${response.status}`;
+    return { ok: false, error: reason };
   } catch (e) {
     console.error('SMS error:', e);
-    return false;
+    return { ok: false, error: e.message || 'SMS request failed' };
   }
 }
 
@@ -143,8 +150,11 @@ Questions? Reply to this text or call ${config.phone}
 
     // Send SMS
     let smsSent = false;
+    const deliveryErrors = [];
     if (invoice.customer_phone) {
-      smsSent = await sendSMS(invoice.customer_phone, message);
+      const sms = await sendSMS(invoice.customer_phone, message);
+      smsSent = sms.ok;
+      if (!sms.ok) deliveryErrors.push(`Text failed - ${sms.error}`);
     }
 
     // Send Email
@@ -163,9 +173,11 @@ Questions? Reply to this text or call ${config.phone}
         emailSent = emailResult.success;
         if (!emailResult.success) {
           console.error('Email send failed:', emailResult.error);
+          deliveryErrors.push(`Email failed - ${emailResult.error?.message || emailResult.error || 'unknown error'}`);
         }
       } catch (e) {
         console.error('Email error:', e);
+        deliveryErrors.push(`Email failed - ${e.message}`);
       }
     }
 
@@ -204,6 +216,7 @@ Questions? Reply to this text or call ${config.phone}
       success: true,
       sms_sent: smsSent,
       email_sent: emailSent,
+      delivery_error: deliveryErrors.join('; ') || null,
       invoice_number: invoice.invoice_number,
       invoice_url: invoiceUrl,
     });

@@ -105,6 +105,7 @@ export async function POST(request) {
       // Frontend may send these, but we recalculate them
       include_cc_fee = false,
       include_tax = true,
+      tax_cents = null, // explicit tax amount; defaults to the flat per-invoice tax
       discount_cents = 0,
     } = body;
 
@@ -122,6 +123,7 @@ export async function POST(request) {
     const totals = calculateInvoiceTotals(cleanedLineItems, {
       includeCardFee: include_cc_fee,
       includeTax: include_tax,
+      taxCents: tax_cents == null ? null : Number(tax_cents),
       discountCents: discount_cents,
     });
 
