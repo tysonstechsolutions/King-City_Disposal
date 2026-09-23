@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { config } from '../../../../../config';
 import { requireAdminAuth } from '../../../../../lib/adminAuth';
+import { findSameVendorReceipts } from '../../../../../lib/reviewReason';
 
 // Force dynamic rendering (not static)
 export const dynamic = 'force-dynamic';
@@ -88,6 +89,24 @@ export async function GET(request, { params }) {
     // Parse line_items if it's a string
     if (typeof parsedInvoice.line_items === 'string') {
       parsedInvoice.line_items = JSON.parse(parsedInvoice.line_items);
+    }
+
+    // ?duplicates=1 — other receipts that could be this one scanned twice
+    // (same vendor, same date), so the reviewer can compare them side by side.
+    if (new URL(request.url).searchParams.get('duplicates') && parsedInvoice.invoice_date) {
+      parsedInvoice.possible_duplicates = [];
+      try {
+        const docFilter = parsedInvoice.document_id != null ? `&document_id=neq.${parsedInvoice.document_id}` : '';
+        const sameRes = await fetch(
+          `${supabaseUrl}/rest/v1/parsed_invoices?invoice_type=eq.${parsedInvoice.invoice_type || 'vendor_expense'}&status=neq.rejected&invoice_date=eq.${parsedInvoice.invoice_date}&id=neq.${parsedInvoice.id}${docFilter}&select=id,document_id,from_name,total_cents,subtotal_cents,tax_cents,invoice_number,invoice_date,expense_category,status,parsed_at`,
+          { headers: { 'apikey': getSupabaseKey(), 'Authorization': `Bearer ${getSupabaseKey()}` } }
+        );
+        if (sameRes.ok) {
+          parsedInvoice.possible_duplicates = findSameVendorReceipts(parsedInvoice, await sameRes.json());
+        }
+      } catch (e) {
+        console.error('Duplicate lookup failed:', e?.message || e);
+      }
     }
 
     return NextResponse.json(parsedInvoice);
@@ -260,7 +279,7 @@ export async function POST(request, { params }) {
       }
 
       // Mark as confirmed with tax_year
-      const response = await fetch(
+      const patchConfirm = (payload) => fetch(
         `${supabaseUrl}/rest/v1/parsed_invoices?id=eq.${id}`,
         {
           method: 'PATCH',
@@ -270,17 +289,25 @@ export async function POST(request, { params }) {
             'Authorization': `Bearer ${getSupabaseKey()}`,
             'Prefer': 'return=representation',
           },
-          body: JSON.stringify({
-            status: 'confirmed',
-            confirmed_at: new Date().toISOString(),
-            tax_year: taxYear,
-          }),
+          body: JSON.stringify(payload),
         }
       );
+      let response = await patchConfirm({
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString(),
+        tax_year: taxYear,
+      });
+      if (!response.ok) {
+        // PostgREST rejects the whole update if any column is missing in
+        // production; the status flip is what matters, so retry with just that.
+        console.error('Confirm full update failed, retrying minimal:', (await response.text().catch(() => '')).substring(0, 300));
+        response = await patchConfirm({ status: 'confirmed' });
+      }
 
       if (!response.ok) {
+        const detail = await response.text().catch(() => '');
         return NextResponse.json(
-          { error: 'Failed to confirm parsed invoice' },
+          { error: `Failed to confirm: ${detail.substring(0, 200)}` },
           { status: 500 }
         );
       }
@@ -371,8 +398,10 @@ export async function POST(request, { params }) {
         invoice: createdInvoice,
       });
 
-    } else if (action === 'reject') {
-      // Mark as rejected
+    } else if (action === 'reject' || action === 'ignore') {
+      // reject = the scan is wrong/junk; ignore = real document but not an
+      // expense to count. Both leave Needs Review and stay out of Expenses.
+      const newStatus = action === 'reject' ? 'rejected' : 'ignored';
       const response = await fetch(
         `${supabaseUrl}/rest/v1/parsed_invoices?id=eq.${id}`,
         {
@@ -384,26 +413,26 @@ export async function POST(request, { params }) {
             'Prefer': 'return=representation',
           },
           body: JSON.stringify({
-            status: 'rejected',
+            status: newStatus,
           }),
         }
       );
 
       if (!response.ok) {
         return NextResponse.json(
-          { error: 'Failed to reject parsed invoice' },
+          { error: `Failed to ${action} parsed invoice` },
           { status: 500 }
         );
       }
 
       return NextResponse.json({
         success: true,
-        message: 'Invoice rejected',
+        message: action === 'reject' ? 'Invoice rejected' : 'Invoice ignored',
       });
 
     } else {
       return NextResponse.json(
-        { error: 'Invalid action. Use "confirm" or "reject".' },
+        { error: 'Invalid action. Use "confirm", "reject", or "ignore".' },
         { status: 400 }
       );
     }

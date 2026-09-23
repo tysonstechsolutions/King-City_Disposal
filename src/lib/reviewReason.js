@@ -65,6 +65,13 @@ const sameVendor = (a, b) => {
   return x.length >= 4 && y.length >= 4 && (x.startsWith(y) || y.startsWith(x))
 }
 
+// Other receipts (same date) from the same vendor that could be this one scanned
+// again. Different receipt numbers = two real purchases (e.g. two trucks fueled).
+export function findSameVendorReceipts(row, sameDateRows = []) {
+  const differentReceipt = (o) => row.invoice_number && o.invoice_number && String(o.invoice_number) !== String(row.invoice_number)
+  return sameDateRows.filter(o => sameVendor(o.from_name, row.from_name) && !differentReceipt(o))
+}
+
 /**
  * @param row parsed_invoices-shaped data for the new receipt
  * @param opts.uploadedAt when the file was uploaded (default now)
@@ -105,9 +112,7 @@ export function findReceiptIssues(row, { uploadedAt = new Date(), sameDateRows =
     issues.push(`Subtotal + tax (${money(calc)}) doesn't match the total (${money(row.total_cents)}). One of the numbers was probably misread.`)
   }
 
-  // Different receipt numbers = two real purchases (e.g. two trucks fueled).
-  const differentReceipt = (o) => row.invoice_number && o.invoice_number && String(o.invoice_number) !== String(row.invoice_number)
-  const matches = sameDateRows.filter(o => sameVendor(o.from_name, row.from_name) && !differentReceipt(o))
+  const matches = findSameVendorReceipts(row, sameDateRows)
   if (matches.some(o => o.total_cents === row.total_cents)) {
     issues.push(`Looks like a duplicate: another ${vendor} receipt for ${money(row.total_cents)} on the same date is already recorded. If it's the same receipt scanned twice, reject this one.`)
   } else if (matches.length > 0 && Math.abs(row.total_cents || 0) > 50000) {

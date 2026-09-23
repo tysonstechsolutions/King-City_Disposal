@@ -77,6 +77,33 @@ export default function ExpensesPage() {
   // Receipts parsed but not yet confirmed — excluded from every total below.
   const [needsReview, setNeedsReview] = useState([])
   const [showNeedsReview, setShowNeedsReview] = useState(false)
+  const [reviewBusy, setReviewBusy] = useState(null) // id of the receipt being actioned
+
+  // Confirm / Ignore / Reject a receipt straight from the list, no editing.
+  const reviewAction = async (exp, action) => {
+    setReviewBusy(exp.id)
+    try {
+      const res = await fetch(`/api/documents/parse/${exp.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+        },
+        body: JSON.stringify({ action }),
+      })
+      if (res.ok) {
+        setNeedsReview(prev => prev.filter(e => e.id !== exp.id))
+        if (action === 'confirm') fetchExpenses()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error || `Failed to ${action}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert(`Error trying to ${action}`)
+    }
+    setReviewBusy(null)
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined' || !sessionStorage.getItem('adminToken')) return
@@ -340,10 +367,10 @@ export default function ExpensesPage() {
             {showNeedsReview && (
               <ul className="border-t border-amber-500/20 divide-y divide-amber-500/10">
                 {needsReview.map((exp) => (
-                  <li key={exp.id}>
+                  <li key={exp.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-amber-500/10 transition-colors">
                     <a
                       href={`/admin/documents?review=${exp.document_id}`}
-                      className="flex items-center gap-4 px-4 py-3 hover:bg-amber-500/10 transition-colors"
+                      className="flex flex-1 min-w-[240px] items-center gap-4"
                     >
                       <span className="flex-1 min-w-0">
                         <span className="block truncate text-white">{exp.from_name || 'Unknown vendor'}</span>
@@ -352,6 +379,31 @@ export default function ExpensesPage() {
                       <span className="text-sm text-dark-400 shrink-0">{exp.invoice_date ? formatDate(exp.invoice_date) : 'No date'}</span>
                       <span className="font-semibold text-white shrink-0 w-24 text-right">{formatCurrency(exp.total_cents || 0)}</span>
                     </a>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => reviewAction(exp, 'confirm')}
+                        disabled={reviewBusy === exp.id}
+                        className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => reviewAction(exp, 'ignore')}
+                        disabled={reviewBusy === exp.id}
+                        title="Keep the receipt, but don't count it as an expense"
+                        className="px-3 py-1.5 bg-dark-700 text-white rounded-lg text-sm font-medium hover:bg-dark-600 border border-dark-600 disabled:opacity-50"
+                      >
+                        Ignore
+                      </button>
+                      <button
+                        onClick={() => reviewAction(exp, 'reject')}
+                        disabled={reviewBusy === exp.id}
+                        title="The scan is wrong or junk"
+                        className="px-3 py-1.5 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/10 border border-red-500/40 disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

@@ -18,6 +18,8 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  EyeOff,
+  Copy,
   Edit3,
   Save,
   RotateCcw,
@@ -74,6 +76,23 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
       weight_lbs: text === '' || isNaN(num) ? null : Math.round(num * 2000),
     }))
   }
+
+  // Other receipts the AI thinks this might duplicate, and which one (if any)
+  // is shown next to this receipt for comparison.
+  const [duplicates, setDuplicates] = useState([])
+  const [compareDup, setCompareDup] = useState(null)
+  const [compareImgFailed, setCompareImgFailed] = useState(false)
+
+  useEffect(() => {
+    if (manualMode || !parsedInvoice?.id) return
+    const adminToken = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null
+    fetch(`/api/documents/parse/${parsedInvoice.id}?duplicates=1`, {
+      headers: adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {},
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setDuplicates(data?.possible_duplicates || []))
+      .catch(() => setDuplicates([]))
+  }, [parsedInvoice?.id, manualMode])
 
   // Customer search state
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
@@ -366,8 +385,11 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
     setLoading(false)
   }
 
-  const handleReject = async () => {
+  // Reject (bad scan) or Ignore (real, but not an expense to count). Both take
+  // it off Needs Review without editing anything.
+  const handleDismiss = async (action) => {
     setLoading(true)
+    setError(null)
     try {
       const adminToken = typeof window !== 'undefined'
         ? sessionStorage.getItem('adminToken')
@@ -378,14 +400,19 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
           'Content-Type': 'application/json',
           ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}),
         },
-        body: JSON.stringify({ action: 'reject' }),
+        body: JSON.stringify({ action }),
       })
 
       if (response.ok) {
+        if (onConfirm) onConfirm()
         onClose()
+      } else {
+        const err = await response.json().catch(() => ({}))
+        setError(err.error || `Failed to ${action}`)
       }
     } catch (err) {
       console.error(err)
+      setError(`Error trying to ${action}`)
     }
     setLoading(false)
   }
@@ -413,7 +440,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col [color-scheme:light]">
+      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col text-neutral-900 [color-scheme:light]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 shrink-0">
           <div className="flex items-center gap-3">
@@ -494,9 +521,93 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
           </div>
         )}
 
+        {!manualMode && duplicates.length > 0 && (
+          <div className="mx-4 mt-3 p-3 bg-orange-50 border border-orange-300 rounded-lg text-sm text-neutral-900">
+            <p className="font-semibold text-orange-900 mb-2 flex items-center gap-2">
+              <Copy className="w-4 h-4" />
+              Possible duplicate{duplicates.length === 1 ? '' : 's'} — same vendor, same date
+            </p>
+            <ul className="space-y-2">
+              {duplicates.map(dup => {
+                const statusLabel = dup.status === 'confirmed' ? 'Confirmed'
+                  : dup.status === 'pending_review' ? 'Needs review'
+                  : dup.status === 'ignored' ? 'Ignored' : dup.status
+                const active = compareDup?.id === dup.id
+                return (
+                  <li key={dup.id} className={`flex flex-wrap items-center gap-x-4 gap-y-1 p-2 rounded-lg border ${active ? 'bg-white border-orange-400' : 'bg-orange-100/50 border-orange-200'}`}>
+                    <span className="font-medium">{dup.from_name || 'Unknown vendor'}</span>
+                    <span>{dup.invoice_date || 'No date'}</span>
+                    <span className="font-semibold">{formatCurrency(dup.total_cents)}</span>
+                    <span className="text-neutral-600">Receipt #: {dup.invoice_number || 'none'}</span>
+                    <span className="text-neutral-600">{statusLabel}</span>
+                    {dup.total_cents === parsedInvoice?.total_cents && (
+                      <span className="px-2 py-0.5 rounded-full bg-orange-200 text-orange-900 text-xs font-semibold">Same amount</span>
+                    )}
+                    <span className="ml-auto flex gap-2">
+                      {dup.document_id && (
+                        <button
+                          type="button"
+                          onClick={() => { setCompareImgFailed(false); setCompareDup(active ? null : dup) }}
+                          className="px-3 py-1 bg-orange-600 text-white rounded-lg text-xs font-semibold hover:bg-orange-700"
+                        >
+                          {active ? 'Stop comparing' : 'Compare side by side'}
+                        </button>
+                      )}
+                      {dup.document_id && (
+                        <a
+                          href={`/api/documents/image/${dup.document_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 border border-orange-400 text-orange-900 rounded-lg text-xs font-semibold hover:bg-orange-100"
+                        >
+                          Open in new tab
+                        </a>
+                      )}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+            <p className="mt-2 text-xs text-neutral-600">
+              Same receipt scanned twice? Reject this one. Two separate purchases? Confirm it.
+            </p>
+          </div>
+        )}
+
         {/* Content - Side by Side */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
           {/* Left: Document Preview (PDF viewer or zoomable image) */}
+          {compareDup ? (
+            <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-100 grid grid-cols-2 min-h-[300px] md:min-h-0">
+              {[
+                { label: 'This receipt', url: imageUrl, info: formData },
+                { label: 'Possible duplicate', url: `/api/documents/image/${compareDup.document_id}`, info: compareDup, other: true },
+              ].map(pane => (
+                <div key={pane.label} className="flex flex-col min-h-0 border-r last:border-r-0 border-neutral-200">
+                  <div className={`px-3 py-2 text-xs font-semibold ${pane.other ? 'bg-orange-100 text-orange-900' : 'bg-blue-100 text-blue-900'}`}>
+                    {pane.label}: {formatCurrency(pane.info.total_cents)} · #{pane.info.invoice_number || 'none'}
+                  </div>
+                  <div className="flex-1 overflow-auto p-2">
+                    {!pane.other && isPdf && pane.url ? (
+                      <iframe src={pane.url} title={pane.label} className="w-full h-full min-h-[400px] border-0" />
+                    ) : pane.other && compareImgFailed ? (
+                      // Not an image (likely a PDF) — let the browser render it.
+                      <iframe src={pane.url} title={pane.label} className="w-full h-full min-h-[400px] border-0" />
+                    ) : pane.url ? (
+                      <img
+                        src={pane.url}
+                        alt={pane.label}
+                        onError={pane.other ? () => setCompareImgFailed(true) : undefined}
+                        className="w-full h-auto rounded shadow"
+                      />
+                    ) : (
+                      <p className="text-neutral-400 text-sm">No preview</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
           <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-neutral-200 bg-neutral-100 relative flex flex-col min-h-[300px] md:min-h-0">
             {imageUrl && isPdf ? (
               <object data={imageUrl} type="application/pdf" className="w-full flex-1 min-h-[400px]">
@@ -549,6 +660,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
               </div>
             )}
           </div>
+          )}
 
           {/* Right: Extracted Data */}
           <div className="md:w-1/2 overflow-y-auto p-4 space-y-4">
@@ -909,14 +1021,26 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
               Cancel
             </button>
           ) : (
-            <button
-              onClick={handleReject}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <XCircle className="w-5 h-5" />
-              Reject
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleDismiss('reject')}
+                disabled={loading}
+                title="The scan is wrong or junk"
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <XCircle className="w-5 h-5" />
+                Reject
+              </button>
+              <button
+                onClick={() => handleDismiss('ignore')}
+                disabled={loading}
+                title="Keep the document, but don't count it as an expense"
+                className="flex items-center gap-2 px-4 py-2 text-neutral-700 border border-neutral-300 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <EyeOff className="w-5 h-5" />
+                Ignore
+              </button>
+            </div>
           )}
           <div className="flex items-center gap-2 text-sm text-neutral-500">
             {customer && (
@@ -936,7 +1060,7 @@ export default function ParsedInvoiceReview({ document, parsedInvoice, imageUrl,
             ) : (
               <CheckCircle2 className="w-5 h-5" />
             )}
-            {manualMode ? 'Save Entry' : 'Confirm & Save'}
+            {manualMode ? 'Save Entry' : editing ? 'Save & Confirm' : 'Confirm'}
           </button>
         </div>
       </div>
