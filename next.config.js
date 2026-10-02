@@ -129,13 +129,16 @@ const nextConfig = {
               // (the iframe handshake never completes so the elements session
               // can't authenticate). Same for connect-src for the postMessage
               // back-channel between the parent and the Stripe iframe.
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://js.stripe.com https://m.stripe.network https://*.supabase.co",
+              // Analytics (GA4, Microsoft Clarity, Meta Pixel) hosts are listed in
+              // script-src, img-src and connect-src. Without them the browser
+              // blocks the trackers, so visits and call clicks are never counted.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://js.stripe.com https://m.stripe.network https://*.supabase.co https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://connect.facebook.net",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               // *.stripe.com lets the Payment Element render card-brand logos
               // (Visa, Mastercard, etc.) inside the iframe.
-              "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.supabase.co https://*.stripe.com",
-              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://api.twilio.com https://api.resend.com wss://*.supabase.co",
+              "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.supabase.co https://*.stripe.com https://www.googletagmanager.com https://*.google-analytics.com https://*.clarity.ms https://c.bing.com https://www.facebook.com",
+              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://api.twilio.com https://api.resend.com wss://*.supabase.co https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.clarity.ms https://c.bing.com https://www.facebook.com https://connect.facebook.net",
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://m.stripe.network",
               "worker-src 'self' blob:",
               "object-src 'none'",

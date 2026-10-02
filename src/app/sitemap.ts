@@ -16,17 +16,17 @@ function slugify(town: string): string {
 // AND makes Google distrust the timestamps. Bump these only when the
 // underlying page content actually changes.
 const LAST_MOD = {
-  home:        '2026-05-09',
+  home:        '2026-10-02',
   dumpsters:   '2026-05-09',
   pricing:     '2026-05-09',
   book:        '2026-05-09',
-  serviceArea: '2026-04-01',
+  serviceArea: '2026-10-02',
   about:       '2026-04-01',
   contact:     '2026-05-09',
   faq:         '2026-04-01',
   guides:      '2026-03-01',
   legal:       '2026-01-01',
-  cityPage:    '2026-04-01',
+  cityPage:    '2026-10-02',
   dumpsterId:  '2026-04-01',
   services:    '2026-05-09',
 }
@@ -52,8 +52,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/reviews`,                          lastModified: LAST_MOD.faq,         changeFrequency: 'monthly' as const, priority: 0.7 },
     { url: `${baseUrl}/privacy`,                          lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.3 },
     { url: `${baseUrl}/terms`,                            lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.3 },
-    { url: `${baseUrl}/sms-terms`,                        lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.2 },
-    { url: `${baseUrl}/sms-opt-in`,                       lastModified: LAST_MOD.legal,       changeFrequency: 'yearly'  as const, priority: 0.2 },
   ]
 
   // City pages: cities we've written unique copy for (see lib/cityHooks)

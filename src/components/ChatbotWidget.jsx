@@ -112,17 +112,24 @@ export default function ChatbotWidget() {
     scrollToBottom()
   }, [messages, step, bookingData])
 
-  // Auto-open chatbot after 2 seconds on homepage
+  // Auto-open the chatbot once per visit, desktop only.
+  // On phones the open chat covers nearly the whole screen (and the Call
+  // button), so visitors arriving from Google saw a popup instead of the
+  // page. Google also demotes mobile pages with intrusive popups. Phone
+  // visitors can still open it from the chat button.
   useEffect(() => {
     const isAdminPage = pathname?.startsWith('/admin') || pathname?.startsWith('/driver')
     const isBookingPage = pathname === '/book'
+    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+    let alreadyShown = false
+    try { alreadyShown = sessionStorage.getItem('kcd_chat_auto_opened') === '1' } catch {}
 
-    // Don't auto-open on admin pages or booking page (user is already in booking flow)
-    if (!hasAutoOpened && !isOpen && !isAdminPage && !isBookingPage) {
+    if (!hasAutoOpened && !isOpen && !isAdminPage && !isBookingPage && isDesktop && !alreadyShown) {
       const openTimer = setTimeout(() => {
         setIsOpen(true)
         setHasAutoOpened(true)
-      }, 2000)
+        try { sessionStorage.setItem('kcd_chat_auto_opened', '1') } catch {}
+      }, 8000)
       return () => clearTimeout(openTimer)
     }
   }, [hasAutoOpened, isOpen, pathname])
@@ -1329,7 +1336,11 @@ export default function ChatbotWidget() {
             setIsOpen(true)
             if (!hasAutoOpened) setHasAutoOpened(true)
           }}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary/90 rounded-full shadow-lg flex items-center justify-center z-50 transition-colors duration-200"
+          // On mobile this sits ABOVE the sticky Text + Call buttons (see
+          // .mobile-cta-stack in globals.css). It used to sit directly on top
+          // of the Call button, so tapping "call" opened the chat instead.
+          className="fixed bottom-[164px] right-[22px] md:bottom-6 md:right-6 w-14 h-14 bg-neutral-700 md:bg-primary hover:bg-neutral-600 md:hover:bg-primary/90 rounded-full shadow-lg flex items-center justify-center z-50 transition-colors duration-200"
+          aria-label="Open chat assistant"
         >
           <MessageCircle className="w-8 h-8 text-white" />
         </button>

@@ -46,7 +46,7 @@ export default function Header() {
           {/* Logo */}
           <Link
             href="/"
-            className="flex-shrink-0 flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg"
+            className="flex-shrink-0 flex items-center gap-2 sm:gap-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg"
             aria-label={`${config.businessName} - Go to homepage`}
           >
             <Image
@@ -54,10 +54,10 @@ export default function Header() {
               alt="King City Disposal"
               width={48}
               height={48}
-              className="h-10 md:h-12 w-auto"
+              className="h-9 sm:h-10 md:h-12 w-auto"
               priority
             />
-            <span className="text-lg md:text-xl font-bold text-white whitespace-nowrap">
+            <span className="text-base sm:text-lg md:text-xl font-bold text-white whitespace-nowrap">
               {config.businessName}
             </span>
           </Link>
@@ -99,10 +99,21 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile: tap-to-call is the #1 way phone visitors reach us, so it
+              lives in the always-visible sticky header, not just the menu. */}
+          <div className="flex items-center gap-2 lg:hidden">
+          <a
+            href={`tel:${config.phoneRaw}`}
+            className="md:hidden flex items-center gap-1.5 bg-primary-600 hover:bg-primary-500 text-white font-bold text-sm py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 whitespace-nowrap"
+            aria-label={`Call us at ${config.phone}`}
+            data-track-source="header_mobile_call"
+          >
+            <Phone className="w-4 h-4" aria-hidden="true" />
+            Call
+          </a>
           <button
             type="button"
-            className="lg:hidden p-2 text-white hover:bg-accent-900 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg transition-colors"
+            className="p-2 text-white hover:bg-accent-900 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-accent-950 rounded-lg transition-colors"
             onClick={toggleMobileMenu}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"
@@ -114,6 +125,7 @@ export default function Header() {
               <Menu className="w-6 h-6" aria-hidden="true" />
             )}
           </button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
