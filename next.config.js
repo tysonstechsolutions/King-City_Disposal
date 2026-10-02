@@ -49,6 +49,43 @@ const nextConfig = {
         destination: '/dumpster-rental/salem-il',
         permanent: true,
       },
+      // These towns are more than 35 miles from Mount Vernon (the service
+      // area center) and were dropped. Send their links to the service area page.
+      {
+        source: '/dumpster-rental/albion-il',
+        destination: '/service-area',
+        permanent: true,
+      },
+      {
+        source: '/dumpster-rental/crossville-il',
+        destination: '/service-area',
+        permanent: true,
+      },
+      {
+        source: '/dumpster-rental/carmi-il',
+        destination: '/service-area',
+        permanent: true,
+      },
+      {
+        source: '/dumpster-rental/norris-city-il',
+        destination: '/service-area',
+        permanent: true,
+      },
+      {
+        source: '/dumpster-rental/louisville-il',
+        destination: '/service-area',
+        permanent: true,
+      },
+      {
+        source: '/dumpster-rental/clay-city-il',
+        destination: '/service-area',
+        permanent: true,
+      },
+      {
+        source: '/dumpster-rental/farina-il',
+        destination: '/service-area',
+        permanent: true,
+      },
     ]
   },
   // Security headers

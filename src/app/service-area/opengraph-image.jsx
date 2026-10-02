@@ -12,7 +12,7 @@ export default async function ServiceAreaOG() {
     eyebrow: 'Service Area',
     headline: `${config.serviceTowns.length}+ Towns`,
     accentHeadline: 'Southern Illinois',
-    subhead: `${config.serviceRadius}-mile delivery radius centered on Fairfield, IL — from Centralia to Carmi and everywhere in between.`,
+    subhead: `${config.serviceRadius}-mile delivery radius centered on Mount Vernon, IL — from Centralia to Fairfield and everywhere in between.`,
     footerNote: 'Same-day delivery available',
   })
 }

@@ -5,10 +5,9 @@ import Link from 'next/link'
 import { config } from '../../config'
 import { MapPin, Phone, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react'
 
-// Service area center matches the source of truth in src/config.js. Hardcoded
-// coordinates here used to point at Mount Vernon, but the radius calculation
-// in isInServiceArea() centers on Fairfield — keeping them in sync prevents
-// the map circle from disagreeing with whether an address is "in area."
+// Service area center matches the source of truth in src/config.js (Mount
+// Vernon, IL). Reading it from config keeps the map circle in sync with
+// isInServiceArea() so they never disagree about whether an address is "in area."
 const SERVICE_CENTER = { lat: config.serviceAreaCenter.lat, lng: config.serviceAreaCenter.lng }
 const SERVICE_RADIUS_MILES = config.serviceRadius
 

@@ -3,7 +3,7 @@
 // ============================================
 // Two purposes:
 //   1. Differentiate the /dumpster-rental/[city] pages so Google doesn't
-//      collapse them as near-duplicates of each other (real risk when 35
+//      collapse them as near-duplicates of each other (real risk when 30
 //      city pages share the same template).
 //   2. Reward local searchers with copy that proves we actually know
 //      their town — boosts conversion, not just rank.
@@ -20,6 +20,8 @@
 // time is incremental SEO wins per city.
 // ============================================
 
+import { config } from '../config'
+
 export const cityHooks = {
   'Mount Vernon': {
     hook: 'Whether you’re renovating a historic home near the Jefferson County Courthouse, cleaning out a property off Broadway, or running a contracting crew on a new build out toward I-57, we can usually get a dumpster on your driveway the same day.',
@@ -29,10 +31,10 @@ export const cityHooks = {
     },
   },
   'Fairfield': {
-    hook: 'Fairfield is the center of our service map, so deliveries here happen fast — often within a few hours of your call. Whether the project is a barn cleanout off Route 15 or a roof tear-off in town, we’ve got you covered.',
+    hook: 'Fairfield is a straight shot east of our Mount Vernon yard on Route 15, so deliveries here happen fast — often the same day you call. Whether the project is a barn cleanout off Route 15 or a roof tear-off in town, we’ve got you covered.',
     faq: {
       q: 'How quickly can you deliver a dumpster in Fairfield?',
-      a: `Fairfield is the geographic center of our ${35}-mile service area. Same-day delivery is almost always available for orders placed before noon, and we frequently turn around morning calls within 2-3 hours.`,
+      a: `Fairfield is about 30 miles east of our Mount Vernon yard, well inside our ${config.serviceRadius}-mile service area. Same-day delivery is almost always available for orders placed before noon.`,
     },
   },
   'Centralia': {
@@ -47,13 +49,6 @@ export const cityHooks = {
     faq: {
       q: 'Do you serve rural addresses outside Salem city limits?',
       a: 'Absolutely. Anywhere within our service radius — including rural Marion County addresses with long driveways or shared lanes — we can usually deliver. Just describe access in your booking notes and we’ll plan placement carefully.',
-    },
-  },
-  'Carmi': {
-    hook: 'Carmi is on the east edge of our service area, but we make the run regularly. Roofing crews and home renovation projects on the older neighborhoods near Main Street fit our 20-yard dumpsters perfectly.',
-    faq: {
-      q: 'Can you deliver to Carmi the same day I call?',
-      a: 'For orders placed before 10 AM, same-day delivery to Carmi is usually doable. Next-day is always available.',
     },
   },
   'McLeansboro': {

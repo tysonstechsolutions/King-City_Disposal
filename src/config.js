@@ -141,37 +141,38 @@ export const config = {
   // 🗺️ SERVICE AREA
   // ============================================
   // Service boundaries:
-  //   North: East Salem | South: Benton | East: McLeansboro | West: Nashville, IL
-  //   Core: Fairfield
-  serviceRadius: 35, // approximate miles to cover boundary towns
+  //   35 miles (straight line) from Mount Vernon, IL.
+  //   North: Kinmundy | South: West Frankfort | East: Enfield | West: Nashville, IL
+  //   Core: Mount Vernon
+  serviceRadius: 35, // miles from serviceAreaCenter
   serviceAreaCenter: {
-    lat: 38.3789,  // Fairfield, IL (core service area)
-    lng: -88.3597,
+    lat: 38.3173,  // Mount Vernon, IL (core service area)
+    lng: -88.9031,
   },
 
   // Boundary towns (anything outside = extra charge or no service)
   serviceBoundary: {
-    north: "East Salem",
-    south: "Benton",
-    east: "McLeansboro",
+    north: "Kinmundy",
+    south: "West Frankfort",
+    east: "Enfield",
     west: "Nashville",
-    core: "Fairfield",
+    core: "Mount Vernon",
   },
 
   // Towns within service area
   serviceTowns: [
     // Core area
-    "Fairfield", "Mount Vernon",
+    "Mount Vernon", "Fairfield",
     // Within boundaries
-    "Wayne City", "Cisne", "Albion", "Crossville", "Carmi",
-    "McLeansboro", "Enfield", "Norris City",
+    "Wayne City", "Cisne",
+    "McLeansboro", "Enfield",
     "Benton", "West Frankfort", "Sesser", "Christopher",
     "Nashville", "Centralia", "Sandoval", "Odin",
     "Salem", "Kinmundy",
-    "Flora", "Louisville", "Clay City", "Xenia",
+    "Flora", "Xenia",
     "Woodlawn", "Bluford", "Bonnie", "Dix", "Opdyke",
     "Waltonville", "Ina", "Nason", "Texico", "Belle Rive",
-    "Kell", "Iuka", "Farina"
+    "Kell", "Iuka"
   ],
   
   // ============================================
